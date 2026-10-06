@@ -1,0 +1,1065 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>译学 Android 手机端 · 交互预览 V1</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --board: #e9eee9;
+      --board-line: #dbe2dc;
+      --paper: #f5f5ef;
+      --surface: #fffefa;
+      --surface-2: #f8f8f2;
+      --ink: #1e2b28;
+      --muted: #6c7b76;
+      --soft: #94a19b;
+      --line: #e4e8e1;
+      --teal: #16766b;
+      --teal-deep: #105f57;
+      --teal-soft: #e5f2ed;
+      --blue: #3296d8;
+      --green: #43b878;
+      --amber: #bd7040;
+      --amber-soft: #fbf0e5;
+      --red: #b94d4b;
+      --shadow: 0 22px 60px rgba(28, 53, 45, .16);
+      --phone-shadow: 0 16px 36px rgba(22, 42, 36, .25);
+      --radius-card: 18px;
+    }
+
+    * { box-sizing: border-box; }
+    html { min-width: 320px; background: var(--board); }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      background:
+        radial-gradient(900px 560px at 80% -10%, rgba(84, 165, 131, .12), transparent 70%),
+        linear-gradient(135deg, #eef1eb 0%, #e6ece6 100%);
+      font-family: "Microsoft YaHei UI", "Noto Sans SC", "Segoe UI", sans-serif;
+    }
+
+    button, input, textarea { font: inherit; }
+    button { color: inherit; }
+    button:focus-visible, input:focus-visible, textarea:focus-visible {
+      outline: 3px solid rgba(22, 118, 107, .45);
+      outline-offset: 2px;
+    }
+    .board { width: min(1420px, calc(100% - 48px)); margin: 0 auto; padding: 30px 0 44px; }
+    .board-header {
+      display: flex; align-items: center; justify-content: space-between; gap: 20px;
+      padding: 0 4px 24px;
+    }
+    .brand { display: flex; align-items: center; gap: 13px; }
+    .brand img { width: 42px; height: 42px; object-fit: contain; }
+    .brand-title { font-size: 16px; font-weight: 750; letter-spacing: .04em; }
+    .brand-sub { color: var(--muted); font-size: 12px; margin-top: 3px; }
+    .board-heading { margin-left: auto; margin-right: auto; }
+    .board-heading h1 { margin: 0; font-size: 23px; letter-spacing: -.035em; font-weight: 730; }
+    .board-heading p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+    .toolbar { display: flex; align-items: center; gap: 9px; }
+    .tool-button {
+      border: 1px solid var(--board-line); border-radius: 11px; padding: 10px 13px;
+      background: rgba(255,255,255,.65); cursor: pointer; font-size: 12px; font-weight: 650;
+    }
+    .tool-button:hover { background: #fff; }
+    .tool-button.primary { color: white; border-color: var(--teal); background: var(--teal); }
+
+    .workspace {
+      display: grid; grid-template-columns: 220px minmax(360px, 440px) minmax(260px, 1fr);
+      align-items: start; gap: 24px;
+    }
+    .nav-panel, .notes-panel {
+      border: 1px solid rgba(211, 222, 214, .9); border-radius: 20px;
+      background: rgba(255,255,251,.72); box-shadow: 0 8px 26px rgba(30,54,46,.055);
+    }
+    .nav-panel { padding: 17px 13px; }
+    .panel-eyebrow {
+      color: var(--soft); font-size: 10px; font-weight: 750; letter-spacing: .15em;
+      text-transform: uppercase; padding: 0 9px 11px;
+    }
+    .screen-nav { display: grid; gap: 5px; }
+    .screen-nav button {
+      width: 100%; min-height: 45px; text-align: left; border: 0; border-radius: 11px;
+      padding: 0 11px; background: transparent; cursor: pointer; display: flex;
+      align-items: center; gap: 10px; color: #52615d; font-size: 13px;
+    }
+    .screen-nav button:hover { background: #f1f5ef; }
+    .screen-nav button[aria-current="page"] {
+      color: var(--teal-deep); background: var(--teal-soft); font-weight: 720;
+    }
+    .nav-index {
+      display: grid; place-items: center; width: 22px; height: 22px; flex: none;
+      border: 1px solid currentColor; border-radius: 7px; font-size: 10px;
+    }
+    .nav-bottom {
+      margin: 18px 8px 2px; padding-top: 13px; border-top: 1px solid var(--line);
+      color: var(--muted); font-size: 11px; line-height: 1.65;
+    }
+    .device-stage { display: grid; place-items: center; }
+    .device-caption {
+      display: flex; align-items: center; justify-content: space-between; width: min(100%, 390px);
+      margin-bottom: 11px; color: #677670; font-size: 11px;
+    }
+    .device-caption strong { color: #31413b; font-size: 12px; }
+    .device {
+      width: min(100%, 390px); height: 806px; padding: 8px; border-radius: 38px;
+      background: #192720; box-shadow: var(--phone-shadow); position: relative;
+    }
+    .device:before {
+      content: ""; position: absolute; z-index: 10; top: 10px; left: 50%; transform: translateX(-50%);
+      width: 95px; height: 23px; background: #15211c; border-radius: 0 0 15px 15px;
+    }
+    .phone-screen {
+      height: 100%; overflow: hidden; position: relative; border-radius: 31px;
+      background: var(--paper); display: flex; flex-direction: column;
+    }
+    .statusbar {
+      height: 35px; padding: 11px 20px 0; display: flex; justify-content: space-between;
+      align-items: center; color: #53615c; font-size: 10px; font-weight: 700; flex: none;
+    }
+    .status-dots { letter-spacing: 2px; font-size: 9px; }
+    .appbar {
+      height: 54px; flex: none; padding: 0 18px; display: flex; align-items: center;
+      justify-content: space-between; border-bottom: 1px solid rgba(222,227,219,.7);
+    }
+    .appbar-left { display: flex; align-items: center; gap: 10px; }
+    .appbar img { width: 28px; height: 28px; object-fit: contain; }
+    .appbar-title { font-size: 15px; font-weight: 740; letter-spacing: -.02em; }
+    .appbar-sub { display: block; font-size: 11px; color: var(--muted); font-weight: 500; margin-top: 2px; }
+    .icon-button {
+      width: 44px; height: 44px; border: 1px solid transparent; border-radius: 12px;
+      background: transparent; cursor: pointer; display: grid; place-items: center; color: #5c6a64;
+      font-size: 18px;
+    }
+    .icon-button:hover { background: #edf3ed; border-color: #e0e8df; }
+    .screen-content { flex: 1; overflow: auto; padding: 19px 18px 18px; scrollbar-width: thin; }
+    .bottom-nav {
+      flex: none; min-height: 67px; display: grid; grid-template-columns: repeat(4,1fr);
+      align-items: center; border-top: 1px solid var(--line); padding: 4px 8px 7px;
+      background: rgba(255,254,250,.96);
+    }
+    .bottom-nav button {
+      border: 0; background: transparent; cursor: pointer; display: grid; justify-items: center;
+      align-content: center; gap: 4px; min-height: 51px; border-radius: 12px;
+      color: #87918b; font-size: 10px;
+    }
+    .bottom-nav button[aria-current="page"] { color: var(--teal-deep); font-weight: 720; }
+    .nav-glyph {
+      display: grid; place-items: center; width: 24px; height: 22px; font-size: 15px;
+      line-height: 1; border-radius: 7px;
+    }
+    .bottom-nav button[aria-current="page"] .nav-glyph { background: var(--teal-soft); }
+    .notes-panel { min-height: 340px; padding: 21px 22px; }
+    .notes-title { font-size: 16px; font-weight: 760; margin: 0; }
+    .notes-copy { color: var(--muted); line-height: 1.65; font-size: 12px; margin: 7px 0 17px; }
+    .interaction-list { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .interaction-list li {
+      display: grid; grid-template-columns: 28px 1fr; gap: 10px; align-items: start;
+      padding: 11px 0; border-top: 1px solid var(--line);
+    }
+    .interaction-list .step {
+      width: 24px; height: 24px; display: grid; place-items: center; border-radius: 8px;
+      color: var(--teal-deep); background: var(--teal-soft); font-size: 10px; font-weight: 750;
+    }
+    .interaction-list strong { display: block; font-size: 12px; }
+    .interaction-list small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+    .boundary-note {
+      margin-top: 17px; border-radius: 12px; background: #f2f4ec; padding: 12px 13px;
+      font-size: 11px; color: #58655d; line-height: 1.6;
+    }
+    .boundary-note b { color: #34453c; }
+
+    .eyebrow { color: var(--teal); font-size: 10px; font-weight: 800; letter-spacing: .12em; }
+    h2 { margin: 7px 0 0; font-size: 24px; letter-spacing: -.045em; line-height: 1.18; }
+    .lede { margin: 8px 0 0; font-size: 13px; color: var(--muted); line-height: 1.6; }
+    .section-label { margin: 22px 0 10px; font-size: 12px; color: #596761; font-weight: 750; }
+    .privacy-pill {
+      display: inline-flex; align-items: center; gap: 6px; padding: 6px 9px; border-radius: 20px;
+      background: #edf4ec; color: #41735a; font-size: 11px; font-weight: 700;
+    }
+    .privacy-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+    .hero {
+      position: relative; overflow: hidden; margin-top: 18px; padding: 18px 18px 17px;
+      border: 1px solid #d3e9df; border-radius: 21px;
+      background:
+        radial-gradient(140px 110px at 100% 0%, rgba(74,185,139,.18), transparent 75%),
+        linear-gradient(140deg, #f7fbf5 0%, #eaf5ee 100%);
+    }
+    .hero:after {
+      content: ""; position: absolute; width: 112px; height: 112px; right: -34px; top: 56px;
+      border: 1px solid rgba(22,118,107,.14); border-radius: 50%;
+      box-shadow: 0 0 0 13px rgba(22,118,107,.035), 0 0 0 27px rgba(22,118,107,.025);
+      pointer-events: none;
+    }
+    .hero-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .hero-kicker { color: #52776a; font-size: 11px; font-weight: 750; }
+    .hero-title { max-width: 260px; margin: 11px 0 0; font-size: 22px; line-height: 1.3; font-weight: 770; letter-spacing: -.04em; }
+    .language-pair { display: flex; align-items: center; gap: 7px; margin-top: 12px; font-size: 12px; font-weight: 720; }
+    .language-chip { border: 1px solid #d6e4da; border-radius: 8px; padding: 6px 9px; background: rgba(255,255,255,.75); }
+    .swap { color: var(--teal); font-weight: 800; }
+    .primary-button {
+      position: relative; z-index: 1; display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; min-height: 47px; border: 0; border-radius: 12px; padding: 0 15px; margin-top: 17px;
+      background: var(--teal); color: #fff; font-weight: 740; font-size: 12px; cursor: pointer;
+      box-shadow: 0 5px 12px rgba(22,118,107,.15);
+    }
+    .primary-button:hover { background: var(--teal-deep); }
+    .arrow { font-size: 17px; line-height: 1; }
+    .quick-list { margin-top: 12px; overflow: hidden; border-top: 1px solid var(--line); }
+    .quick-row {
+      width: 100%; display: flex; gap: 12px; align-items: center; min-height: 61px; text-align: left;
+      padding: 8px 3px; border: 0; border-bottom: 1px solid var(--line); background: transparent; cursor: pointer;
+    }
+    .quick-row:hover { background: rgba(228,242,237,.38); }
+    .quick-icon {
+      width: 34px; height: 34px; flex: none; display: grid; place-items: center; border-radius: 11px;
+      background: #edf2eb; color: #57736a; font-size: 14px; font-weight: 750;
+    }
+    .quick-copy { flex: 1; }
+    .quick-copy b { display: block; font-size: 13px; }
+    .quick-copy small { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .quick-arrow { color: #8c9a92; font-size: 17px; }
+    .recent {
+      margin-top: 20px; display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 10px; border-bottom: 1px solid var(--line);
+    }
+    .recent-title { font-size: 12px; font-weight: 760; }
+    .text-link { border: 0; background: transparent; color: var(--teal); font-size: 11px; font-weight: 700; cursor: pointer; }
+    .recent-item { display: flex; align-items: center; gap: 11px; padding: 12px 0 1px; }
+    .recent-line { width: 2px; height: 28px; margin-left: 15px; background: #9fcab5; border-radius: 3px; }
+    .recent-item strong { font-size: 11px; }
+    .recent-item small { display: block; margin-top: 4px; color: var(--muted); font-size: 11px; }
+
+    .subpage-head { display: flex; align-items: center; gap: 7px; margin: -8px 0 17px; }
+    .back-button { width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 11px; background: #fff; cursor: pointer; }
+    .subpage-title { font-size: 14px; font-weight: 750; }
+    .subpage-meta { margin-left: auto; color: var(--muted); font-size: 10px; }
+    .lang-bar {
+      display: grid; grid-template-columns: 1fr 38px 1fr; align-items: center;
+      padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface);
+    }
+    .lang-side { min-width: 0; }
+    .lang-side span { display: block; color: var(--muted); font-size: 10px; }
+    .lang-side strong { display: block; margin-top: 4px; font-size: 13px; }
+    .lang-swap {
+      width: 40px; height: 40px; border: 1px solid #d9e8df; border-radius: 11px;
+      color: var(--teal); background: #f3f8f3; cursor: pointer;
+    }
+    .turn-label { margin: 19px 0 9px; color: var(--muted); font-size: 11px; font-weight: 650; }
+    .dialogue { display: grid; gap: 11px; }
+    .dialogue-block { padding: 12px 13px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface); }
+    .dialogue-block.mine { border-color: #d7e8df; background: #f2f8f2; }
+    .speaker { color: var(--muted); font-size: 10px; font-weight: 750; letter-spacing: .04em; }
+    .source-text { margin-top: 7px; font-size: 14px; line-height: 1.55; font-weight: 630; }
+    .translated-text { margin-top: 7px; color: #4d625a; font-size: 13px; line-height: 1.6; }
+    .block-actions { display: flex; align-items: center; gap: 7px; margin-top: 9px; }
+    .mini-button {
+      min-height: 39px; padding: 0 10px; border: 1px solid var(--line); border-radius: 10px;
+      background: rgba(255,255,255,.8); cursor: pointer; color: #53635c; font-size: 10px;
+    }
+    .live-status { display: flex; align-items: center; gap: 7px; margin-top: 12px; color: #738078; font-size: 11px; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: #d59a52; }
+    .live-dot.active { background: #c35c53; box-shadow: 0 0 0 4px rgba(195,92,83,.1); }
+    .talk-zone { position: sticky; bottom: 0; margin: 15px -18px -18px; padding: 12px 18px 15px; background: linear-gradient(180deg, rgba(245,245,239,0) 0%, var(--paper) 22%); }
+    .direction-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 9px; }
+    .direction-chip { min-height: 39px; border: 1px solid #d9e8df; border-radius: 20px; padding: 0 11px; background: #f6faf6; color: #45665a; font-size: 11px; font-weight: 700; cursor: pointer; }
+    .auto-toggle { min-height: 39px; border: 0; background: transparent; color: #68756e; font-size: 11px; cursor: pointer; }
+    .talk-button {
+      width: 100%; min-height: 66px; border: 0; border-radius: 16px; background: var(--teal);
+      color: white; cursor: pointer; font-weight: 750; font-size: 14px; touch-action: none;
+      transition: transform .12s, background .15s, box-shadow .15s;
+      box-shadow: 0 7px 15px rgba(22,118,107,.16);
+    }
+    .talk-button.pressed { transform: scale(.985); background: #b86a3f; box-shadow: 0 0 0 5px rgba(184,106,63,.14); }
+    .talk-button small { display: block; margin-top: 5px; color: rgba(255,255,255,.78); font-size: 10px; font-weight: 500; }
+
+    .source-switch { display: grid; grid-template-columns: 1fr 1fr; padding: 4px; gap: 4px; border-radius: 12px; background: #eaeee8; }
+    .source-switch button { min-height: 42px; border: 0; border-radius: 9px; background: transparent; color: var(--muted); font-size: 11px; font-weight: 700; cursor: pointer; }
+    .source-switch button[aria-pressed="true"] { background: var(--surface); color: var(--teal-deep); box-shadow: 0 1px 4px rgba(25,45,35,.08); }
+    .source-card {
+      margin-top: 13px; padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface);
+    }
+    .source-card-head { display: flex; align-items: center; gap: 10px; }
+    .source-symbol { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px; background: #eaf3ee; color: var(--teal); font-weight: 800; }
+    .source-card-head b { font-size: 12px; }
+    .source-card-head small { display: block; margin-top: 3px; font-size: 10px; color: var(--muted); }
+    .source-desc { margin: 11px 0 0; color: #65746c; font-size: 11px; line-height: 1.65; }
+    .system-note { margin-top: 13px; padding: 11px 12px; border-radius: 11px; background: var(--amber-soft); color: #7e583c; font-size: 11px; line-height: 1.6; }
+    .capture-status {
+      display: flex; align-items: center; justify-content: space-between; margin-top: 14px;
+      padding: 10px 0; border-bottom: 1px solid var(--line); color: #596861; font-size: 10px;
+    }
+    .status-label { display: inline-flex; align-items: center; gap: 6px; }
+    .status-label .live-dot { background: #99a69e; }
+    .status-label.ready .live-dot { background: var(--green); }
+    .subtitles-preview { margin-top: 14px; padding: 15px 13px; border-radius: 14px; background: #23342e; color: white; }
+    .subtitles-preview small { color: #a8c0b2; font-size: 10px; }
+    .subtitle-line { margin-top: 9px; font-size: 14px; line-height: 1.55; font-weight: 650; }
+    .subtitle-translation { margin-top: 4px; color: #d1e1d8; font-size: 12px; line-height: 1.6; }
+    .pip-row { display: flex; align-items: center; justify-content: space-between; margin-top: 11px; }
+    .pip-row span { font-size: 11px; color: #596861; }
+    .switch { width: 39px; height: 23px; padding: 3px; border: 0; border-radius: 20px; background: #c6cec7; cursor: pointer; }
+    .switch:after { content: ""; display: block; width: 17px; height: 17px; border-radius: 50%; background: white; transition: transform .16s; }
+    .switch[aria-pressed="true"] { background: var(--teal); }
+    .switch[aria-pressed="true"]:after { transform: translateX(16px); }
+
+    .screen-content.chat-page { display: flex; flex-direction: column; }
+    .chat-scroll { display: grid; flex: 1; align-content: start; gap: 15px; padding-bottom: 12px; overflow: auto; }
+    .chat-context { display: flex; justify-content: center; margin-bottom: 1px; }
+    .context-chip { border: 1px solid #dce8df; border-radius: 20px; padding: 7px 10px; color: #5e7168; background: #f6faf5; font-size: 10px; }
+    .message { max-width: 88%; }
+    .message.user { justify-self: end; }
+    .message.assistant { justify-self: start; }
+    .message-role { margin: 0 0 5px 2px; color: #89958e; font-size: 10px; font-weight: 700; }
+    .message-body { padding: 11px 12px; border-radius: 14px; background: #fff; border: 1px solid var(--line); font-size: 12px; line-height: 1.7; }
+    .message.user .message-body { background: #e6f3ed; border-color: #d4e8de; }
+    .agent-activity { margin-top: 9px; padding: 9px 10px; border-left: 2px solid #79aa91; background: #f4f7f1; color: #66756d; font-size: 10px; }
+    .agent-activity b { color: #446557; }
+    .chat-composer {
+      margin: auto -7px 0; padding: 11px 11px 8px; border: 1px solid #dfe5dd;
+      border-radius: 17px; background: #fffefa; box-shadow: 0 6px 20px rgba(25,47,38,.07);
+    }
+    .composer-context { display: flex; align-items: center; justify-content: space-between; margin-bottom: 5px; }
+    .model-pill { border: 0; border-radius: 9px; padding: 6px 8px; background: #eff5ef; color: #3f6a5d; font-size: 9px; font-weight: 730; cursor: pointer; }
+    .composer-text {
+      width: 100%; min-height: 48px; resize: vertical; border: 0; outline: 0; background: transparent;
+      color: var(--ink); font-size: 12px; line-height: 1.5;
+    }
+    .composer-text::placeholder { color: #9aa39d; }
+    .composer-actions { display: flex; align-items: center; gap: 5px; }
+    .composer-spacer { flex: 1; }
+    .composer-action {
+      min-width: 34px; height: 34px; border: 0; border-radius: 10px; background: transparent;
+      color: #64746d; cursor: pointer; font-size: 13px;
+    }
+    .composer-action:hover { background: #edf4ee; }
+    .composer-action.send { color: white; background: var(--teal); font-size: 16px; }
+    .send-hint { margin-top: 8px; text-align: center; color: #98a29c; font-size: 9px; }
+
+    .record-list { margin-top: 15px; border-top: 1px solid var(--line); }
+    .record-row {
+      width: 100%; display: grid; grid-template-columns: 37px 1fr auto; gap: 10px;
+      align-items: center; text-align: left; padding: 13px 1px; border: 0;
+      border-bottom: 1px solid var(--line); background: transparent; cursor: pointer;
+    }
+    .record-row:hover { background: rgba(229,242,237,.4); }
+    .record-icon { width: 35px; height: 35px; display: grid; place-items: center; border-radius: 11px; background: #edf2eb; color: #547569; font-size: 12px; font-weight: 760; }
+    .record-row b { display: block; font-size: 11px; }
+    .record-row small { display: block; margin-top: 4px; color: var(--muted); font-size: 9px; }
+    .record-duration { font-size: 9px; color: #87938b; }
+    .empty-state { margin-top: 12px; padding: 16px 13px; border: 1px dashed var(--line); border-radius: 12px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+    .history-search {
+      width: 100%; min-height: 41px; margin-top: 15px; padding: 0 12px;
+      border: 1px solid var(--line); border-radius: 11px; background: var(--surface);
+      color: var(--ink); font-size: 11px;
+    }
+    .history-search::placeholder { color: #99a49e; }
+    .history-filters { display: flex; gap: 6px; overflow: auto; margin-top: 9px; padding-bottom: 2px; }
+    .history-filters button {
+      min-height: 30px; padding: 0 9px; white-space: nowrap; border: 1px solid var(--line);
+      border-radius: 9px; background: transparent; color: var(--muted); font-size: 9px; cursor: pointer;
+    }
+    .history-filters button[aria-pressed="true"] { border-color: #cfe3d7; background: var(--teal-soft); color: var(--teal-deep); font-weight: 700; }
+
+    .model-hero { margin-top: 13px; padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
+    .model-hero-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    .model-hero b { font-size: 12px; }
+    .model-hero p { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .state-tag { padding: 5px 7px; border-radius: 8px; background: #f3eee5; color: #856442; font-size: 9px; font-weight: 700; }
+    .provider-list { display: grid; gap: 8px; margin-top: 13px; }
+    .provider-row { display: flex; align-items: center; justify-content: space-between; padding: 11px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .provider-row b { display: block; font-size: 11px; }
+    .provider-row small { display: block; color: var(--muted); margin-top: 4px; font-size: 9px; }
+    .provider-row button { border: 1px solid #d8e6dd; border-radius: 8px; padding: 7px 9px; background: #f6faf6; color: var(--teal-deep); font-size: 9px; font-weight: 720; cursor: pointer; }
+    .model-footnote { margin-top: 12px; color: #76827a; font-size: 9px; line-height: 1.6; }
+
+    .sheet-backdrop {
+      position: absolute; z-index: 20; inset: 0; display: flex; align-items: flex-end;
+      background: rgba(17,33,27,.33);
+    }
+    .sheet {
+      width: 100%; padding: 19px 18px 20px; border-radius: 21px 21px 25px 25px;
+      background: var(--surface); box-shadow: 0 -12px 32px rgba(17,37,29,.15);
+      animation: rise .2s ease-out;
+    }
+    @keyframes rise { from { transform: translateY(20px); opacity: .6; } to { transform: translateY(0); opacity: 1; } }
+    .sheet-handle { width: 35px; height: 4px; border-radius: 9px; background: #d8ded8; margin: -8px auto 14px; }
+    .sheet-head { display: flex; justify-content: space-between; align-items: center; }
+    .sheet-head b { font-size: 14px; }
+    .sheet-close { width: 40px; height: 40px; border: 0; border-radius: 10px; background: #f1f3ee; cursor: pointer; }
+    .sheet-list { display: grid; gap: 7px; margin-top: 14px; }
+    .sheet-choice { display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 49px; border: 1px solid var(--line); border-radius: 11px; padding: 0 11px; background: #fff; cursor: pointer; text-align: left; }
+    .sheet-choice b { display: block; font-size: 12px; }
+    .sheet-choice small { display: block; color: var(--muted); margin-top: 3px; font-size: 10px; }
+    .sheet-foot { margin-top: 11px; color: var(--muted); font-size: 10px; line-height: 1.55; }
+    .toast {
+      position: absolute; z-index: 30; left: 50%; bottom: 82px; transform: translateX(-50%);
+      max-width: calc(100% - 32px); padding: 10px 12px; border-radius: 11px; background: #24332d;
+      color: white; font-size: 10px; line-height: 1.45; box-shadow: 0 8px 18px rgba(20,35,27,.2);
+    }
+    .hidden { display: none !important; }
+    .disclaimer {
+      margin-top: 16px; padding: 12px 14px; border-radius: 12px; background: rgba(255,255,255,.58);
+      color: #68766e; font-size: 10px; line-height: 1.6;
+    }
+    .dark-mode {
+      --paper: #171f1c; --surface: #202a25; --surface-2: #26322c; --ink: #e6eee8; --muted: #a4b2a9;
+      --soft: #87978d; --line: #35443c; --teal: #54b8a4; --teal-deep: #91d7c0; --teal-soft: #263f36;
+      --amber-soft: #41372b; --board: #151b18;
+    }
+    .dark-mode body { background: #151b18; }
+    .dark-mode .phone-screen, .dark-mode .bottom-nav, .dark-mode .appbar { background: var(--paper); }
+    .dark-mode .device-caption strong { color: #e5ece7; }
+    .dark-mode .hero { background: linear-gradient(140deg, #20332b, #263c32); border-color: #385748; }
+    .dark-mode .hero-title, .dark-mode .source-card-head b, .dark-mode .provider-row b, .dark-mode .record-row b { color: var(--ink); }
+    .dark-mode .lang-bar, .dark-mode .dialogue-block, .dark-mode .chat-composer, .dark-mode .message-body,
+    .dark-mode .model-hero, .dark-mode .provider-row, .dark-mode .sheet, .dark-mode .sheet-choice { background: var(--surface); }
+    .dark-mode .dialogue-block.mine, .dark-mode .message.user { background: #253b32; }
+    .dark-mode .message.user .message-body { background: #263e35; }
+    .dark-mode .talk-zone { background: linear-gradient(180deg, rgba(23,31,28,0), var(--paper) 22%); }
+    .dark-mode .system-note { color: #e6c6a2; }
+    .dark-mode .source-desc, .dark-mode .translated-text { color: #bdcec4; }
+    .dark-mode .sheet-backdrop { background: rgba(0,0,0,.5); }
+
+    @media (max-width: 1050px) {
+      .workspace { grid-template-columns: 180px minmax(330px, 390px) minmax(220px, 1fr); gap: 15px; }
+      .board { width: min(100% - 28px, 1100px); }
+    }
+    @media (max-width: 830px) {
+      .board { width: min(100% - 22px, 520px); padding-top: 17px; }
+      .board-header { flex-wrap: wrap; padding-bottom: 17px; }
+      .board-heading { order: 3; width: 100%; margin: 1px 0 0; }
+      .board-heading h1 { font-size: 20px; }
+      .toolbar { margin-left: auto; }
+      .workspace { grid-template-columns: 1fr; gap: 14px; }
+      .nav-panel { padding: 11px; }
+      .panel-eyebrow, .nav-bottom { display: none; }
+      .screen-nav { display: flex; overflow: auto; gap: 6px; }
+      .screen-nav button { width: auto; min-width: max-content; min-height: 39px; padding: 0 10px; }
+      .nav-index { width: 20px; height: 20px; }
+      .notes-panel { order: 3; min-height: auto; }
+      .device-stage { order: 2; }
+    }
+    @media (max-width: 430px) {
+      .board { width: 100%; padding: 11px 0 24px; }
+      .board-header { padding: 0 13px 13px; }
+      .brand img { width: 34px; height: 34px; }
+      .board-heading h1 { font-size: 18px; }
+      .workspace { gap: 10px; }
+      .nav-panel, .notes-panel { border-radius: 0; border-left: 0; border-right: 0; }
+      .device-caption { width: calc(100% - 26px); }
+      .device { width: min(100% - 14px, 390px); height: min(806px, calc(100dvh - 205px)); min-height: 640px; padding: 6px; border-radius: 31px; }
+      .phone-screen { border-radius: 26px; }
+      .notes-panel { margin-top: 3px; }
+      .tool-button { padding: 9px 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      *, *:before, *:after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="board">
+    <header class="board-header">
+      <div class="brand">
+        <img src="../../app/yixue_app/assets/brand/yixue-logo-master-v3.png" alt="译学标志">
+        <div><div class="brand-title">译学 · 手机端</div><div class="brand-sub">Android 交互预览 V1</div></div>
+      </div>
+      <div class="board-heading">
+        <h1>先把页面和按钮想清楚</h1>
+        <p>暖底色、蓝绿色强调 · 原型交互，不连接真实语音或模型</p>
+      </div>
+      <div class="toolbar">
+        <button class="tool-button" id="themeToggle" type="button">切换深色</button>
+        <button class="tool-button primary" id="resetPreview" type="button">回到首页</button>
+      </div>
+    </header>
+
+    <main class="workspace">
+      <aside class="nav-panel" aria-label="预览页面">
+        <div class="panel-eyebrow">Screens</div>
+        <nav class="screen-nav">
+          <button type="button" data-screen="home" aria-current="page"><span class="nav-index">01</span> 同传首页</button>
+          <button type="button" data-screen="face"><span class="nav-index">02</span> 面对面</button>
+          <button type="button" data-screen="media"><span class="nav-index">03</span> 听视频 / 会议</button>
+          <button type="button" data-screen="chat"><span class="nav-index">04</span> AI 助手</button>
+          <button type="button" data-screen="history"><span class="nav-index">05</span> 会话记录</button>
+          <button type="button" data-screen="detail"><span class="nav-index">06</span> 会话详情</button>
+          <button type="button" data-screen="models"><span class="nav-index">07</span> 模型与服务</button>
+        </nav>
+        <div class="nav-bottom">页面只是讨论稿。点击按钮查看页面切换、按住说话、授权和模型选择等交互状态。</div>
+      </aside>
+
+      <section class="device-stage" aria-label="手机页面预览">
+        <div class="device-caption"><span><strong id="screenName">01 · 同传首页</strong></span><span>390 × 844 dp 方向稿</span></div>
+        <div class="device">
+          <div class="phone-screen" id="phoneScreen">
+            <div class="statusbar"><span>9:41</span><span class="status-dots">● ◔ ▰</span></div>
+            <header class="appbar" id="appbar"></header>
+            <div class="screen-content" id="screenContent"></div>
+            <nav class="bottom-nav" aria-label="主导航" id="bottomNav"></nav>
+            <div id="overlay" class="hidden"></div>
+            <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="notes-panel" aria-live="polite">
+        <div class="panel-eyebrow">Interaction contract</div>
+        <h2 class="notes-title" id="notesTitle">同传首页</h2>
+        <p class="notes-copy" id="notesCopy"></p>
+        <ol class="interaction-list" id="interactionList"></ol>
+        <div class="boundary-note" id="boundaryNote"></div>
+      </aside>
+    </main>
+    <p class="disclaimer"><b>原型边界：</b>按钮只演示布局、页面跳转和状态反馈，不申请麦克风/投屏权限、不调用 ASR、翻译、TTS 或任何 API，也不保存 API 密钥。所有模型连接状态均为示意；UI 确认后才进入 Android 工程骨架。</p>
+  </div>
+
+  <script>
+    const screens = {
+      home: {
+        title: "01 · 同传首页",
+        notesTitle: "同传首页",
+        notesCopy: "打开 App 默认落在同传，让面对面交流一键可达；视频、直播和会议入口仍清楚可找。",
+        steps: [
+          ["开始面对面", "进入语言方向确认页，再进入双语对话与按住说话。"],
+          ["听视频 / 直播", "先选其他 App 音频或麦克风；系统收音授权与 PiP 字幕随后设置。"],
+          ["AI 助手、会话、我的", "切换到同一个 Agent、历史记录和模型设置入口。"]
+        ],
+        boundary: "<b>首屏原则：</b>只保留一个最醒目的开始动作；模型、密钥等低频配置不挤进同传首页。",
+        appbar: "home",
+        body: "home"
+      },
+      face: {
+        title: "02 · 面对面同传",
+        notesTitle: "面对面同传",
+        notesCopy: "两个人共用一台手机。当前默认按住说话，释放后提交本轮；另一方可切换说话方向，也可免按住连续收音。",
+        steps: [
+          ["中文 ↔ English", "点中间切换可交换方向；实际会由语言识别和用户确认策略共同决定。"],
+          ["按住说话", "按下显示收音态，松开进入识别/翻译状态，完成后显示双语结果。"],
+          ["免按住收音", "按住说话是默认；切换后可开始或结束连续收音。自动播报和逐句朗读保持独立。"]
+        ],
+        boundary: "<b>待产品确认：</b>面对面屏幕是否要加入 180° 翻转，让手机平放时对面的人也能正向阅读。",
+        appbar: "face",
+        body: "face"
+      },
+      media: {
+        title: "03 · 听视频 / 会议",
+        notesTitle: "视频、直播与会议",
+        notesCopy: "一个收音工作区，根据声音来源切换系统音频采集或麦克风连续收音；字幕 PiP 在来源可用后开启。",
+        steps: [
+          ["其他 App 音频", "用户点按后才请求 Android 系统授权；授权可撤销，部分播放 App 不允许采集。"],
+          ["麦克风会议", "用于现场会议或课程；同一会话保存原文与译文，结束后可在 Agent 对话里复盘。"],
+          ["PiP 字幕", "开启后展示最近双语字幕与最少控制，不把完整工具栏塞进小窗。"]
+        ],
+        boundary: "<b>系统约束：</b>系统音频授权、音频来源异常、被撤权和无声都要有可恢复提示，不能伪装成正在翻译。",
+        appbar: "media",
+        body: "media"
+      },
+      chat: {
+        title: "04 · AI 助手",
+        notesTitle: "统一 Agent 对话",
+        notesCopy: "对话体验熟悉、低干扰。总结、解释和操作都通过自然语言发起；当前同传记录作为明确的上下文附件。",
+        steps: [
+          ["模型选择", "点模型名打开已配置模型列表；厂商 API 要先在模型与服务中配置和测试。"],
+          ["上下文附件", "明确显示“当前同传记录”；不自动把其他聊天或整本资料塞入上下文。"],
+          ["Agent 工具状态", "工作步骤以可展开状态卡显示；需要授权时在对话内明确询问。"]
+        ],
+        boundary: "<b>数据边界：</b>本地模型优先；选用云 API 前由用户显式切换，失败时不悄悄上传或换模型。",
+        appbar: "chat",
+        body: "chat"
+      },
+      history: {
+        title: "05 · 会话记录",
+        notesTitle: "会话记录",
+        notesCopy: "同传结束后留下可搜索、可续接的本地会话。记录页服务回看；AI 总结仍在 Agent 对话里完成。",
+        steps: [
+          ["点开一条记录", "查看原文、译文和时间线，再选择附加到 Agent 对话。"],
+          ["搜索与筛选", "按语言、面对面/会议/视频来源和日期筛选。"],
+          ["删除记录", "删除前说明会移除哪些本地内容，并二次确认。"]
+        ],
+        boundary: "<b>首版建议：</b>先把逐句记录、收藏和搜索框架搭好；摘要生成不另做一个 AI 功能页面。",
+        appbar: "history",
+        body: "history"
+      },
+      detail: {
+        title: "06 · 会话详情",
+        notesTitle: "会话详情",
+        notesCopy: "先回看双语时间线，再选择继续同传、附加到 Agent、导出或删除。",
+        steps: [
+          ["双语时间线", "每轮显示说话人、原文、译文和时间；译文可点按朗读。"],
+          ["问 Agent", "明确把这条记录附加到当前对话，用户可移除上下文。"],
+          ["删除记录", "弹出确认并说明删除范围；本原型只展示确认流程。"]
+        ],
+        boundary: "<b>数据原则：</b>逐句记录本地保存；是否生成摘要由用户在 Agent 对话里提出。",
+        appbar: "detail",
+        body: "detail"
+      },
+      models: {
+        title: "07 · 模型与服务",
+        notesTitle: "模型与服务",
+        notesCopy: "模型与 API 配置留在设置；聊天里的模型菜单只负责选择已配置的模型。",
+        steps: [
+          ["添加厂商", "DeepSeek、百炼/Qwen、SiliconFlow、自定义兼容接口；留出后续协议适配位。"],
+          ["发现或填写模型", "接口可列出模型时自动发现；否则允许手动填写模型 ID。"],
+          ["测试并指定用途", "分别验证对话、流式输出、工具调用；测试成功后才可设为 Agent 默认模型。"]
+        ],
+        boundary: "<b>密钥规则：</b>密钥只进入设备安全存储；这个原型不接网、不保存任何输入。",
+        appbar: "models",
+        body: "models"
+      }
+    };
+
+    let current = "home";
+    let mediaSource = "system";
+    let captureGranted = false;
+    let pipOn = false;
+    let autoSpeak = true;
+    let direction = "我说中文";
+    let handsFree = false;
+    let continuousActive = false;
+    let sessionAttached = false;
+    let selectedRecordId = "airport";
+    const deletedRecords = {};
+    let pressedPtt = null;
+    let toastTimer;
+
+    const appbarMarkup = {
+      home: '<div class="appbar-left"><img src="../../app/yixue_app/assets/brand/yixue-logo-master-v3.png" alt=""><div class="appbar-title">译学<span class="appbar-sub">译懂世界，学会表达。</span></div></div><button class="icon-button" type="button" data-screen="models" aria-label="模型与服务设置">···</button>',
+      face: '<div class="appbar-left"><button class="back-button" type="button" data-screen="home" aria-label="返回">‹</button><div><div class="appbar-title">面对面</div><span class="appbar-sub">双人交流 · 本地会话</span></div></div><button class="icon-button" type="button" data-action="more" aria-label="更多设置">···</button>',
+      media: '<div class="appbar-left"><button class="back-button" type="button" data-screen="home" aria-label="返回">‹</button><div><div class="appbar-title">听视频 / 会议</div><span class="appbar-sub">选择声音来源</span></div></div><button class="icon-button" type="button" data-screen="models" aria-label="模型设置">···</button>',
+      chat: '<div class="appbar-left"><img src="../../app/yixue_app/assets/brand/yixue-logo-master-v3.png" alt=""><div><div class="appbar-title">AI 助手</div><span class="appbar-sub">译学 Agent</span></div></div><button class="icon-button" type="button" data-screen="history" aria-label="对话历史">▤</button>',
+      history: '<div class="appbar-left"><div><div class="appbar-title">会话</div><span class="appbar-sub">只保存在本机</span></div></div><button class="icon-button" type="button" data-action="search" aria-label="搜索会话">⌕</button>',
+      detail: function (record) { return '<div class="appbar-left"><button class="back-button" type="button" data-screen="history" aria-label="返回会话列表">‹</button><div><div class="appbar-title">' + record.title + '</div><span class="appbar-sub">' + record.subtitle + '</span></div></div><button class="icon-button" type="button" data-action="delete-session" aria-label="删除会话">···</button>'; },
+      models: '<div class="appbar-left"><button class="back-button" type="button" data-screen="chat" aria-label="返回">‹</button><div><div class="appbar-title">模型与服务</div><span class="appbar-sub">按设备配置 · 本地优先</span></div></div><button class="icon-button" type="button" data-action="privacy" aria-label="隐私说明">i</button>'
+    };
+
+    function homeView() {
+      return '<div class="privacy-pill"><span class="privacy-dot"></span>本地优先 · 内容由你选择</div>' +
+        '<div style="margin-top:20px"><div class="eyebrow">译学 · 随身同传</div><h2>今天，想从哪里开始？</h2><p class="lede">面对面交流、听视频课程，或随时问 Agent。</p></div>' +
+        '<section class="hero"><div class="hero-top"><span class="hero-kicker">即刻开口 · 双向交流</span><span class="hero-kicker">01 / 03</span></div><div class="hero-title">让两种语言，<br>自然接上话。</div><div class="language-pair"><span class="language-chip">中文</span><span class="swap">↔</span><span class="language-chip">English</span></div><button class="primary-button" type="button" data-screen="face">开始面对面 <span class="arrow">→</span></button></section>' +
+        '<div class="section-label">其他同传场景</div><div class="quick-list">' +
+        '<button class="quick-row" type="button" data-screen="media"><span class="quick-icon">声</span><span class="quick-copy"><b>听视频 / 直播</b><small>其他 App 音频 · PiP 双语字幕</small></span><span class="quick-arrow">›</span></button>' +
+        '<button class="quick-row" type="button" data-screen="media" data-meeting="true"><span class="quick-icon">会</span><span class="quick-copy"><b>会议收音</b><small>麦克风连续收音 · 保存会话</small></span><span class="quick-arrow">›</span></button></div>' +
+        '<div class="recent"><span class="recent-title">最近会话</span><button class="text-link" type="button" data-screen="history">查看全部</button></div>' +
+        (deletedRecords.airport ? '<div class="empty-state">完成同传后，会话会显示在这里。</div>' : '<button class="quick-row" type="button" data-screen="detail" data-record="airport" style="border-bottom:0"><span class="recent-line"></span><span class="quick-copy"><b>机场问路 · 面对面</b><small>中英双语 · 昨天 16:42</small></span><span class="quick-arrow">›</span></button><button class="text-link" type="button" data-action="ask-latest" style="margin-top:5px;padding:7px 0">带着会话去问 Agent →</button>');
+    }
+
+    function faceView() {
+      return '<div class="lang-bar"><div class="lang-side"><span>我说</span><strong id="directionLabel">' + direction.replace("我说", "") + '</strong></div><button class="lang-swap" type="button" data-action="direction" aria-label="切换语言方向">↔</button><div class="lang-side" style="text-align:right"><span>译成</span><strong id="targetLabel">' + (direction === "我说中文" ? "English" : "中文") + '</strong></div></div>' +
+        '<div class="turn-label">本轮对话 · 点译文可朗读</div><div class="dialogue" id="dialogue">' +
+        '<article class="dialogue-block mine"><div class="speaker">你 · 中文</div><div class="source-text">请问最近的地铁站怎么走？</div><div class="translated-text">How can I get to the nearest subway station?</div><div class="block-actions"><button class="mini-button" type="button" data-action="speak">点按朗读</button><span class="speaker" style="margin-left:auto">14:08</span></div></article>' +
+        '<article class="dialogue-block"><div class="speaker">对方 · English</div><div class="source-text">Walk two blocks and turn left.</div><div class="translated-text">往前走两个街区，然后左转。</div><div class="block-actions"><button class="mini-button" type="button" data-action="speak">点按朗读</button><span class="speaker" style="margin-left:auto">14:09</span></div></article></div>' +
+        '<div class="live-status"><span class="live-dot ' + (continuousActive ? "active" : "") + '" id="faceDot"></span><span id="faceStatus">' + (continuousActive ? "正在连续收音（演示）" : "准备就绪 · 按住按钮开始说话") + '</span></div>' +
+        '<div class="talk-zone"><div class="direction-row"><button class="direction-chip" type="button" data-action="direction" id="directionButton">' + direction + ' · 切换</button><button class="auto-toggle" type="button" data-action="autospeak" aria-pressed="' + autoSpeak + '" id="autoSpeakButton">' + (autoSpeak ? "✓ 自动播报" : "点按朗读") + '</button></div><div class="source-switch" style="margin-bottom:9px"><button type="button" data-action="mode-ptt" aria-pressed="' + !handsFree + '">按住说话</button><button type="button" data-action="mode-handsfree" aria-pressed="' + handsFree + '">免按住收音</button></div>' +
+        (handsFree ? '<button class="talk-button ' + (continuousActive ? "pressed" : "") + '" type="button" data-action="continuous">' + (continuousActive ? "结束连续收音" : "开始连续收音") + '<small>再次点按可停止</small></button>' : '<button class="talk-button" type="button" data-ptt>按住说话<small>松开后提交本轮</small></button>') + '</div>';
+    }
+
+    function mediaView() {
+      const systemSelected = mediaSource === "system";
+      const ready = captureGranted;
+      const title = systemSelected ? "其他 App 音频" : "会议麦克风";
+      const desc = systemSelected ? "适合视频网站、直播和课程。由 Android 系统授权后开始采集。" : "适合线下会议或课堂。用户开始前可检查麦克风状态。";
+      const sourceAction = systemSelected ? (ready ? "停止收听" : "选择并授权音频") : (ready ? "结束会议收音" : "开始会议收音");
+      return '<div class="eyebrow">同一套字幕与会话记录</div><h2 style="font-size:21px">声音从哪里来？</h2><p class="lede">按当前场景选来源，开始前会显示权限和隐私状态。</p>' +
+        '<div class="source-switch" style="margin-top:17px"><button type="button" data-source="system" aria-pressed="' + systemSelected + '">其他 App 音频</button><button type="button" data-source="mic" aria-pressed="' + !systemSelected + '">麦克风会议</button></div>' +
+        '<section class="source-card"><div class="source-card-head"><span class="source-symbol">' + (systemSelected ? "音" : "麦") + '</span><div><b>' + title + '</b><small>' + (ready ? "来源已连接 · 预览状态" : "尚未开始 · 不在后台收音") + '</small></div></div><p class="source-desc">' + desc + '</p><button class="primary-button" style="width:100%;margin-top:13px" type="button" data-action="capture">' + sourceAction + '</button></section>' +
+        (systemSelected ? '<div class="system-note">Android 会在开始时显示系统授权；部分 App 会关闭播放采集，或在授权被撤销时中断。此时可以改用麦克风。</div>' : '<div class="system-note">开始前明确显示麦克风正在使用。结束后保留本地逐句记录，Agent 复盘需由你主动发起。</div>') +
+        '<div class="capture-status"><span class="status-label ' + (ready ? "ready" : "") + '"><span class="live-dot"></span>' + (ready ? "正在收听（演示）" : "采集已关闭") + '</span><span>' + (ready && systemSelected ? "系统音频" : ready ? "麦克风" : "等待开始") + '</span></div>' +
+        '<div class="pip-row"><span>字幕画中画 PiP</span><button class="switch" type="button" data-action="pip" aria-pressed="' + pipOn + '" aria-label="切换画中画字幕" ' + (ready ? "" : "disabled") + '></button></div>' +
+        '<div class="subtitles-preview"><small>字幕预览 · 中文 ⇄ English</small><div class="subtitle-line">' + (ready ? "The course starts at half past nine." : "开始收听后，译文会显示在这里。") + '</div><div class="subtitle-translation">' + (ready ? "课程九点半开始。" : "Start listening to see bilingual captions here.") + '</div></div>' +
+        (pipOn ? '<div class="system-note">PiP 预览已开启：实际版本进入其他 App 后，只显示最近字幕和关闭/返回控制。</div>' : '');
+    }
+
+    function chatView() {
+      const attachedTitle = recordTitle(selectedRecordId);
+      const attachedExample = ({
+        airport: ["请问最近的地铁站怎么走？", "How can I get to the nearest subway station?"],
+        course: ["The course starts at half past nine.", "课程九点半开始。"],
+        meeting: ["我们先确认一下这周的里程碑。", "Let's first confirm this week's milestones."]
+      })[selectedRecordId] || ["Hello.", "你好。"];
+      const contextMarkup = sessionAttached
+        ? '<button class="context-chip" type="button" data-action="remove-context">已附加：' + attachedTitle + ' · 同传记录　×</button>'
+        : '<span class="context-chip">普通对话 · 未附加其他资料</span>';
+      const userPrompt = sessionAttached
+        ? '帮我从「' + attachedTitle + '」里整理重点，并挑出可以复用的表达。'
+        : "Could you tell me where the nearest subway station is? 这句问路自然吗？";
+      const reply = sessionAttached
+        ? '可以。我会只基于你附加的「' + attachedTitle + '」整理。<br><br><b>' + attachedExample[0] + '</b><br><span style="color:var(--muted)">' + attachedExample[1] + '</span><div class="agent-activity"><b>上下文</b>　读取「' + attachedTitle + '」　·　仅用于当前对话</div>'
+        : '很自然，也很礼貌。想更简洁一点，可以说：<br><br><b>Where is the nearest subway station?</b><br><br>如果想请对方帮忙找路，保留 <b>Could you tell me…</b> 会更客气。';
+      return '<div class="chat-scroll"><div class="chat-context">' + contextMarkup + '</div>' +
+        '<article class="message user"><div class="message-role">你</div><div class="message-body">' + userPrompt + '</div></article>' +
+        '<article class="message assistant"><div class="message-role">译学 Agent</div><div class="message-body">' + reply + '</div></article></div>' +
+        '<div class="chat-composer"><div class="composer-context"><button class="model-pill" type="button" data-action="model">选择 Agent 模型　⌄</button><button class="composer-action" type="button" data-action="manage-models" aria-label="配置模型">⚙</button></div><textarea class="composer-text" id="chatInput" rows="2" placeholder="随便问，也可以让译学帮你处理…"></textarea><div class="composer-actions"><button class="composer-action" type="button" data-action="attach" aria-label="附加内容">＋</button><button class="composer-action" type="button" data-action="voice" aria-label="语音输入">◖</button><span class="composer-spacer"></span><button class="composer-action send" type="button" data-action="send" aria-label="发送">↑</button></div></div><div class="send-hint">云端模型会按你的选择发送对话内容</div>';
+    }
+
+    function historyView() {
+      const recordRows = [
+        ["airport", "面", "机场问路", "面对面 · 中文 ⇄ English · 昨天 16:42", "07:12"],
+        ["course", "课", "设计课程第三讲", "听视频 · 其他 App 音频 · 英文 → 中文 · 10月5日", "28:06"],
+        ["meeting", "会", "产品讨论", "麦克风会议 · 中文 ⇄ English · 10月3日", "42:31"]
+      ].filter(function (item) { return !deletedRecords[item[0]]; }).map(function (item) {
+        return '<button class="record-row" type="button" data-action="open-record" data-record="' + item[0] + '"><span class="record-icon">' + item[1] + '</span><span><b>' + item[2] + '</b><small>' + item[3] + '</small></span><span class="record-duration">' + item[4] + '</span></button>';
+      }).join("");
+      return '<div class="eyebrow">本机保存 · 可搜索、可续接</div><h2 style="font-size:22px">最近会话</h2><p class="lede">每段同传单独留档；需要复盘时，再带入 Agent 对话。</p>' +
+        '<input class="history-search" id="historySearch" type="search" placeholder="搜索会话名称或译文" aria-label="搜索会话名称或译文">' +
+        '<div class="history-filters" role="group" aria-label="会话类型筛选"><button type="button" data-filter="全部" aria-pressed="true">全部</button><button type="button" data-filter="面对面">面对面</button><button type="button" data-filter="视频">视频</button><button type="button" data-filter="会议">会议</button></div>' +
+        '<div class="record-list">' + (recordRows || '<div class="empty-state">还没有会话记录。开始同传后，记录会保存在本机。</div>') + '</div>' +
+        '<div class="boundary-note" style="margin-top:16px"><b>记录操作：</b>点一条查看双语时间线；长按或点菜单可收藏、附加给 Agent、导出或删除。</div>';
+    }
+
+    function detailView() {
+      const examples = {
+        airport: { type: "面对面 · 中文 ⇄ English", time: "昨天 16:42 · 07 分 12 秒", turns: [["你 · 14:08", "请问最近的地铁站怎么走？", "How can I get to the nearest subway station?"], ["对方 · 14:09", "Walk two blocks and turn left.", "往前走两个街区，然后左转。"]] },
+        course: { type: "听视频 · English → 中文", time: "10月5日 · 28 分 06 秒", turns: [["讲师 · 09:31", "The course starts at half past nine.", "课程九点半开始。"], ["讲师 · 09:32", "Please submit your assignment by Friday.", "请在周五前提交作业。"]] },
+        meeting: { type: "会议 · 中文 ⇄ English", time: "10月3日 · 42 分 31 秒", turns: [["你 · 10:15", "我们先确认一下这周的里程碑。", "Let's first confirm this week's milestones."], ["对方 · 10:16", "I will share the revised schedule this afternoon.", "我今天下午会分享修订后的时间表。"]] }
+      };
+      const record = examples[selectedRecordId] || examples.airport;
+      const turns = record.turns.map(function (turn, index) {
+        return '<article class="dialogue-block ' + (index % 2 === 0 ? 'mine' : '') + '"><div class="speaker">' + turn[0] + '</div><div class="source-text">' + turn[1] + '</div><div class="translated-text">' + turn[2] + '</div><div class="block-actions"><button class="mini-button" type="button" data-action="speak">点按朗读</button><button class="mini-button" type="button" data-action="save-phrase">收藏表达</button></div></article>';
+      }).join("");
+      const continueLabel = ({ airport: "继续面对面同传", course: "重新开始听视频", meeting: "重新开始会议收音" })[selectedRecordId] || "继续同传";
+      return '<div class="eyebrow">' + record.type + '</div><h2 style="font-size:22px">' + recordTitle(selectedRecordId) + '</h2><p class="lede">' + record.time + ' · 保存在本机</p>' +
+        '<div class="turn-label">双语时间线 · 点译文可朗读</div><div class="dialogue">' + turns + '</div>' +
+        '<div class="talk-zone" style="position:static;margin:16px -18px -18px"><button class="primary-button" style="width:100%;margin:0" type="button" data-action="ask-agent">问 Agent 这段会话　→</button><button class="mini-button" type="button" style="width:100%;margin-top:8px;min-height:42px" data-action="continue-session">' + continueLabel + '</button></div>';
+    }
+
+    function recordTitle(id) {
+      return ({ airport: "机场问路", course: "设计课程第三讲", meeting: "产品讨论" })[id] || "同传会话";
+    }
+
+    function recordSubtitle(id) {
+      return ({ airport: "面对面 · 昨天 16:42 · 07:12", course: "听视频 · 10月5日 · 28:06", meeting: "会议 · 10月3日 · 42:31" })[id] || "同传会话";
+    }
+
+    function modelsView() {
+      return '<div class="eyebrow">模型不绑在聊天界面里</div><h2 style="font-size:21px">配置好，再来选择</h2><p class="lede">API 厂商、密钥与模型发现集中管理；Agent 聊天里只切换已经验证的模型。</p>' +
+        '<section class="model-hero"><div class="model-hero-top"><b>Agent 默认模型</b><span class="state-tag">尚未选择</span></div><p>配置并测试对话模型后，可以设为默认。此设置与翻译模型相互独立。</p><button class="text-link" style="margin-top:10px;padding:0" type="button" data-action="model">打开模型选择器 →</button></section>' +
+        '<div class="section-label">远程 API 厂商</div><div class="provider-list">' +
+        '<div class="provider-row"><div><b>DeepSeek</b><small>未配置 API</small></div><button type="button" data-provider="DeepSeek">配置</button></div>' +
+        '<div class="provider-row"><div><b>阿里云百炼 / Qwen</b><small>未配置 API</small></div><button type="button" data-provider="阿里云百炼 / Qwen">配置</button></div>' +
+        '<div class="provider-row"><div><b>SiliconFlow</b><small>未配置 API</small></div><button type="button" data-provider="SiliconFlow">配置</button></div>' +
+        '<div class="provider-row"><div><b>自定义兼容接口</b><small>填写 API 地址和模型 ID</small></div><button type="button" data-provider="自定义兼容接口">添加</button></div></div>' +
+        '<div class="model-footnote">保存后先测试连通性和模型能力；密钥进入设备安全存储，不写入会话记录。</div>';
+    }
+
+    function bottomMarkup() {
+      const items = [["home","同传","译"],["chat","AI 助手","AI"],["history","会话","记"],["models","我的","我"]];
+      return items.map(function (item) {
+        const active = item[0] === current || (current === "face" || current === "media") && item[0] === "home" || current === "detail" && item[0] === "history";
+        return '<button type="button" data-screen="' + item[0] + '" aria-current="' + (active ? "page" : "false") + '"><span class="nav-glyph">' + item[2] + '</span><span>' + item[1] + '</span></button>';
+      }).join("");
+    }
+
+    function render() {
+      const spec = screens[current];
+      document.getElementById("screenName").textContent = spec.title;
+      document.getElementById("appbar").innerHTML = current === "detail"
+        ? appbarMarkup.detail({ title: recordTitle(selectedRecordId), subtitle: recordSubtitle(selectedRecordId) })
+        : appbarMarkup[spec.appbar];
+      const content = document.getElementById("screenContent");
+      content.classList.toggle("chat-page", current === "chat");
+      content.innerHTML = ({
+        home: homeView, face: faceView, media: mediaView, chat: chatView, history: historyView, detail: detailView, models: modelsView
+      })[spec.body]();
+      document.getElementById("bottomNav").innerHTML = bottomMarkup();
+      document.getElementById("notesTitle").textContent = spec.notesTitle;
+      document.getElementById("notesCopy").textContent = spec.notesCopy;
+      document.getElementById("interactionList").innerHTML = spec.steps.map(function (step, index) {
+        return '<li><span class="step">' + (index + 1) + '</span><span><strong>' + step[0] + '</strong><small>' + step[1] + '</small></span></li>';
+      }).join("");
+      document.getElementById("boundaryNote").innerHTML = spec.boundary;
+      document.querySelectorAll(".screen-nav [data-screen]").forEach(function (button) {
+        if (button.dataset.screen === current) button.setAttribute("aria-current", "page");
+        else button.removeAttribute("aria-current");
+      });
+    }
+
+    function showScreen(name) {
+      if (!screens[name]) return;
+      if (name === "detail" && deletedRecords[selectedRecordId]) {
+        name = "history";
+        toast("这条预览会话已删除。" );
+      }
+      if (pressedPtt) finishPtt(true);
+      current = name;
+      document.getElementById("overlay").className = "hidden";
+      render();
+      document.getElementById("screenContent").scrollTop = 0;
+    }
+
+    function toast(message) {
+      const node = document.getElementById("toast");
+      node.textContent = message;
+      node.classList.remove("hidden");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(function () { node.classList.add("hidden"); }, 2600);
+    }
+
+    function sheet(title, body, foot) {
+      const overlay = document.getElementById("overlay");
+      overlay.className = "sheet-backdrop";
+      overlay.innerHTML = '<section class="sheet" role="dialog" aria-modal="true" aria-label="' + title + '"><div class="sheet-handle"></div><div class="sheet-head"><b>' + title + '</b><button class="sheet-close" type="button" data-action="close-sheet" aria-label="关闭">×</button></div><div class="sheet-list">' + body + '</div><div class="sheet-foot">' + foot + '</div></section>';
+    }
+
+    function startPtt(button, event) {
+      if (handsFree || current !== "face" || pressedPtt) return;
+      pressedPtt = button;
+      button.classList.add("pressed");
+      const status = document.getElementById("faceStatus");
+      const dot = document.getElementById("faceDot");
+      if (status) status.textContent = "正在收音 · 松开发送（演示）";
+      if (dot) dot.classList.add("active");
+      if (event && event.pointerId !== undefined && button.setPointerCapture) {
+        try { button.setPointerCapture(event.pointerId); } catch (error) { /* Pointer ended before capture. */ }
+      }
+    }
+
+    function finishPtt(cancelled) {
+      if (!pressedPtt) return;
+      pressedPtt.classList.remove("pressed");
+      pressedPtt = null;
+      const status = document.getElementById("faceStatus");
+      const dot = document.getElementById("faceDot");
+      if (dot) dot.classList.remove("active");
+      if (status) status.textContent = cancelled ? "本轮已取消 · 可以再次按住说话" : "已提交本轮 · 等待识别服务接入";
+      if (!cancelled) toast("松开发送 → 识别 → 翻译 → 按播报设置朗读");
+    }
+
+    document.addEventListener("click", function (event) {
+      if (event.target.id === "overlay") {
+        document.getElementById("overlay").className = "hidden";
+        return;
+      }
+      const screenButton = event.target.closest("[data-screen]");
+      if (screenButton) {
+        if (screenButton.dataset.record) selectedRecordId = screenButton.dataset.record;
+        if (screenButton.dataset.meeting === "true") mediaSource = "mic";
+        showScreen(screenButton.dataset.screen);
+        return;
+      }
+      const sourceButton = event.target.closest("[data-source]");
+      if (sourceButton) {
+        if (mediaSource !== sourceButton.dataset.source && captureGranted) toast("切换音源会先结束当前收音。");
+        mediaSource = sourceButton.dataset.source;
+        captureGranted = false;
+        pipOn = false;
+        render();
+        return;
+      }
+      const filterButton = event.target.closest("[data-filter]");
+      if (filterButton) {
+        document.querySelectorAll("[data-filter]").forEach(function (button) {
+          button.setAttribute("aria-pressed", button === filterButton ? "true" : "false");
+        });
+        document.querySelectorAll(".record-row").forEach(function (row) {
+          row.classList.toggle("hidden", filterButton.dataset.filter !== "全部" && !row.textContent.includes(filterButton.dataset.filter));
+        });
+        return;
+      }
+      const provider = event.target.closest("[data-provider]");
+      if (provider) {
+        const name = provider.dataset.provider;
+        sheet("配置 " + name,
+          '<label class="sheet-choice" style="display:grid;gap:6px;cursor:text"><b>API 地址</b><input aria-label="API 地址" placeholder="https://api.example.com/v1" style="border:0;background:transparent;color:var(--ink);outline:0"></label>' +
+          '<label class="sheet-choice" style="display:grid;gap:6px;cursor:text"><b>API 密钥</b><input type="password" aria-label="API 密钥" placeholder="仅预览，不会保存" style="border:0;background:transparent;color:var(--ink);outline:0"></label>' +
+          '<button class="sheet-choice" type="button" data-action="discover"><span><b>发现或手动添加模型</b><small>能力需单独验证</small></span><span>→</span></button>' +
+          '<button class="primary-button" style="width:100%;margin-top:3px" type="button" data-action="test-api">测试连接（预览）</button>',
+          "这只是页面草图；测试按钮不会联网，输入也不会写入。");
+        return;
+      }
+      const action = event.target.closest("[data-action]");
+      if (!action) return;
+      switch (action.dataset.action) {
+        case "close-sheet": document.getElementById("overlay").className = "hidden"; break;
+        case "model":
+          sheet("选择 Agent 模型",
+            '<button class="sheet-choice" type="button" data-action="not-configured"><span><b>本地对话模型</b><small>尚未配置 Agent 对话能力</small></span><span>○</span></button>' +
+            '<button class="sheet-choice" type="button" data-action="not-configured"><span><b>DeepSeek</b><small>需先配置 API</small></span><span>○</span></button>' +
+            '<button class="sheet-choice" type="button" data-action="not-configured"><span><b>百炼 / Qwen</b><small>需先配置 API</small></span><span>○</span></button>' +
+            '<button class="sheet-choice" type="button" data-action="not-configured"><span><b>SiliconFlow</b><small>需先配置 API</small></span><span>○</span></button>' +
+            '<button class="sheet-choice" type="button" data-action="manage-models"><span><b>管理模型与服务</b><small>配置厂商、API 地址和模型</small></span><span>→</span></button>',
+            "只显示已配置并验证过的模型；未配置项置灰。");
+          break;
+        case "manage-models": showScreen("models"); break;
+        case "not-configured": toast("请先在“模型与服务”里配置并测试该模型。"); break;
+        case "direction":
+          direction = direction === "我说中文" ? "我说English" : "我说中文";
+          render();
+          break;
+        case "mode-ptt":
+          handsFree = false;
+          continuousActive = false;
+          render();
+          toast("已切换为按住说话。" );
+          break;
+        case "mode-handsfree":
+          handsFree = true;
+          continuousActive = false;
+          render();
+          toast("免按住模式已选中，点下方按钮开始连续收音。" );
+          break;
+        case "continuous":
+          if (!handsFree) break;
+          continuousActive = !continuousActive;
+          render();
+          toast(continuousActive ? "连续收音已开始（预览）" : "连续收音已结束（预览）");
+          break;
+        case "autospeak":
+          autoSpeak = !autoSpeak;
+          render();
+          toast(autoSpeak ? "自动播报已开启（预览）" : "自动播报已关闭，可点按朗读");
+          break;
+        case "speak": toast("点按朗读：后续接入 TTS；当前为界面预览。"); break;
+        case "capture":
+          if (!captureGranted) {
+            if (mediaSource === "system") {
+              sheet("Android 系统授权",
+                '<p style="font-size:11px;line-height:1.6;color:var(--muted);margin:0">真实版本会跳转系统授权面板，由你选择允许捕获其他 App 音频。某些 App 可能不允许采集。</p><button class="primary-button" style="width:100%;margin-top:4px" type="button" data-action="grant-demo">模拟同意并继续</button>',
+                "预览不会弹出真实系统对话框。");
+            } else {
+              captureGranted = true; render(); toast("麦克风收音状态已切换（演示）");
+            }
+          } else { captureGranted = false; pipOn = false; render(); toast("收音已结束（演示）"); }
+          break;
+        case "grant-demo": captureGranted = true; document.getElementById("overlay").className = "hidden"; render(); toast("系统音频已授权（仅演示状态）"); break;
+        case "pip":
+          if (!captureGranted) { toast("先开始收听，再开启 PiP 字幕。"); break; }
+          pipOn = !pipOn; render(); toast(pipOn ? "PiP 字幕已开启（预览）" : "PiP 字幕已关闭"); break;
+        case "attach":
+          sheet("添加到当前对话",
+            '<button class="sheet-choice" type="button" data-action="attach-session"><span><b>当前同传会话</b><small>' + recordTitle(selectedRecordId) + ' · ' + recordSubtitle(selectedRecordId).split("·").slice(-1)[0].trim() + '</small></span><span>＋</span></button>' +
+            '<button class="sheet-choice" type="button" data-action="attach-file"><span><b>选择文本或文件</b><small>由你挑选，不自动读取其他内容</small></span><span>＋</span></button>',
+            "附件范围在发送前可见，可随时移除。");
+          break;
+        case "attach-session":
+          sessionAttached = true;
+          document.getElementById("overlay").className = "hidden";
+          render();
+          toast("已附加：机场问路会话（预览）");
+          break;
+        case "remove-context":
+          sessionAttached = false;
+          render();
+          toast("已从当前对话移除会话上下文。" );
+          break;
+        case "attach-file": document.getElementById("overlay").className = "hidden"; toast("文件选择器在 Android 框架阶段接入。"); break;
+        case "voice": toast("语音输入：后续申请麦克风权限；当前不采集声音。"); break;
+        case "send":
+          const input = document.getElementById("chatInput");
+          if (input && input.value.trim()) {
+            const msg = document.createElement("article");
+            msg.className = "message user";
+            msg.innerHTML = '<div class="message-role">你</div><div class="message-body"></div>';
+            msg.querySelector(".message-body").textContent = input.value.trim();
+            document.querySelector(".chat-scroll").appendChild(msg);
+            input.value = "";
+            toast("消息留在预览里；Agent 模型调用尚未接入。");
+          } else toast("先输入一条消息。");
+          break;
+        case "test-api": toast("预览不会联网，也不会保存输入的密钥。"); break;
+        case "discover": toast("模型发现/手动填写流程会在设置页设计稿中继续细化。"); break;
+        case "open-record": selectedRecordId = action.dataset.record || "airport"; showScreen("detail"); break;
+        case "ask-latest":
+          if (deletedRecords.airport) { toast("当前没有可附加的会话。" ); break; }
+          selectedRecordId = "airport";
+          sessionAttached = true;
+          showScreen("chat");
+          toast("已把机场问路会话附加到 Agent 对话。" );
+          break;
+        case "ask-agent":
+          if (deletedRecords[selectedRecordId]) { toast("这条会话已删除，无法附加。" ); break; }
+          sessionAttached = true;
+          showScreen("chat");
+          toast("已把机场问路会话附加到 Agent 对话。" );
+          break;
+        case "continue-session":
+          if (selectedRecordId === "airport") {
+            handsFree = false;
+            continuousActive = false;
+            showScreen("face");
+          } else {
+            mediaSource = selectedRecordId === "meeting" ? "mic" : "system";
+            captureGranted = false;
+            pipOn = false;
+            showScreen("media");
+          }
+          break;
+        case "save-phrase": toast("已收藏这句表达（预览状态）。" ); break;
+        case "delete-session":
+          sheet("删除这段会话？",
+            '<p style="font-size:12px;line-height:1.7;color:var(--muted);margin:0">删除后会移除设备上的逐句原文、译文和收藏，无法恢复。</p><button class="sheet-choice" style="color:var(--red);font-weight:750" type="button" data-action="confirm-delete">删除' + recordTitle(selectedRecordId) + '</button>',
+            '<button class="sheet-choice" style="justify-content:center" type="button" data-action="cancel-delete">保留会话</button>');
+          break;
+        case "cancel-delete": document.getElementById("overlay").className = "hidden"; break;
+        case "confirm-delete":
+          deletedRecords[selectedRecordId] = true;
+          sessionAttached = false;
+          const deletedTitle = recordTitle(selectedRecordId);
+          showScreen("history");
+          toast("预览：" + deletedTitle + "及其双语记录已删除。" );
+          break;
+        case "search":
+          const searchInput = document.getElementById("historySearch");
+          if (searchInput) searchInput.focus();
+          break;
+        case "privacy": toast("本地处理与远程 API 发送范围会逐次明确展示。"); break;
+        case "more": toast("本轮对话设置会从此处打开。"); break;
+      }
+    });
+
+    document.addEventListener("pointerdown", function (event) {
+      const button = event.target.closest("[data-ptt]");
+      if (!button) return;
+      if (event.pointerType === "mouse" && event.button !== 0) return;
+      startPtt(button, event);
+    });
+    document.addEventListener("pointerup", function () {
+      finishPtt(false);
+    });
+    document.addEventListener("pointercancel", function () {
+      finishPtt(true);
+    });
+    document.addEventListener("keydown", function (event) {
+      const button = event.target.closest && event.target.closest("[data-ptt]");
+      if (!button || (event.key !== " " && event.key !== "Enter") || event.repeat) return;
+      event.preventDefault();
+      startPtt(button, null);
+    });
+    document.addEventListener("keyup", function (event) {
+      if ((event.key === " " || event.key === "Enter") && pressedPtt) {
+        event.preventDefault();
+        finishPtt(false);
+      }
+    });
+    document.addEventListener("input", function (event) {
+      if (event.target.id !== "historySearch") return;
+      const query = event.target.value.trim().toLowerCase();
+      document.querySelectorAll(".record-row").forEach(function (row) {
+        row.classList.toggle("hidden", query.length > 0 && !row.textContent.toLowerCase().includes(query));
+      });
+    });
+
+    document.getElementById("themeToggle").addEventListener("click", function () {
+      document.documentElement.classList.toggle("dark-mode");
+      this.textContent = document.documentElement.classList.contains("dark-mode") ? "切换浅色" : "切换深色";
+    });
+    document.getElementById("resetPreview").addEventListener("click", function () {
+      captureGranted = false; pipOn = false; mediaSource = "system"; direction = "我说中文"; autoSpeak = true;
+      handsFree = false; continuousActive = false; sessionAttached = false; selectedRecordId = "airport";
+      Object.keys(deletedRecords).forEach(function (id) { delete deletedRecords[id]; });
+      document.documentElement.classList.remove("dark-mode");
+      document.getElementById("themeToggle").textContent = "切换深色";
+      showScreen("home");
+      toast("预览已回到初始状态。");
+    });
+    const requestedScreen = new URLSearchParams(window.location.search).get("screen");
+    if (requestedScreen && screens[requestedScreen]) current = requestedScreen;
+    render();
+  </script>
+</body>
+</html>

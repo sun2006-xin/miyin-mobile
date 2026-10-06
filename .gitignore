@@ -1,0 +1,13 @@
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+build/
+.idea/
+.vscode/
+local.properties
+.env
+.env.*
+*.jks
+*.keystore
+key.properties
