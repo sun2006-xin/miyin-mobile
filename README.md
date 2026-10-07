@@ -1,6 +1,6 @@
 # 觅音
 
-觅音是独立 Android 同传应用。GitHub 工程仓库名为 `yixue-mobile`；应用名已确定为“觅音”。
+觅音是独立 Android 同传应用。GitHub 工程仓库名为 `miyin-mobile`；应用名已确定为“觅音”。
 
 ## 当前阶段
 
