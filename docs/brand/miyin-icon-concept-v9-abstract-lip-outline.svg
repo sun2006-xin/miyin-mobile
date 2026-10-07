@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">觅音图标概念稿 v9 抽象黑线唇形</title>
+  <desc id="desc">白色玻璃质感圆角底块上以三道优雅黑色曲线抽象勾勒微张的侧面唇形；左侧黑色声线轻柔绕出若隐若现的耳形，不含填色嘴唇或脸部。</desc>
+  <defs>
+    <linearGradient id="glass" x1="0" y1="0" x2="0.9" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="0.58" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#FBFBFB"/>
+    </linearGradient>
+    <linearGradient id="blackGloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#070707"/>
+      <stop offset="0.45" stop-color="#242424"/>
+      <stop offset="0.58" stop-color="#050505"/>
+      <stop offset="1" stop-color="#171717"/>
+    </linearGradient>
+    <filter id="tileShadow" x="-18%" y="-18%" width="136%" height="145%">
+      <feDropShadow dx="0" dy="18" stdDeviation="22" flood-color="#000000" flood-opacity="0.09"/>
+    </filter>
+  </defs>
+
+  <rect width="1024" height="1024" fill="#FFFFFF"/>
+
+  <!-- White glass-like app tile: the edge and shadow stay intentionally subtle. -->
+  <rect x="112" y="112" width="800" height="800" rx="190" fill="url(#glass)" stroke="#EEEEEE" stroke-width="3" filter="url(#tileShadow)"/>
+  <rect x="126" y="126" width="772" height="772" rx="178" fill="none" stroke="#FFFFFF" stroke-width="3" opacity="0.92"/>
+  <path d="M236 132 H770 C812 132 846 166 846 208" fill="none" stroke="#FFFFFF" stroke-width="10" stroke-linecap="round" opacity="0.88"/>
+
+  <g transform="translate(-325 -410) scale(1.45 1.8)">
+    <!-- Sound curves travel from the lips and only hint at an ear. -->
+    <g fill="none" stroke="url(#blackGloss)" stroke-linecap="round" stroke-linejoin="round">
+      <path stroke-width="12" vector-effect="non-scaling-stroke" d="M556 495
+        C524 467 492 447 461 446
+        C428 445 405 464 405 487
+        C405 509 422 521 440 515
+        C454 510 457 494 447 484
+        C441 478 434 474 426 472"/>
+      <path stroke-width="8" vector-effect="non-scaling-stroke" opacity="0.62" d="M426 453
+        C414 463 416 476 427 485
+        C440 495 457 499 462 511
+        C467 524 459 535 448 541"/>
+      <path stroke-width="10" vector-effect="non-scaling-stroke" d="M555 510
+        C521 532 490 554 461 568
+        C435 580 411 577 393 567"/>
+    </g>
+    <path d="M556 495 C524 467 492 447 461 446 C438 445 420 454 411 469" fill="none" stroke="#FFFFFF" stroke-width="2.5" vector-effect="non-scaling-stroke" stroke-linecap="round" opacity="0.34"/>
+
+    <!-- Abstract profile lips: contour, open mouth seam, and lower contour only. -->
+    <g fill="none" stroke="#080808" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M556 496
+        C570 486 580 469 594 456
+        C608 442 625 440 642 448
+        C674 463 709 488 748 495" stroke-width="6.5" vector-effect="non-scaling-stroke"/>
+      <path d="M556 508
+        C571 518 584 536 600 547
+        C618 560 638 560 657 549
+        C687 532 718 506 748 495" stroke-width="6.5" vector-effect="non-scaling-stroke"/>
+      <path d="M556 501
+        C587 496 616 496 647 500
+        C681 504 716 501 748 495" stroke-width="3.8" vector-effect="non-scaling-stroke"/>
+    </g>
+  </g>
+</svg>
