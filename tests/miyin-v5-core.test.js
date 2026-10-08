@@ -127,3 +127,42 @@ test("keeps permission, unavailable, and error recovery explicit", () => {
   assert.equal(core.transitionVoiceSession("error", "end"), "idle");
   assert.equal(core.transitionVoiceSession("listening", "unknown-event"), "listening");
 });
+
+test("updates one message without changing the order or original conversation", () => {
+  assert.equal(typeof core.updateConversationMessage, "function");
+  const first = { id: "m-1", role: "user", text: "question", status: "complete" };
+  const second = { id: "m-2", role: "assistant", text: "pending", status: "pending" };
+  const conversation = { id: "chat-1", updatedAt: 10, messages: [first, second] };
+  const updated = core.updateConversationMessage(conversation, "m-2", { text: "answer", status: "complete" }, 20);
+
+  assert.deepEqual(updated.messages, [first, { ...second, text: "answer", status: "complete" }]);
+  assert.equal(updated.updatedAt, 20);
+  assert.deepEqual(conversation.messages, [first, second]);
+});
+
+test("tracks generation stop, failure, and retry while preserving draft/model/context", () => {
+  assert.equal(typeof core.createGeneration, "function");
+  assert.equal(typeof core.transitionGeneration, "function");
+  const initial = core.createGeneration({
+    id: "generation-1",
+    conversationId: "chat-1",
+    prompt: "submitted prompt",
+    draftSnapshot: "unsent draft",
+    modelId: "model-a",
+    contextAttachments: [{ id: "context-1", title: "Airport phrases" }],
+    now: 100,
+  });
+  const failed = core.transitionGeneration(initial, "fail", 200);
+  const retried = core.transitionGeneration(failed, "retry", 300);
+  const stopped = core.transitionGeneration(retried, "stop", 400);
+
+  assert.equal(initial.status, "pending");
+  assert.equal(failed.status, "failed");
+  assert.equal(retried.status, "pending");
+  assert.equal(stopped.status, "stopped");
+  for (const state of [failed, retried, stopped]) {
+    assert.equal(state.draftSnapshot, "unsent draft");
+    assert.equal(state.modelId, "model-a");
+    assert.deepEqual(state.contextAttachments, [{ id: "context-1", title: "Airport phrases" }]);
+  }
+});

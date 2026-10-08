@@ -77,10 +77,65 @@
     return voiceTransitions[state]?.[event] || state;
   }
 
+  function updateConversationMessage(conversation, messageId, updates, updatedAt = Date.now()) {
+    if (!conversation || !Array.isArray(conversation.messages)) {
+      throw new TypeError("A conversation with a messages array is required");
+    }
+    const index = conversation.messages.findIndex((message) => message.id === messageId);
+    if (index < 0) throw new RangeError("The message does not exist in this conversation");
+    if (!updates || typeof updates !== "object" || Array.isArray(updates)) {
+      throw new TypeError("Message updates must be an object");
+    }
+
+    const messages = conversation.messages.slice();
+    messages[index] = { ...messages[index], ...updates, id: messageId };
+    return { ...conversation, updatedAt, messages };
+  }
+
+  function createGeneration({
+    id,
+    conversationId,
+    prompt,
+    draftSnapshot = "",
+    modelId = null,
+    contextAttachments = [],
+    now = Date.now(),
+  }) {
+    if (!id || !conversationId) throw new TypeError("Generation and conversation ids are required");
+    return {
+      id: String(id),
+      conversationId: String(conversationId),
+      prompt: String(prompt ?? ""),
+      draftSnapshot: String(draftSnapshot ?? ""),
+      modelId,
+      contextAttachments: Array.isArray(contextAttachments) ? contextAttachments.slice() : [],
+      status: "pending",
+      createdAt: now,
+      updatedAt: now,
+    };
+  }
+
+  const generationTransitions = {
+    pending: { stop: "stopped", fail: "failed", complete: "complete" },
+    stopped: { retry: "pending" },
+    failed: { retry: "pending" },
+  };
+
+  function transitionGeneration(generation, event, updatedAt = Date.now()) {
+    if (!generation || typeof generation !== "object") {
+      throw new TypeError("A generation state is required");
+    }
+    const status = generationTransitions[generation.status]?.[event];
+    return status ? { ...generation, status, updatedAt } : generation;
+  }
+
   return {
     appendConversationMessage,
     createConversation,
+    createGeneration,
     transitionVoiceSession,
+    transitionGeneration,
+    updateConversationMessage,
     upsertConversation,
   };
 });
