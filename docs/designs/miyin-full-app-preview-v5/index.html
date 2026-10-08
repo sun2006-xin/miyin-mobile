@@ -178,6 +178,10 @@
     .chat-top-actions { display:flex;gap:3px; }
     .chat-messages { min-height:0;flex:1;overflow:auto;padding:16px 15px 12px;display:flex;flex-direction:column;gap:11px; }
     .chat-empty { margin:auto 12px;text-align:center;color:var(--muted);font-size:12px;line-height:1.7; }
+    .chat-empty small { display:inline-block;margin-top:7px;font-size:10px; }
+    .chat-title { display:flex!important;align-items:center;justify-content:center;gap:6px; }
+    .chat-ai-mark { width:18px;height:18px;display:inline-grid;place-items:center;color:var(--accent); }
+    .chat-ai-mark svg { width:18px;height:18px; }
     .chat-bubble { max-width:84%;padding:12px 14px;border:1px solid var(--line);border-radius:17px;background:var(--surface);font-size:13px;line-height:1.55; }
     .chat-bubble { white-space:pre-wrap;overflow-wrap:anywhere; }
     .chat-bubble.user { align-self:flex-end;border-radius:17px 17px 5px 17px;background:var(--selected); }
@@ -186,6 +190,27 @@
     .chat-actions { display:flex;gap:10px;padding:0 16px 8px;color:var(--muted); }
     .chat-actions button { width:26px;height:26px;border:0;border-radius:8px;background:transparent;color:var(--muted);cursor:pointer; }
     .chat-actions button:hover { background:var(--surface-2); }
+    .voice-overlay { position:absolute;inset:0;z-index:40;display:none;align-items:flex-end; }
+    .voice-overlay[aria-hidden="false"] { display:flex; }
+    .voice-backdrop { position:absolute;inset:0;background:rgba(24,39,35,.32);backdrop-filter:blur(5px); }
+    .voice-panel { position:relative;width:100%;max-height:calc(100% - 18px);overflow-y:auto;overscroll-behavior:contain;padding:21px 20px calc(21px + var(--safe-bottom));border:1px solid var(--line);border-radius:25px 25px 0 0;background:var(--page);box-shadow:0 -12px 40px rgba(20,84,74,.14);animation:voice-sheet-in .24s ease-out both; }
+    @keyframes voice-sheet-in { from { transform:translateY(20px);opacity:.65; } to { transform:none;opacity:1; } }
+    .voice-grip { width:36px;height:4px;margin:-7px auto 18px;border-radius:8px;background:var(--line-strong); }
+    .voice-heading { text-align:center; }
+    .voice-orb { width:68px;height:68px;margin:0 auto 12px;border:1px solid var(--line);border-radius:50%;background:radial-gradient(circle at 35% 28%,#fff 0%,#d9f7ee 52%,#b8e4e8 100%);display:grid;place-items:center;color:var(--title);box-shadow:0 8px 20px rgba(20,84,74,.12); }
+    .voice-orb svg { width:30px;height:30px; }
+    .voice-heading h2 { margin:0;font-size:17px;color:var(--title); }
+    .voice-heading p { margin:7px auto 0;max-width:300px;color:var(--muted);font-size:11px;line-height:1.6; }
+    .voice-live-state { margin:18px 0 14px;padding:11px 12px;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);display:flex;align-items:center;gap:9px;color:var(--ink);font-size:11px; }
+    .voice-pulse { width:9px;height:9px;flex:none;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px rgba(20,184,166,.13); }
+    .voice-overlay[data-voice-state="listening"] .voice-pulse { animation:voice-pulse 1.2s ease-in-out infinite; }
+    @keyframes voice-pulse { 50% { box-shadow:0 0 0 8px rgba(20,184,166,.05);transform:scale(.88); } }
+    .voice-transcript { min-height:42px;margin:0 0 14px;color:var(--muted);font-size:10px;line-height:1.55; }
+    .voice-buttons { display:grid;grid-template-columns:1fr 1fr;gap:9px; }
+    .voice-buttons button { min-height:42px;padding:0 12px;border:1px solid var(--line);border-radius:13px;background:var(--surface);color:var(--ink);font-size:11px;font-weight:600;cursor:pointer; }
+    .voice-buttons button.primary { border-color:transparent;background:linear-gradient(135deg,#14b8a6,#0d9488);color:#fff; }
+    .voice-buttons button.wide { grid-column:1/-1; }
+    .voice-buttons button:hover { transform:translateY(-1px); }
     .chat-compose { flex:none;margin-right:59px;padding:9px 6px calc(12px + var(--safe-bottom)) 13px; }
     .compose-card { padding:9px 10px 7px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:0 5px 18px rgba(25,30,27,.05); }
     .compose-card textarea { width:100%;min-height:43px;max-height:100px;resize:vertical;border:0;outline:0;background:transparent;color:var(--ink);font-size:12px; }
@@ -528,8 +553,9 @@
           <section class="screen" id="screen-chat" aria-label="AI 对话">
             <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="历史对话"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音　AI 对话</strong><small>统一 AI 助手 · 可连接已配置模型</small></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
             <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
-            <div class="chat-compose"><div class="compose-card"><textarea id="chat-input" placeholder="和 AI 一起讨论吧" aria-label="发送消息"></textarea><div class="compose-tools"><button type="button" data-action="chat-attach" aria-label="添加附件">＋</button><button class="model-select" type="button" data-action="model-picker">选择模型⌄</button><button type="button" data-action="chat-voice" aria-label="语音输入">◉</button><button class="send-button" type="button" data-action="send-chat" aria-label="发送"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5m-7 7 7-7 7 7"/></svg></button></div></div></div>
+            <div class="chat-compose"><div class="compose-card"><textarea id="chat-input" placeholder="和 AI 一起讨论吧" aria-label="发送消息"></textarea><div class="compose-tools"><button type="button" data-action="chat-attach" aria-label="添加附件">＋</button><button class="model-select" type="button" data-action="model-picker">选择模型⌄</button><button type="button" data-action="chat-voice" aria-label="开始 AI 语音对话" title="开始 AI 语音对话">◉</button><button class="send-button" type="button" data-action="send-chat" aria-label="发送"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5m-7 7 7-7 7 7"/></svg></button></div></div></div>
             <div class="mode-wheel" data-wheel="chat" aria-label="切换功能"><button class="wheel-arrow" type="button" data-wheel-step="-1" aria-label="切换到上一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 14 6-6 6 6"/></svg></button><div class="wheel-modes"></div><button class="wheel-arrow" type="button" data-wheel-step="1" aria-label="切换到下一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 10 6 6 6-6"/></svg></button></div>
+            <div class="voice-overlay" id="voice-overlay" data-voice-state="idle" aria-hidden="true"><div class="voice-backdrop"></div><section class="voice-panel" role="dialog" aria-modal="true" aria-labelledby="voice-title" aria-describedby="voice-copy"></section></div>
           </section>
 
           <section class="screen" id="screen-video" aria-label="视频字幕">
@@ -708,7 +734,7 @@
           case "feedback":openModal("反馈入口","预览版还没有连接反馈服务。",[],[{label:"关闭",action:"close"}]);break;
           case "chat-attach":openModal("添加到对话","选择本地内容会仅在当前浏览器显示，不会上传。",[{label:"选择图片",action:"pick-image"},{label:"选择文档",action:"pick-document"},{label:"附加当前翻译记录",hint:"明确添加到本轮 AI 上下文"}], [{label:"关闭",action:"close"}]);break;
           case "send-chat":sendChat();break;
-          case "chat-voice":announce("语音输入为预览状态，未申请麦克风权限");break;
+          case "chat-voice":window.dispatchEvent(new CustomEvent("miyin-v5:start-voice-session"));break;
           case "video-start":toggleVideo();break;
         }
       });
@@ -777,6 +803,7 @@
         appendMessage(conversation.id,{id:nextId("msg"),role:"assistant",text:reply,createdAt:createdAt+1,status:"complete",contextAttachments:[]});
         input.value="";renderChatConversation(getConversation(conversation.id));announce(historySavingEnabled?"消息已加入本地对话历史":"本次对话仅保留在当前页面")
       }
+      window.MiyinV5Chat={appendVoiceTurn(userText,assistantText){const conversation=ensureConversationForFirstMessage(userText),createdAt=Date.now();appendMessage(conversation.id,{id:nextId("voice-user"),role:"user",text:userText,createdAt,status:"complete",contextAttachments:[]});appendMessage(conversation.id,{id:nextId("voice-assistant"),role:"assistant",text:assistantText,createdAt:createdAt+1,status:"complete",contextAttachments:[]});renderChatConversation(getConversation(conversation.id));return getConversation(conversation.id)}};
       function toggleVideo(){videoActive=!videoActive;const button=$("#video-start"),status=$("#video-status");button.classList.toggle("active",videoActive);button.textContent=videoActive?"暂停识别":"开始识别";status.textContent=videoActive?(sourceKind==="system"?"正在读取其他 App 音频 · 演示":"正在使用麦克风音源 · 演示"):"已暂停 · 演示字幕保留";if(videoActive)announce("视频字幕识别为预览状态，未访问系统音频");else addRecord("video","字幕翻译示例",sourceKind==="system"?"其他 App 音频 · 预览":"麦克风 / 会议 · 预览")}
       $$("input[type=file]").forEach(file=>file.addEventListener("change",()=>{if(file.files&&file.files[0]){const f=file.files[0];announce("已选择「"+f.name+"」· 仅本地预览");$("#translation-input").value="已添加文件："+f.name;$("#entry-tools").classList.add("open");file.value=""}}));
       $("#modal-options").addEventListener("click",e=>{if(e.target.closest("[data-modal-action='pick-image']")){closeModal();$("#file-image").click()}if(e.target.closest("[data-modal-action='pick-document']")){closeModal();$("#file-document").click()}});

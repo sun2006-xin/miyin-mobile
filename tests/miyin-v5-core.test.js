@@ -91,3 +91,39 @@ test("moves an updated AI conversation to the top without duplicating legacy row
     [updated, newer]
   );
 });
+
+test("models the live AI voice conversation states in order", () => {
+  assert.equal(typeof core.transitionVoiceSession, "function");
+
+  let state = "idle";
+  const transition = (event) => { state = core.transitionVoiceSession(state, event); };
+
+  transition("start");
+  assert.equal(state, "permission-required");
+  transition("allow");
+  assert.equal(state, "listening");
+  transition("process");
+  assert.equal(state, "processing");
+  transition("respond");
+  assert.equal(state, "speaking");
+  transition("finish-response");
+  assert.equal(state, "listening");
+  transition("pause");
+  assert.equal(state, "paused");
+  transition("resume");
+  assert.equal(state, "listening");
+  transition("end");
+  assert.equal(state, "idle");
+});
+
+test("keeps permission, unavailable, and error recovery explicit", () => {
+  assert.equal(typeof core.transitionVoiceSession, "function");
+  assert.equal(core.transitionVoiceSession("permission-required", "deny"), "permission-denied");
+  assert.equal(core.transitionVoiceSession("permission-denied", "retry"), "permission-required");
+  assert.equal(core.transitionVoiceSession("permission-required", "unavailable"), "unavailable");
+  assert.equal(core.transitionVoiceSession("unavailable", "retry"), "permission-required");
+  assert.equal(core.transitionVoiceSession("listening", "error"), "error");
+  assert.equal(core.transitionVoiceSession("error", "retry"), "permission-required");
+  assert.equal(core.transitionVoiceSession("error", "end"), "idle");
+  assert.equal(core.transitionVoiceSession("listening", "unknown-event"), "listening");
+});

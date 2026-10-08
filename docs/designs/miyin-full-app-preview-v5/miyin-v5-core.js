@@ -55,9 +55,32 @@
     ];
   }
 
+  const voiceTransitions = {
+    idle: { start: "permission-required" },
+    "permission-required": {
+      allow: "listening",
+      deny: "permission-denied",
+      unavailable: "unavailable",
+      cancel: "idle",
+      end: "idle",
+    },
+    listening: { process: "processing", pause: "paused", error: "error", end: "idle" },
+    processing: { respond: "speaking", error: "error", end: "idle" },
+    speaking: { "finish-response": "listening", pause: "paused", error: "error", end: "idle" },
+    paused: { resume: "listening", error: "error", end: "idle" },
+    "permission-denied": { retry: "permission-required", end: "idle" },
+    unavailable: { retry: "permission-required", end: "idle" },
+    error: { retry: "permission-required", end: "idle" },
+  };
+
+  function transitionVoiceSession(state, event) {
+    return voiceTransitions[state]?.[event] || state;
+  }
+
   return {
     appendConversationMessage,
     createConversation,
+    transitionVoiceSession,
     upsertConversation,
   };
 });

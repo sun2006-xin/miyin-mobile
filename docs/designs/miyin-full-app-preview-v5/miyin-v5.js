@@ -47,6 +47,100 @@
     toastTimer = window.setTimeout(() => toast.classList.remove("show"), 2200);
   }
 
+  let voiceState = "idle";
+  let voiceTimers = [];
+  let lastVoiceExchange = null;
+  const voiceOverlay = $("#voice-overlay");
+  const voiceStates = ["idle", "permission-required", "unavailable", "listening", "processing", "speaking", "paused", "permission-denied", "error"];
+  const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
+
+  function clearVoiceTimers() {
+    voiceTimers.forEach(timer => window.clearTimeout(timer));
+    voiceTimers = [];
+  }
+  function voicePanelMarkup() {
+    const states = {
+      "permission-required": { title: "开始 AI 语音对话？", copy: "正式应用会先申请麦克风权限。当前网页只演示界面，不会采集声音或请求模型。", status: "需要你的确认" },
+      unavailable: { title: "当前环境暂不可用", copy: "这里先展示设备不可用时的状态。你仍然可以回到文字聊天继续使用 AI。", status: "语音对话不可用" },
+      listening: { title: "正在聆听", copy: "连续交谈 · 本地预览模拟，不访问麦克风", status: "等待你说话" },
+      processing: { title: "正在整理你的话", copy: "预览正在模拟识别与组织回答", status: "识别中 · 演示状态" },
+      speaking: { title: "AI 正在回答", copy: "这一轮会加入当前 AI 对话记录", status: "回答中 · 演示状态" },
+      paused: { title: "语音对话已暂停", copy: "再次继续后可接着进行语音交谈", status: "麦克风未启动 · 预览" },
+      "permission-denied": { title: "麦克风权限未开启", copy: "你可以重新尝试授权，也可以返回文字聊天；当前网页没有申请任何权限。", status: "权限未授予" },
+      error: { title: "语音对话暂时中断", copy: "可重试语音会话，或保留当前 AI 对话改用文字继续。", status: "需要恢复" },
+    };
+    const view = states[voiceState];
+    if (!view) return "";
+    let transcript = "";
+    if (voiceState === "speaking" && lastVoiceExchange) {
+      transcript = '<div class="voice-transcript"><b>你说：</b>' + escapeHTML(lastVoiceExchange.user) + '<br><b>AI：</b>' + escapeHTML(lastVoiceExchange.assistant) + '</div>';
+    }
+    let actions = "";
+    if (voiceState === "permission-required") actions = '<div class="voice-buttons"><button type="button" data-v5-voice-action="cancel">暂不</button><button class="primary" type="button" data-v5-voice-action="allow">继续</button><button type="button" data-v5-voice-action="deny">模拟拒绝权限</button><button type="button" data-v5-voice-action="unavailable">模拟设备不可用</button></div>';
+    if (voiceState === "listening") actions = '<div class="voice-buttons"><button class="primary" type="button" data-v5-voice-action="simulate">模拟说一句</button><button type="button" data-v5-voice-action="pause">暂停</button><button type="button" data-v5-voice-action="simulate-error">模拟异常状态</button><button type="button" data-v5-voice-action="end">结束语音对话</button></div>';
+    if (voiceState === "processing") actions = '<div class="voice-buttons"><button class="wide" type="button" data-v5-voice-action="end">结束语音对话</button></div>';
+    if (voiceState === "speaking") actions = '<div class="voice-buttons"><button type="button" data-v5-voice-action="pause">暂停</button><button class="primary" type="button" data-v5-voice-action="continue">继续聆听</button><button class="wide" type="button" data-v5-voice-action="end">结束语音对话</button></div>';
+    if (voiceState === "paused") actions = '<div class="voice-buttons"><button class="primary" type="button" data-v5-voice-action="resume">继续</button><button type="button" data-v5-voice-action="end">结束语音对话</button></div>';
+    if (["permission-denied", "unavailable", "error"].includes(voiceState)) actions = '<div class="voice-buttons"><button class="primary" type="button" data-v5-voice-action="retry">重新尝试</button><button type="button" data-v5-voice-action="text">返回文字聊天</button></div>';
+    return '<div class="voice-grip" aria-hidden="true"></div><div class="voice-heading"><div class="voice-orb">' + icon.mic + '</div><h2 id="voice-title">' + view.title + '</h2><p id="voice-copy">' + view.copy + '</p></div><div class="voice-live-state" role="status"><i class="voice-pulse"></i><span>' + view.status + '</span></div>' + transcript + actions;
+  }
+  function renderVoiceSession() {
+    if (!voiceOverlay) return;
+    voiceOverlay.dataset.voiceState = voiceState;
+    const open = voiceState !== "idle";
+    voiceOverlay.setAttribute("aria-hidden", String(!open));
+    const panel = $(".voice-panel", voiceOverlay);
+    panel.innerHTML = voicePanelMarkup();
+    if (open) {
+      const firstAction = $("[data-v5-voice-action]", panel);
+      if (firstAction) window.setTimeout(() => firstAction.focus(), 0);
+    }
+  }
+  function setVoiceSessionState(nextState) {
+    if (!voiceStates.includes(nextState)) return false;
+    voiceState = nextState;
+    renderVoiceSession();
+    return true;
+  }
+  function applyVoiceEvent(eventName) {
+    const nextState = window.MiyinV5Core.transitionVoiceSession(voiceState, eventName);
+    setVoiceSessionState(nextState);
+    return nextState;
+  }
+  function startVoiceSession() {
+    clearVoiceTimers();
+    lastVoiceExchange = null;
+    if (applyVoiceEvent("start") !== "permission-required") return;
+  }
+  function pauseVoiceSession() { applyVoiceEvent("pause"); }
+  function resumeVoiceSession() { applyVoiceEvent("resume"); }
+  function endVoiceSession() {
+    clearVoiceTimers();
+    if (voiceState !== "idle") applyVoiceEvent("end");
+    setVoiceSessionState("idle");
+    const trigger = $("[data-action='chat-voice']");
+    if (trigger) trigger.focus();
+  }
+  function simulateVoiceExchange() {
+    if (voiceState !== "listening" || applyVoiceEvent("process") !== "processing") return;
+    lastVoiceExchange = {
+      user: "帮我推荐一家附近安静的咖啡馆。",
+      assistant: "可以告诉我你所在的区域。我会根据距离、环境和营业时间帮你筛选。",
+    };
+    const generation = voiceState;
+    voiceTimers.push(window.setTimeout(() => {
+      if (voiceState !== generation || voiceState !== "processing") return;
+      const chat = window.MiyinV5Chat;
+      if (!chat || typeof chat.appendVoiceTurn !== "function") { applyVoiceEvent("error");return; }
+      chat.appendVoiceTurn(lastVoiceExchange.user, lastVoiceExchange.assistant);
+      applyVoiceEvent("respond");
+      voiceTimers.push(window.setTimeout(() => {
+        if (voiceState === "speaking") applyVoiceEvent("finish-response");
+      }, 1600));
+    }, 620));
+  }
+  window.addEventListener("miyin-v5:start-voice-session", startVoiceSession);
+
   function shortLanguage(value) {
     const names = {
       "中文": "中", "English": "英", "en": "英", "en-us": "英",
@@ -104,6 +198,12 @@
   aiObserver.observe(app, { childList: true, subtree: true });
   const chatNavIcon = $(".screen-nav [data-screen='chat'] svg");
   if (chatNavIcon) chatNavIcon.outerHTML = icon.ai;
+  $$(".wheel-mode[data-mode-index='1'] .wheel-mode-icon, .wheel-center[data-mode-index='1'] .wheel-center-icon", app).forEach(node => { node.innerHTML = icon.ai; });
+  const chatTitle = $("#screen-chat .top-brand strong");
+  if (chatTitle) {
+    chatTitle.classList.add("chat-title");
+    chatTitle.innerHTML = '<span class="chat-ai-mark">' + icon.ai + '</span><span>觅音 AI 对话</span>';
+  }
 
   const floatingEnabled = Boolean(load("floating-ball", false));
   let floatBallEnabled = floatingEnabled;
@@ -369,6 +469,22 @@
 
   document.addEventListener("click", event => {
     const target = event.target;
+    const voiceAction = target.closest("[data-v5-voice-action]");
+    if (voiceAction) {
+      const action = voiceAction.dataset.v5VoiceAction;
+      if (action === "allow") { applyVoiceEvent("allow");return; }
+      if (action === "deny") { applyVoiceEvent("deny");return; }
+      if (action === "unavailable") { applyVoiceEvent("unavailable");return; }
+      if (action === "cancel") { applyVoiceEvent("cancel");const trigger=$("[data-action='chat-voice']");if(trigger)trigger.focus();return; }
+      if (action === "retry") { applyVoiceEvent("retry");return; }
+      if (action === "simulate") { simulateVoiceExchange();return; }
+      if (action === "simulate-error") { applyVoiceEvent("error");return; }
+      if (action === "pause") { pauseVoiceSession();return; }
+      if (action === "resume") { resumeVoiceSession();return; }
+      if (action === "continue") { applyVoiceEvent("finish-response");return; }
+      if (action === "text") { endVoiceSession();const input=$("#chat-input");if(input)input.focus();return; }
+      if (action === "end") { endVoiceSession();notify("语音对话已结束");return; }
+    }
     const action = target.closest("[data-v4-action]");
     if (action) {
       const name = action.dataset.v4Action;
@@ -417,8 +533,16 @@
 
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") {
+      if (voiceOverlay && voiceOverlay.getAttribute("aria-hidden") === "false") { endVoiceSession();event.preventDefault();return; }
       if (sheet.classList.contains("open")) closeSheet();
       else closeFloatMenu();
+    }
+    if (event.key === "Tab" && voiceOverlay && voiceOverlay.getAttribute("aria-hidden") === "false") {
+      const focusable = $$('button:not(:disabled)', voiceOverlay);
+      if (!focusable.length) return;
+      const first = focusable[0], last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault();last.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault();first.focus(); }
     }
     if (event.key === "Tab" && sheet.classList.contains("open")) {
       const focusable = $$("button:not(:disabled), [href], input:not(:disabled), select:not(:disabled), textarea:not(:disabled)", sheet);
