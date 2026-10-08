@@ -4,13 +4,15 @@
 
 ## 当前阶段
 
-Android App 源码尚未开始。当前交互预览 V1 未采纳，用户将提供亲手绘制的 UI 稿；收到后按手绘稿重新设计预览，待界面与交互确认后再搭建模块化工程骨架。
+V4 是已确认的视觉与布局基线，原文件保持不变。V5 是独立的可交互网页预览，沿用 V4 的主题、主页面结构、模式转轮和语音按钮，并补充 AI 会话、语音对话状态、回答操作、AI 历史详情、显式上下文附件和模型不可用恢复状态，当前进入 V5 审阅。
+
+Android App 源码尚未开始。V5 的 AI、翻译、语音、分享和权限交互均为浏览器内模拟状态，不连接真实模型 API，不请求麦克风或系统音频权限，也不代表 Android 设备能力已实现或验收。V5 通过审阅后，再单独确定 Android 工程骨架方案。
 
 ## 品牌方向
 
 - 应用名：觅音。
 - 图标方向已确认：白色玻璃质感圆角底块，抽象黑色线条勾勒侧面唇形，左侧黑色声线隐约形成耳形。确认稿见 [觅音图标 PNG](./docs/brand/miyin-icon-approved-v1.png)；Android 启动器尺寸资源尚未导出。
-- 当前 UI 色彩和布局仍是待替换草案，后续以用户手绘稿为主参考。
+- UI 基线：用户已确认 V4 的整体主题和页面布局；V5 只扩展已讨论的 AI 对话与历史交互，保持独立目录供审阅和取舍。
 
 ## 产品方向
 
@@ -26,10 +28,18 @@ Android App 源码尚未开始。当前交互预览 V1 未采纳，用户将提�
 
 ## 设计材料
 
-- [当前交互草案 V1（未采纳，仅留档）](./docs/designs/译学Android同传手机端交互预览-v1.html)
+- [V5 可交互预览](./docs/designs/miyin-full-app-preview-v5/index.html)
+- [V5 AI 对话截图（390 × 844）](./output/playwright/miyin-v5-chat-390x844.png)
+- [V5 AI 历史截图（390 × 844）](./output/playwright/miyin-v5-history-390x844.png)
+- [V5 AI 历史详情截图（390 × 844）](./output/playwright/miyin-v5-history-detail-390x844.png)
+- [V5 桌面浏览器截图（1280 × 900）](./output/playwright/miyin-v5-desktop-1280x900.png)
+- [V4 已确认视觉基线](./docs/designs/miyin-full-app-preview-v4/index.html)
+- [V5 功能规格](./docs/superpowers/specs/2026-10-08-miyin-ai-chat-history-voice-design.md)
+- [V5 实施与验收计划](./docs/superpowers/plans/2026-10-08-miyin-v5-ai-preview.md)
+- [旧交互草案 V1（未采纳，仅留档）](./docs/designs/译学Android同传手机端交互预览-v1.html)
 - [旧首页截图](./docs/designs/译学Android手机端预览-home-v1.png)
 - [旧面对面同传截图](./docs/designs/译学Android手机端预览-face-v1.png)
 - [产品边界与阶段门](./docs/product/移动端产品边界-v0.1.md)
 - [品牌启动动画概念](./docs/brand/品牌启动动画概念-v0.1.md)
 
-预览中的权限、收音、翻译、播报和模型连接状态均为模拟，不代表 Android 能力已接入或已在设备验收。后续界面将依据用户手绘稿重做。
+旧的交互预览只留档，不作为实现依据。V5 的权限、收音、翻译、播报、回答、模型连接和分享状态均为模拟；正式 Android 功能需在后续工程阶段逐项实现和设备验收。

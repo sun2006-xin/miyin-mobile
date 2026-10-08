@@ -193,22 +193,24 @@ The V4 preview is implemented as `index.html` with inline page logic plus compan
 - Modify: `docs/product/移动端产品边界-v0.1.md` (record V4 baseline and V5 scope without claiming Android implementation)
 - Create: `output/playwright/miyin-v5-chat-390x844.png`
 - Create: `output/playwright/miyin-v5-history-390x844.png`
+- Create: `output/playwright/miyin-v5-history-detail-390x844.png`
 - Create: `output/playwright/miyin-v5-desktop-1280x900.png`
+- Modify: `docs/superpowers/specs/2026-10-08-miyin-ai-chat-history-voice-design.md` (record the V5 review state)
 
 **Interfaces:**
 - Consumes: all V5 UI, conversation, voice, and history flows from Tasks 1–5.
 - Produces: a reviewable V5 preview with screenshots and truthful repository documentation.
 
-- [ ] **Step 1: Run all dependency-free logic tests and syntax checks.** Run `node --test tests/miyin-v5-core.test.js` and `node --check` on both V5 JavaScript files; verify the page, CSS, JS, and GLSL assets return HTTP 200.
+- [x] **Step 1: Run all dependency-free logic tests and syntax checks.** Run `node --test tests/miyin-v5-core.test.js`, `node --check` on both V5 JavaScript files and the extracted inline page scripts; verify the page, CSS, JS, and GLSL assets return HTTP 200.
   **Expected:** Node tests pass, both syntax checks exit 0, and every local page/asset request returns 200.
-- [ ] **Step 2: Run the requested viewport review.** Use browser review at 390 × 844, 375 × 667, and 1280 × 900. Check horizontal overflow, clipped controls, focus/touch targets, and the V4 theme and mode wheel.
+- [x] **Step 2: Run the requested viewport review.** Use browser review at 390 × 844, 375 × 667, and 1280 × 900. Check horizontal overflow, clipped controls, focus/touch targets, and the V4 theme and mode wheel.
   **Expected:** No horizontal overflow or clipped primary actions at any viewport; V4 visual system and wheel remain intact.
-- [ ] **Step 3: Walk the complete preview flows.** Test new chat, multi-turn persistence, save-history off, voice entry and exit, answer operations, model unavailable, search, history detail/continue/rename/share/delete, attachment selection/removal/send, empty state, permission-required/denied voice states, and error retry.
+- [x] **Step 3: Walk the complete preview flows.** Test new chat, multi-turn persistence, save-history off, voice entry and exit, answer operations, model-unavailable recovery without silent fallback, search, history detail/continue/rename/share/delete, attachment selection/removal/send, empty state, permission-required/denied voice states, and error retry.
   **Expected:** Every listed interaction reaches its labeled state; no browser console errors occur.
-- [ ] **Step 4: Check V4 isolation.** Compare pre/post SHA-256 for the existing V4 `index.html`, `miyin-v4.css`, and `miyin-v4.js`; confirm none changed. Confirm V5 localStorage uses only the V5 namespace.
+- [x] **Step 4: Check V4 isolation.** Compare pre/post SHA-256 for the existing V4 `index.html`, `miyin-v4.css`, and `miyin-v4.js`; confirm none changed. Confirm V5 localStorage uses only the V5 namespace.
   **Expected:** All three V4 hashes match `v4-baseline.sha256`; only V5-prefixed browser keys are created or changed.
-- [ ] **Step 5: Update repository docs accurately.** State that V4 is the approved visual baseline, V5 is awaiting review, Android source and real model/audio services are not yet implemented.
-- [ ] **Step 6: Commit final V5 QA and documentation.** `git add docs/designs/miyin-full-app-preview-v5 README.md docs/product/移动端产品边界-v0.1.md output/playwright/miyin-v5-*.png` and commit as `docs: document Miyin V5 preview review state`.
+- [x] **Step 5: Update repository docs accurately.** State that V4 is the approved visual baseline, V5 is implemented and awaiting review, Android source and real model/audio services are not yet implemented.
+- [x] **Step 6: Commit final V5 QA and documentation.** Stage only the reviewed V5 model-recovery preview, the updated README/product/spec/plan docs, and the four newly generated `output/playwright/miyin-v5-*.png` screenshots, then commit as `feat: finalize Miyin V5 preview and review evidence`.
   **Expected:** Final commit contains the final QA screenshots and truthful status docs; tests are already present in earlier commits, and no pre-existing user file is staged.
 
 After the user approves V5, prepare a separate Android-shell plan. That plan must first select the framework and storage approach from the actual repository and keep model, voice/TTS, context, history, and Android platform adapters behind the interfaces described in the spec.
