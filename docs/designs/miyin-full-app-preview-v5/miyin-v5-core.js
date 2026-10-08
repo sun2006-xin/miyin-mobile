@@ -129,10 +129,82 @@
     return status ? { ...generation, status, updatedAt } : generation;
   }
 
+  function cloneSnapshot(value) {
+    if (Array.isArray(value)) return value.map(cloneSnapshot);
+    if (value && typeof value === "object") {
+      return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, cloneSnapshot(item)]));
+    }
+    return value;
+  }
+
+  function createContextAttachment({
+    id,
+    category,
+    sourceRecordId,
+    title,
+    selectedContentSnapshot = null,
+  }) {
+    if (!id || !category || !sourceRecordId) {
+      throw new TypeError("Context id, category, and source record id are required");
+    }
+    return {
+      id: String(id),
+      category: String(category),
+      sourceRecordId: String(sourceRecordId),
+      title: String(title ?? ""),
+      selectedContentSnapshot: cloneSnapshot(selectedContentSnapshot),
+    };
+  }
+
+  function attachContextToMessage(message, attachments = []) {
+    if (!message || typeof message !== "object") {
+      throw new TypeError("A message is required");
+    }
+    if (!Array.isArray(attachments)) {
+      throw new TypeError("Context attachments must be a list");
+    }
+    return {
+      ...message,
+      contextAttachments: attachments.map(cloneSnapshot),
+    };
+  }
+
+  function removeContextAttachment(attachments, attachmentId) {
+    if (!Array.isArray(attachments)) {
+      throw new TypeError("Context attachments must be a list");
+    }
+    return attachments.filter((attachment) => attachment && attachment.id !== attachmentId);
+  }
+
+  function searchableText(value) {
+    if (value == null) return "";
+    if (typeof value === "string" || typeof value === "number") return String(value);
+    if (Array.isArray(value)) return value.map(searchableText).join(" ");
+    if (typeof value === "object") return Object.values(value).map(searchableText).join(" ");
+    return "";
+  }
+
+  function searchConversations(conversations, query = "") {
+    if (!Array.isArray(conversations)) {
+      throw new TypeError("A conversation list is required");
+    }
+    const terms = String(query ?? "").trim().toLocaleLowerCase().split(/\s+/u).filter(Boolean);
+    if (!terms.length) return conversations.slice();
+
+    return conversations.filter((conversation) => {
+      const corpus = searchableText(conversation).toLocaleLowerCase();
+      return terms.every((term) => corpus.includes(term));
+    });
+  }
+
   return {
+    attachContextToMessage,
     appendConversationMessage,
     createConversation,
+    createContextAttachment,
     createGeneration,
+    removeContextAttachment,
+    searchConversations,
     transitionVoiceSession,
     transitionGeneration,
     updateConversationMessage,

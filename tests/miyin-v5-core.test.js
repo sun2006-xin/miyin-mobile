@@ -166,3 +166,70 @@ test("tracks generation stop, failure, and retry while preserving draft/model/co
     assert.deepEqual(state.contextAttachments, [{ id: "context-1", title: "Airport phrases" }]);
   }
 });
+
+test("searches AI conversations by title and message text without changing order", () => {
+  assert.equal(typeof core.searchConversations, "function");
+  const conversations = [
+    { id: "c1", title: "京都旅行", updatedAt: 3, messages: [{ role: "user", text: "附近有没有安静的咖啡馆" }] },
+    { id: "c2", title: "会议准备", updatedAt: 2, messages: [{ role: "assistant", text: "整理产品发布议程" }] },
+    { id: "c3", title: "咖啡笔记", updatedAt: 1, messages: [{ role: "user", text: "京都车站周边" }] },
+  ];
+
+  assert.deepEqual(core.searchConversations(conversations, "  京都   咖啡馆 "), [conversations[0]]);
+  assert.deepEqual(core.searchConversations(conversations, "会议"), [conversations[1]]);
+  assert.deepEqual(core.searchConversations(conversations, ""), conversations);
+});
+
+test("creates detached context snapshots with the selected source identity", () => {
+  assert.equal(typeof core.createContextAttachment, "function");
+  const sourceRecord = {
+    id: "record-7",
+    category: "video",
+    title: "课程 Unit 03",
+    entries: [{ at: "00:42", source: "The class starts at nine.", translation: "课程九点开始。" }],
+  };
+  const attachment = core.createContextAttachment({
+    id: "context-1",
+    category: sourceRecord.category,
+    sourceRecordId: sourceRecord.id,
+    title: sourceRecord.title,
+    selectedContentSnapshot: sourceRecord.entries,
+  });
+  sourceRecord.entries[0].source = "changed after selection";
+
+  assert.deepEqual(attachment, {
+    id: "context-1",
+    category: "video",
+    sourceRecordId: "record-7",
+    title: "课程 Unit 03",
+    selectedContentSnapshot: [{ at: "00:42", source: "The class starts at nine.", translation: "课程九点开始。" }],
+  });
+});
+
+test("attaches selected history only to the sent message and leaves source values untouched", () => {
+  assert.equal(typeof core.attachContextToMessage, "function");
+  const draft = { id: "msg-1", role: "user", text: "解释这段字幕", contextAttachments: [] };
+  const selected = [{
+    id: "context-2",
+    category: "translation",
+    sourceRecordId: "record-2",
+    title: "机场问路",
+    selectedContentSnapshot: [{ source: "Where is the bus?", translation: "巴士在哪里？" }],
+  }];
+  const sent = core.attachContextToMessage(draft, selected);
+
+  assert.equal(draft.contextAttachments.length, 0);
+  assert.deepEqual(sent.contextAttachments, selected);
+  assert.notEqual(sent.contextAttachments, selected);
+  assert.notEqual(sent.contextAttachments[0], selected[0]);
+});
+
+test("removes one unsent context chip without mutating the remaining snapshots", () => {
+  assert.equal(typeof core.removeContextAttachment, "function");
+  const first = { id: "context-1", title: "机场问路" };
+  const second = { id: "context-2", title: "课程 Unit 03" };
+  const pending = [first, second];
+
+  assert.deepEqual(core.removeContextAttachment(pending, "context-1"), [second]);
+  assert.deepEqual(pending, [first, second]);
+});

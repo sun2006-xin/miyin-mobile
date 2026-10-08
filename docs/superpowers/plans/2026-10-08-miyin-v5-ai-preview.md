@@ -156,9 +156,7 @@ The V4 preview is implemented as `index.html` with inline page logic plus compan
 ### Task 5: Add searchable history details and explicit context attachment
 
 **Files:**
-- Modify: `docs/designs/miyin-full-app-preview-v5/index.html` (history controls, detail layout, and attachment picker)
-- Modify: `docs/designs/miyin-full-app-preview-v5/miyin-v5.css` (search, detail, attachment chips, empty states)
-- Modify: `docs/designs/miyin-full-app-preview-v5/miyin-v5.js` (history rendering, context attachment, rename/share/delete handlers)
+- Modify: `docs/designs/miyin-full-app-preview-v5/index.html` (inline history, detail, search, and attachment UI logic)
 - Modify: `docs/designs/miyin-full-app-preview-v5/miyin-v5-core.js` (context snapshot, send-time attachment, and history search)
 - Modify: `tests/miyin-v5-core.test.js` (attachment/search tests)
 
@@ -172,18 +170,18 @@ The V4 preview is implemented as `index.html` with inline page logic plus compan
   - `removeContextAttachment(attachmentId) -> void`
   - `ContextAttachment = { id, category, sourceRecordId, title, selectedContentSnapshot }`
 
-- [ ] **Step 1: Render AI history by conversation.** Add search over AI titles and message text; support rename, whole-thread share preview, and confirmed deletion.
-- [ ] **Step 2: Add AI history detail.** Render the full ordered exchange and attached-context labels. “Continue” must reopen the same conversation ID and preserve the list’s return location.
-- [ ] **Step 3: Add detail views for translation, face-to-face, and video records.** Show the sample source/translation content, speaker/source details, and timestamps applicable to each category; keep record deletion available with confirmation.
-- [ ] **Step 4: Write context and search tests first and confirm the expected assertion failures.** Cover attachment snapshots, send-time association, removal before send, and title/message search.
+- [x] **Step 1: Render AI history by conversation.** Add search over AI titles and message text; support rename, whole-thread share preview, and confirmed deletion.
+- [x] **Step 2: Add AI history detail.** Render the full ordered exchange and attached-context labels. “Continue” must reopen the same conversation ID and preserve the list’s return location.
+- [x] **Step 3: Add detail views for translation, face-to-face, and video records.** Show the sample source/translation content, speaker/source details, and timestamps applicable to each category; keep record deletion available with confirmation.
+- [x] **Step 4: Write context and search tests first and confirm the expected assertion failures.** Cover attachment snapshots, send-time association, removal before send, and title/message search.
   **Expected:** Tests fail only on missing snapshot, association/removal, or search behavior.
-- [ ] **Step 5: Implement explicit history-to-AI attachment flows.** Both an item detail action and the composer attachment picker can prepare an attachment. Render a removable chip before send; only associate it with the submitted user message after the user presses send. Store a content snapshot in that message so later deletion of the source record does not silently change the AI conversation; keep the source category and title visible.
-- [ ] **Step 6: Run the focused Node tests.** `node --test tests/miyin-v5-core.test.js` must pass.
+- [x] **Step 5: Implement explicit history-to-AI attachment flows.** Both an item detail action and the composer attachment picker can prepare an attachment. Render a removable chip before send; only associate it with the submitted user message after the user presses send. Store a content snapshot in that message so later deletion of the source record does not silently change the AI conversation; keep the source category and title visible.
+- [x] **Step 6: Run the focused Node tests.** `node --test tests/miyin-v5-core.test.js` must pass.
   **Expected:** All conversation, voice, generation, attachment, and search tests pass with zero failures.
-- [ ] **Step 7: Add empty and no-search-result states.** Preserve the current history category and search query when returning from a detail view.
-- [ ] **Step 8: Manually verify context isolation.** Select one record and confirm its chip is visible; remove it and confirm it is absent; select another and send; verify only that selected content appears with the new AI message and no unrelated record is included.
+- [x] **Step 7: Add empty and no-search-result states.** Preserve the current history category and search query when returning from a detail view.
+- [x] **Step 8: Manually verify context isolation.** Select one record and confirm its chip is visible; remove it and confirm it is absent; select another and send; verify only that selected content appears with the new AI message and no unrelated record is included.
   **Expected:** Only selected, unsent-until-confirmed context snapshots appear beside the submitted user message; unrelated history is absent.
-- [ ] **Step 9: Commit history and context flows.** `git add docs/designs/miyin-full-app-preview-v5 tests/miyin-v5-core.test.js` and commit as `feat: add AI history details and explicit context attachments`.
+- [x] **Step 9: Commit history and context flows.** `git add docs/designs/miyin-full-app-preview-v5 tests/miyin-v5-core.test.js` and commit as `feat: add AI history details and explicit context attachments`.
 
 ### Task 6: Verify V5 against the approved preview baseline
 
