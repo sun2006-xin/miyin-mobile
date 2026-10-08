@@ -28,7 +28,7 @@
 
   document.title = "觅音 · 手机端交互预览 V5";
   const navVersion = $(".nav-brand small");
-  if (navVersion) navVersion.textContent = "手机端 · 整合预览 V4";
+  if (navVersion) navVersion.textContent = "手机端 · 整合预览 V5";
 
   let toastTimer = 0;
   function notify(message) {
