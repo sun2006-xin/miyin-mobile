@@ -34,7 +34,7 @@
     .screen { display:none;height:100%;width:100%;flex-direction:column;position:absolute;inset:0;background:var(--page); }
     .screen.active { display:flex;animation:screen-in .22s ease-out both; }
     @keyframes screen-in { from { opacity:.55;transform:translateY(4px); } to { opacity:1;transform:none; } }
-    .topbar { height:60px;flex:none;display:grid;grid-template-columns:54px 1fr 54px;align-items:center;padding:calc(6px + var(--safe-top)) 14px 4px;border-bottom:1px solid var(--line); }
+    .topbar { height:calc(60px + var(--safe-top));flex:none;display:grid;grid-template-columns:54px 1fr 54px;align-items:center;padding:calc(6px + var(--safe-top)) 14px 4px;border-bottom:1px solid var(--line); }
     .top-icon { width:40px;height:40px;border:0;border-radius:14px;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--ink);transition:background .16s,transform .16s; }
     .top-icon:hover { background:var(--surface-2);transform:scale(1.04); }
     .top-icon svg { width:20px;height:20px; }
@@ -619,7 +619,7 @@
     .voice-top-title strong { display:block; color:var(--title); font-size:17px; font-weight:680; letter-spacing:.04em; }
     .voice-top-title small { display:block; margin-top:4px; color:var(--muted); font-size:10px; }
     .voice-stage { position:relative; min-height:0; flex:1; overflow:hidden; padding:0 16px; display:flex; flex-direction:column; }
-    .voice-orb-row { position:relative; min-height:0; flex:1 1 0%; transition:flex-basis .42s cubic-bezier(.22,.78,.25,1),flex-grow .42s cubic-bezier(.22,.78,.25,1),flex-shrink .42s cubic-bezier(.22,.78,.25,1); }
+    .voice-orb-row { position:relative; min-height:0; flex:1 1 0%; touch-action:none; transition:flex-basis .42s cubic-bezier(.22,.78,.25,1),flex-grow .42s cubic-bezier(.22,.78,.25,1),flex-shrink .42s cubic-bezier(.22,.78,.25,1); }
     .ai-orb-renderer { position:absolute; z-index:1; left:50%; top:calc(50% - 72px); width:min(60vw,232px); aspect-ratio:1; border-radius:50%; transform:translate(-50%,-50%); overflow:visible; isolation:isolate; background:radial-gradient(circle at 35% 26%,#eafaff 0 6%,#7fd4e8 25%,#1f6f9c 60%,#071a2b 100%); box-shadow:0 12px 30px rgba(7,26,43,.17),0 0 0 1px rgba(20,184,166,.22); transition:width .42s cubic-bezier(.22,.78,.25,1),top .42s cubic-bezier(.22,.78,.25,1),transform .42s cubic-bezier(.22,.78,.25,1),filter .28s,box-shadow .28s; }
     .ai-orb-renderer::before,.ai-orb-renderer::after { content:""; position:absolute; z-index:2; inset:-7px; border:1px solid rgba(20,184,166,.36); border-radius:50%; box-shadow:0 0 0 3px rgba(255,255,255,.58); pointer-events:none; transition:inset .28s,opacity .28s; }
     .ai-orb-renderer::after { opacity:0; box-shadow:none; }
@@ -640,7 +640,7 @@
     .voice-state-label { position:absolute; left:50%; top:calc(50% + 74px); z-index:2; max-width:calc(100% - 24px); color:var(--muted); font-size:11px; line-height:1.4; text-align:center; white-space:nowrap; transform:translateX(-50%); transition:top .42s cubic-bezier(.22,.78,.25,1),opacity .2s; }
     .voice-hint { position:absolute; left:50%; top:calc(50% + 104px); z-index:2; padding:5px 10px; border-radius:99px; background:var(--surface-2); color:var(--muted); font-size:10px; opacity:0; pointer-events:none; transform:translate(-50%,5px); transition:opacity .22s,transform .22s; }
     .voice-hint.visible { opacity:1; transform:translate(-50%,0); }
-    .voice-transcript { width:min(100%,640px); min-height:0; max-height:0; flex:0 1 0%; margin:0 auto; padding:0 12px; border:0; border-radius:0; background:transparent; overflow:auto; overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; display:flex; flex-direction:column; align-items:flex-start; gap:15px; visibility:hidden; opacity:0; transform:translateY(14px); color:var(--title); font-size:14px; line-height:1.58; transition:flex-basis .42s cubic-bezier(.22,.78,.25,1),max-height .42s cubic-bezier(.22,.78,.25,1),padding .42s cubic-bezier(.22,.78,.25,1),opacity .26s,transform .42s cubic-bezier(.22,.78,.25,1),visibility .26s; }
+    .voice-transcript { width:min(100%,640px); min-height:0; max-height:0; flex:0 1 0%; margin:0 auto; padding:0 12px; border:0; border-radius:0; background:transparent; overflow:auto; overscroll-behavior:contain; touch-action:pan-y; scrollbar-width:thin; scrollbar-color:var(--line-strong) transparent; display:flex; flex-direction:column; align-items:flex-start; gap:15px; visibility:hidden; opacity:0; transform:translateY(14px); color:var(--title); font-size:14px; line-height:1.58; transition:flex-basis .42s cubic-bezier(.22,.78,.25,1),max-height .42s cubic-bezier(.22,.78,.25,1),padding .42s cubic-bezier(.22,.78,.25,1),opacity .26s,transform .42s cubic-bezier(.22,.78,.25,1),visibility .26s; }
     .voice-transcript-empty { margin:auto; color:var(--muted); font-size:12px; text-align:center; }
     .voice-transcript-line { width:100%; max-width:min(100%,560px); align-self:flex-start; flex:none; padding:3px 0; text-align:left; opacity:.82; transition:opacity .2s,font-size .2s; }
     .voice-transcript-line small { display:block; margin-bottom:3px; color:var(--muted); font-size:10px; text-align:left; }
@@ -1028,7 +1028,10 @@
         });
         $$(".screen-nav [data-screen]").forEach(b=>b.setAttribute("aria-current",String(b.dataset.screen===currentScreen?"page":"false")));
       }
+      function isMiyinRenderSurfaceVisible(element){const overlay=document.querySelector("#voice-overlay"),voiceOpen=overlay?.getAttribute("aria-hidden")==="false",voiceElement=element.closest("#voice-overlay");if(voiceElement)return voiceOpen;const screen=element.closest(".screen");return !voiceOpen&&(!screen||screen.classList.contains("active"))}
+      function renderPixelRatio(){const dpr=window.devicePixelRatio||1;return Math.min(window.matchMedia("(max-width: 600px)").matches?1.25:2,dpr)}
       async function initWheelGlass(){
+        if(window.matchMedia("(max-width: 600px)").matches){window.__miyinWheelShaderStatus="css";return}
         const canvases=$$(".wheel-glass");window.__miyinWheelShaderStatus="loading";
         if(!canvases.length||!window.WebGLRenderingContext){window.__miyinWheelShaderStatus="fallback";return}
         let fragmentSource;
@@ -1062,17 +1065,17 @@
             const buffer=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buffer);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);const position=gl.getAttribLocation(program,"a_position");gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
             const uniforms={};["u_resolution","u_time","u_sdf","u_backdrop"].forEach(name=>uniforms[name]=gl.getUniformLocation(program,name));
             gl.activeTexture(gl.TEXTURE0);gl.uniform1i(uniforms.u_sdf,0);buildTexture(gl,128,128,"sdf");gl.activeTexture(gl.TEXTURE1);gl.uniform1i(uniforms.u_backdrop,1);buildTexture(gl,128,128,"backdrop");
-            let visible=false,running=false,raf=0;const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            const draw=now=>{const width=Math.max(1,Math.round(canvas.clientWidth*Math.min(2,window.devicePixelRatio||1))),height=Math.max(1,Math.round(canvas.clientHeight*Math.min(2,window.devicePixelRatio||1)));if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height)}gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(uniforms.u_resolution,width,height);gl.uniform1f(uniforms.u_time,reduced?0:now/1000);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);if(visible&&!document.hidden&&!reduced)raf=requestAnimationFrame(draw);else running=false};
-            const start=()=>{if(running)return;running=true;raf=requestAnimationFrame(draw)};const stop=()=>{visible=false;if(raf)cancelAnimationFrame(raf);running=false;draw(performance.now())};
-            if("IntersectionObserver" in window){const observer=new IntersectionObserver(entries=>{visible=entries.some(entry=>entry.isIntersecting);if(visible)start();else stop()},{threshold:.05});observer.observe(canvas)}else{visible=true;start()}
-            document.addEventListener("visibilitychange",()=>{if(document.hidden)stop();else{visible=true;start()}});if(reduced)draw(0);rendered++;
+            let intersecting=false,visible=false,running=false,raf=0;const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+            const draw=now=>{if(!visible){running=false;return}const ratio=renderPixelRatio(),width=Math.max(1,Math.round(canvas.clientWidth*ratio)),height=Math.max(1,Math.round(canvas.clientHeight*ratio));if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height)}gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(uniforms.u_resolution,width,height);gl.uniform1f(uniforms.u_time,reduced?0:now/1000);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);if(visible&&!document.hidden&&!reduced)raf=requestAnimationFrame(draw);else running=false};
+            const start=()=>{if(running)return;running=true;raf=requestAnimationFrame(draw)};const stop=()=>{if(raf)cancelAnimationFrame(raf);raf=0;running=false};const refresh=()=>{visible=intersecting&&!document.hidden&&isMiyinRenderSurfaceVisible(canvas);if(visible)start();else stop()};
+            if("IntersectionObserver" in window){const observer=new IntersectionObserver(entries=>{intersecting=entries.some(entry=>entry.isIntersecting);refresh()},{threshold:.05});observer.observe(canvas)}else{intersecting=true;refresh()}
+            window.addEventListener("miyin:surface-visibility-change",refresh);document.addEventListener("visibilitychange",refresh);if(reduced)refresh();rendered++;
           }catch(error){console.error("[miyin wheel shader compile]",error)}
         });
         window.__miyinWheelShaderStatus=rendered?"ready":"fallback";
       }
       function setMode(index){currentMode=(index+modes.length)%modes.length;showScreen(modes[currentMode].screen)}
-      function showScreen(name){const screen=$("#screen-"+name);if(!screen)return;const modeIndex=modes.findIndex(mode=>mode.screen===name);if(modeIndex>=0)currentMode=modeIndex;else if(name==="face")currentMode=0;currentScreen=name;$$('.screen').forEach(s=>s.classList.toggle('active',s===screen));$$('.screen-nav [data-screen]').forEach(b=>{if(b.dataset.screen===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(name==="history")renderHistory();if(name==="settings")syncSettings();if(name==="chat"){renderChatConversation(getConversation(activeConversationId));setTimeout(()=>$("#chat-messages").scrollTop=$("#chat-messages").scrollHeight,30)}renderWheel()}
+      function showScreen(name){const screen=$("#screen-"+name);if(!screen)return;const modeIndex=modes.findIndex(mode=>mode.screen===name);if(modeIndex>=0)currentMode=modeIndex;else if(name==="face")currentMode=0;currentScreen=name;$$('.screen').forEach(s=>s.classList.toggle('active',s===screen));$$('.screen-nav [data-screen]').forEach(b=>{if(b.dataset.screen===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(name==="history")renderHistory();if(name==="settings")syncSettings();if(name==="chat"){renderChatConversation(getConversation(activeConversationId));setTimeout(()=>$("#chat-messages").scrollTop=$("#chat-messages").scrollHeight,30)}renderWheel();window.dispatchEvent(new Event("miyin:surface-visibility-change"))}
       function syncSettings(){const name=load("username","本地用户");$("#profile-name").textContent=name;const model=load("model","OpenAI · GPT 系列（预览）");$("#model-summary").textContent=model;const nameEl=$("#theme-current");if(nameEl)nameEl.textContent=themeNames[theme]||"薄荷全息";const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled))}
       function openModal(title,copy,options=[],buttons=[]){previousFocus=document.activeElement;$("#modal-title").textContent=title;$("#modal-copy").textContent=copy||"";$("#modal-options").innerHTML="";options.forEach(opt=>{const b=document.createElement("button"),label=document.createElement("span");b.type="button";b.className="modal-option";b.dataset.modalAction=opt.action||"";b.dataset.value=opt.value||"";label.textContent=opt.label;b.appendChild(label);if(opt.hint){const hint=document.createElement("small");hint.textContent=opt.hint;b.appendChild(hint)}$("#modal-options").appendChild(b)});$("#modal-footer").innerHTML="";buttons.forEach(btn=>{const b=document.createElement("button");b.type="button";b.className=btn.className||"";b.dataset.modalAction=btn.action||"close";b.textContent=btn.label;$("#modal-footer").appendChild(b)});$("#modal-scrim").classList.add("open");setTimeout(()=>$(".modal-close").focus(),10)}
       function closeModal(){ $("#modal-scrim").classList.remove("open");if(previousFocus&&previousFocus.focus)previousFocus.focus() }
@@ -1325,32 +1328,33 @@
               distanceMap[y*size+x]=Math.round((.5+signedDistance*.5)*255);
             }
             const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,size,size,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,distanceMap);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-            gl.uniform1i(uniforms.u_shape,0);gl.uniform3fv(uniforms.u_color1,colorVector("#071a2b"));gl.uniform3fv(uniforms.u_color2,colorVector("#1f6f9c"));gl.uniform3fv(uniforms.u_color3,colorVector("#7fd4e8"));gl.uniform3fv(uniforms.u_color4,colorVector("#eafaff"));gl.uniform1f(uniforms.u_gradientAngle,200);gl.uniform1f(uniforms.u_detail,.2);gl.uniform1f(uniforms.u_edgeWarp,1);gl.uniform1f(uniforms.u_rim,.22);gl.uniform3fv(uniforms.u_rimColor,colorVector("#cfe6ff"));gl.uniform1f(uniforms.u_spread,.5);
-            let visible=button.closest(".screen")?.classList.contains("active")||!button.closest(".screen"),running=false,raf=0,startTime=0;
+            gl.uniform1i(uniforms.u_shape,0);gl.uniform3fv(uniforms.u_color1,colorVector("#071a2b"));gl.uniform3fv(uniforms.u_color2,colorVector("#1f6f9c"));gl.uniform3fv(uniforms.u_color3,colorVector("#7fd4e8"));gl.uniform3fv(uniforms.u_color4,colorVector("#eafaff"));gl.uniform1f(uniforms.u_gradientAngle,200);gl.uniform1f(uniforms.u_detail,window.matchMedia("(max-width: 600px)").matches ? 0.14 : 0.2);gl.uniform1f(uniforms.u_edgeWarp,1);gl.uniform1f(uniforms.u_rim,.22);gl.uniform3fv(uniforms.u_rimColor,colorVector("#cfe6ff"));gl.uniform1f(uniforms.u_spread,.5);
+            let intersecting=false,visible=false,running=false,raf=0,startTime=0;
             const prefersReduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
             const draw=now=>{
-              const width=Math.max(1,Math.round(canvas.clientWidth*Math.min(2,window.devicePixelRatio||1))),height=Math.max(1,Math.round(canvas.clientHeight*Math.min(2,window.devicePixelRatio||1)));
+              if(!visible){running=false;return}const ratio=renderPixelRatio(),width=Math.max(canvas.width,1,Math.round(canvas.clientWidth*ratio)),height=Math.max(canvas.height,1,Math.round(canvas.clientHeight*ratio));
               if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height)}
-              gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(uniforms.u_resolution,width,height);
+              gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(uniforms.u_resolution,canvas.width,canvas.height);
               const active=button.classList.contains("is-listening")||button.classList.contains("is-thinking")||button.classList.contains("is-speaking"),elapsed=prefersReduced?0:(now-startTime)/1000;
               gl.uniform1f(uniforms.u_time,elapsed);gl.uniform1f(uniforms.u_speed,active ? (button.classList.contains("is-thinking") ? .45 : .78) : .2);gl.uniform1f(uniforms.u_turbulence,active ? .92 : .55);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
               if(visible&&!document.hidden&&!prefersReduced)raf=requestAnimationFrame(draw);else running=false;
             };
             const start=()=>{if(running)return;running=true;if(!startTime)startTime=performance.now();raf=requestAnimationFrame(draw)};
-            const stop=()=>{visible=false;if(raf)cancelAnimationFrame(raf);running=false;draw(performance.now())};
-            if("IntersectionObserver" in window){const observer=new IntersectionObserver(entries=>{visible=entries.some(entry=>entry.isIntersecting);if(visible)start();else stop()},{threshold:.05});observer.observe(button)}else start();
-            document.addEventListener("visibilitychange",()=>{if(document.hidden)stop();else{visible=true;start()}});
-            if(prefersReduced)draw(0);
+            const stop=()=>{if(raf)cancelAnimationFrame(raf);raf=0;running=false};const refresh=()=>{visible=intersecting&&!document.hidden&&isMiyinRenderSurfaceVisible(button);if(visible)start();else stop()};
+            if("IntersectionObserver" in window){const observer=new IntersectionObserver(entries=>{intersecting=entries.some(entry=>entry.isIntersecting);refresh()},{threshold:.05});observer.observe(button)}else{intersecting=true;refresh()}
+            window.addEventListener("miyin:surface-visibility-change",refresh);document.addEventListener("visibilitychange",refresh);
+            if(prefersReduced)refresh();
             button.classList.remove("shader-fallback");rendered++;
           }catch(error){button.classList.add("shader-fallback");console.error("[miyin shader compile]",error)}
         });
         window.__miyinShaderStatus=rendered?"ready":"fallback";
       }
-      syncOrbStyle();const savedTheme=load("theme","mint-holographic");setTheme(themeNames[savedTheme]?savedTheme:"mint-holographic",true);updateLanguages();renderChatConversation(getConversation(activeConversationId));const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled));renderWheel();renderHistory();initAuroraButtons();initWheelGlass();
+      window.addEventListener("miyin:v5-renderers-ready",initAuroraButtons,{once:true});syncOrbStyle();const savedTheme=load("theme","mint-holographic");setTheme(themeNames[savedTheme]?savedTheme:"mint-holographic",true);updateLanguages();renderChatConversation(getConversation(activeConversationId));const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled));renderWheel();renderHistory();initWheelGlass();
       $$(".screen-nav [data-screen]").forEach(b=>{if(b.dataset.screen==="home")b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
     })();
   </script>
   <script src="./miyin-v5.js"></script>
   <script src="./miyin-orb-appearance.js?v=5-orb-settings-r2"></script>
+  <script>window.dispatchEvent(new Event("miyin:v5-renderers-ready"));</script>
 </body>
 </html>

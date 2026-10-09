@@ -204,7 +204,7 @@
     const wasOpen = voiceOverlay.getAttribute("aria-hidden") === "false";
     const open = voiceState !== "idle";
     voiceOverlay.setAttribute("aria-hidden", String(!open));
-    if (open && !$(".voice-experience", panel)) {
+    if (!$(".voice-experience", panel)) {
       const orb = $(".ai-orb-renderer", panel);
       panel.innerHTML = voicePanelMarkup();
       if (orb) $(".voice-orb-slot", panel).append(orb);
@@ -214,6 +214,7 @@
       panel.dataset.voiceBuilt = "true";
     }
     updateVoiceControls();
+    if (wasOpen !== open) window.dispatchEvent(new Event("miyin:surface-visibility-change"));
     if (open && !wasOpen) {
       panel.focus();
       if (!load("voice-hint-seen", false)) {
@@ -341,33 +342,66 @@
     renderVoiceFiles();
     if (selected.length) notify("已添加附件 · 仅在本地预览，不会上传");
   }
-  function onVoicePointerDown(event) {
-    if (voiceState === "idle" || event.target.closest(".voice-controls, button, input, textarea, select")) return;
-    const transcript = event.target.closest(".voice-transcript");
-    if (transcript && (voiceDisplayMode !== "captions" || transcript.scrollTop > 0)) return;
-    voiceOverlay.dataset.swipeStartX = String(event.clientX);
-    voiceOverlay.dataset.swipeStartY = String(event.clientY);
+  function canStartVoiceSwipe(target) {
+    if (!target || voiceState === "idle" || target.closest(".voice-controls, button, input, textarea, select")) return false;
+    const transcript = target.closest(".voice-transcript");
+    if (transcript && (voiceDisplayMode !== "captions" || transcript.scrollTop > 0)) return false;
+    return true;
   }
-  function onVoicePointerUp(event) {
-    if (!voiceOverlay.dataset.swipeStartY) return;
-    const startX = Number(voiceOverlay.dataset.swipeStartX || 0);
-    const startY = Number(voiceOverlay.dataset.swipeStartY || 0);
-    delete voiceOverlay.dataset.swipeStartX;
-    delete voiceOverlay.dataset.swipeStartY;
-    const deltaX = event.clientX - startX;
-    const deltaY = event.clientY - startY;
+  function onVoiceSwipeEnd(startX, startY, clientX, clientY) {
+    if (!Number.isFinite(startX) || !Number.isFinite(startY)) return;
+    const deltaX = clientX - startX;
+    const deltaY = clientY - startY;
     if (Math.abs(deltaY) < 48 || Math.abs(deltaY) < Math.abs(deltaX) * 1.15) return;
     if (deltaY < 0 && voiceDisplayMode === "immersive") setVoiceDisplayMode("captions");
     else if (deltaY > 0 && voiceDisplayMode === "captions") setVoiceDisplayMode("immersive");
+  }
+  function onVoicePointerDown(event) {
+    if (event.pointerType === "touch" || !canStartVoiceSwipe(event.target)) return;
+    voiceOverlay.dataset.pointerSwipeStartX = String(event.clientX);
+    voiceOverlay.dataset.pointerSwipeStartY = String(event.clientY);
+  }
+  function onVoicePointerUp(event) {
+    if (event.pointerType === "touch" || !voiceOverlay.dataset.pointerSwipeStartY) return;
+    const startX = Number(voiceOverlay.dataset.pointerSwipeStartX);
+    const startY = Number(voiceOverlay.dataset.pointerSwipeStartY);
+    delete voiceOverlay.dataset.pointerSwipeStartX;
+    delete voiceOverlay.dataset.pointerSwipeStartY;
+    onVoiceSwipeEnd(startX, startY, event.clientX, event.clientY);
+  }
+  function onVoiceTouchStart(event) {
+    const touch = event.changedTouches && event.changedTouches[0];
+    if (!touch) return;
+    const target = document.elementFromPoint(touch.clientX, touch.clientY) || event.target;
+    if (!canStartVoiceSwipe(target)) return;
+    voiceOverlay.dataset.touchSwipeStartX = String(touch.clientX);
+    voiceOverlay.dataset.touchSwipeStartY = String(touch.clientY);
+  }
+  function onVoiceTouchEnd(event) {
+    const touch = event.changedTouches && event.changedTouches[0];
+    if (!touch || !voiceOverlay.dataset.touchSwipeStartY) return;
+    const startX = Number(voiceOverlay.dataset.touchSwipeStartX);
+    const startY = Number(voiceOverlay.dataset.touchSwipeStartY);
+    delete voiceOverlay.dataset.touchSwipeStartX;
+    delete voiceOverlay.dataset.touchSwipeStartY;
+    onVoiceSwipeEnd(startX, startY, touch.clientX, touch.clientY);
+  }
+  function onVoicePointerCancel() {
+    delete voiceOverlay.dataset.pointerSwipeStartX;
+    delete voiceOverlay.dataset.pointerSwipeStartY;
+  }
+  function onVoiceTouchCancel() {
+    delete voiceOverlay.dataset.touchSwipeStartX;
+    delete voiceOverlay.dataset.touchSwipeStartY;
   }
   function bindVoiceInteractions() {
     if (!voiceOverlay) return;
     voiceOverlay.addEventListener("pointerdown", onVoicePointerDown);
     voiceOverlay.addEventListener("pointerup", onVoicePointerUp);
-    voiceOverlay.addEventListener("pointercancel", () => {
-      delete voiceOverlay.dataset.swipeStartX;
-      delete voiceOverlay.dataset.swipeStartY;
-    });
+    voiceOverlay.addEventListener("pointercancel", onVoicePointerCancel);
+    voiceOverlay.addEventListener("touchstart", onVoiceTouchStart, { passive: true });
+    voiceOverlay.addEventListener("touchend", onVoiceTouchEnd, { passive: true });
+    voiceOverlay.addEventListener("touchcancel", onVoiceTouchCancel, { passive: true });
     voiceOverlay.addEventListener("submit", event => {
       if (event.target.id !== "voice-composer") return;
       event.preventDefault();
@@ -392,6 +426,7 @@
     });
   }
   bindVoiceInteractions();
+  renderVoiceSession();
   window.addEventListener("miyin-v5:start-voice-session", startVoiceSession);
 
   function shortLanguage(value) {
