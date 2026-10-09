@@ -336,6 +336,15 @@
     const trigger = $("[data-action='chat-voice']");
     if (trigger) trigger.focus();
   }
+  function requestEndVoiceSession() {
+    if (voiceState === "idle") return;
+    window.dispatchEvent(new CustomEvent("miyin-v5:request-end-voice-session"));
+  }
+  window.addEventListener("miyin-v5:confirm-end-voice-session", () => {
+    if (voiceState === "idle") return;
+    endVoiceSession();
+    notify("语音对话已结束");
+  });
   function addVoiceFiles(fileList) {
     const selected = Array.from(fileList || []).map(file => ({ name: file.name, type: file.type || "application/octet-stream" }));
     voiceFiles = voiceFiles.concat(selected).slice(0, 4);
@@ -763,7 +772,7 @@
       if (action === "toggle-captions") { toggleVoiceDisplayMode();return; }
       if (action === "toggle-mic") { toggleMicrophone();return; }
       if (action === "interrupt") { interruptVoiceAnswer();return; }
-      if (action === "end") { endVoiceSession();notify("语音对话已结束");return; }
+      if (action === "end") { requestEndVoiceSession();return; }
       if (action === "toggle-menu") {
         const menu = $("#voice-extension-menu", voiceOverlay);
         const expanded = menu && menu.hidden;
@@ -840,8 +849,8 @@
   });
 
   document.addEventListener("keydown", event => {
-    if (event.key === "Escape") {
-      if (voiceOverlay && voiceOverlay.getAttribute("aria-hidden") === "false") { endVoiceSession();event.preventDefault();return; }
+    if (event.key === "Escape" && !event.defaultPrevented) {
+      if (voiceOverlay && voiceOverlay.getAttribute("aria-hidden") === "false") { requestEndVoiceSession();event.preventDefault();return; }
       if (sheet.classList.contains("open")) closeSheet();
       else closeFloatMenu();
     }

@@ -37,7 +37,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp> {
             }
           },
           onPageFinished: (_) {
-            if (mounted) setState(() => _isLoading = false);
+            unawaited(_markNativeHostReady());
           },
           onWebResourceError: (error) {
             if (error.isForMainFrame == true && mounted) {
@@ -50,6 +50,17 @@ class _MiyinMobileAppState extends State<MiyinMobileApp> {
         ),
       );
     unawaited(_controller.loadFlutterAsset('assets/miyin_v5/index.html'));
+  }
+
+  Future<void> _markNativeHostReady() async {
+    try {
+      await _controller.runJavaScript(
+        'document.documentElement.dataset.nativeHost = "true";',
+      );
+    } catch (error) {
+      debugPrint('Could not apply native viewport insets: $error');
+    }
+    if (mounted) setState(() => _isLoading = false);
   }
 
   @override
