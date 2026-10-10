@@ -166,6 +166,14 @@ void main() {
   p.x *= u_resolution.x / u_resolution.y;
 
   float d = sceneSDF(p);
+  float aa = 2.0 / u_resolution.y;
+  float mask = 1.0 - smoothstep(-aa, aa, d);
+  // Fully transparent pixels cannot affect the final canvas; skip fluid shading there.
+  if (mask <= 0.0) {
+    gl_FragColor = vec4(0.0);
+    return;
+  }
+
   float edge = sign(d) * (1.0 - exp(-abs(d) / EDGE_DEPTH)) * u_edgeWarp;
 
   float angle = radians(u_gradientAngle);
@@ -180,9 +188,6 @@ void main() {
   vec3 color = paletteColor(gradient * 0.3 + t + edge + flow);
   color += smoothstep(0.5, 1.4, warp) * 0.18 * vec3(0.9, 0.95, 1.0);
   color *= 0.78 + 0.22 * smoothstep(1.3, 0.0, warp);
-
-  float aa = 2.0 / u_resolution.y;
-  float mask = 1.0 - smoothstep(-aa, aa, d);
 
   float rim = smoothstep(-RIM_WIDTH, 0.0, d + flow * RIM_BEND);
   color += rim * rim * rim * u_rim * u_rimColor * mask;

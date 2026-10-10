@@ -1,7 +1,11 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+
+import '../../core/adaptive_refresh_coordinator.dart';
 
 /// Mobile host for the approved V5 preview.
 ///
@@ -15,52 +19,152 @@ class MiyinMobileApp extends StatefulWidget {
   State<MiyinMobileApp> createState() => _MiyinMobileAppState();
 }
 
-class _MiyinMobileAppState extends State<MiyinMobileApp> {
+class _MiyinMobileAppState extends State<MiyinMobileApp>
+    with WidgetsBindingObserver {
   late final WebViewController _controller;
+  late final AdaptiveRefreshCoordinator _refreshCoordinator;
   var _isLoading = true;
+  var _nativeHostReady = false;
   String? _loadError;
 
   @override
   void initState() {
     super.initState();
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(const Color(0xFFFFFFFF))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (_) {
-            if (mounted) {
-              setState(() {
-                _isLoading = true;
-                _loadError = null;
-              });
-            }
-          },
-          onPageFinished: (_) {
-            unawaited(_markNativeHostReady());
-          },
-          onWebResourceError: (error) {
-            if (error.isForMainFrame == true && mounted) {
-              setState(() {
-                _isLoading = false;
-                _loadError = error.description;
-              });
-            }
-          },
-        ),
+    WidgetsBinding.instance.addObserver(this);
+    _refreshCoordinator = AdaptiveRefreshCoordinator(
+      requestHighRefresh: _setNativeHighRefresh,
+    );
+    _controller = WebViewController();
+    unawaited(_configureWebView());
+  }
+
+  Future<void> _configureWebView() async {
+    await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
+    await _controller.addJavaScriptChannel(
+      'MiyinPerformance',
+      onMessageReceived: (message) {
+        _refreshCoordinator.onActivitySignal(message.message);
+      },
+    );
+    await _controller.setBackgroundColor(const Color(0xFFFFFFFF));
+    await _controller.setNavigationDelegate(
+      NavigationDelegate(
+        onPageStarted: (_) {
+          if (mounted) {
+            setState(() {
+              _isLoading = true;
+              _loadError = null;
+            });
+          }
+        },
+        onPageFinished: (_) {
+          unawaited(_markNativeHostReady());
+        },
+        onWebResourceError: (error) {
+          if (error.isForMainFrame == true && mounted) {
+            setState(() {
+              _isLoading = false;
+              _loadError = error.description;
+            });
+          }
+        },
+      ),
+    );
+    await _controller.loadFlutterAsset('assets/miyin_v5/index.html');
+  }
+
+  Future<void> _setNativeHighRefresh(bool active) async {
+    if (defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      await const MethodChannel('com.miyin.app/performance').invokeMethod<void>(
+        'setHighRefresh',
+        <String, Object>{'active': active},
       );
-    unawaited(_controller.loadFlutterAsset('assets/miyin_v5/index.html'));
+    } on MissingPluginException catch (error) {
+      debugPrint('High refresh request is unavailable: $error');
+    } on PlatformException catch (error) {
+      debugPrint('High refresh request failed: ${error.message}');
+    }
   }
 
   Future<void> _markNativeHostReady() async {
     try {
-      await _controller.runJavaScript(
-        'document.documentElement.dataset.nativeHost = "true";',
-      );
+      await _controller.runJavaScript('''
+          document.documentElement.dataset.nativeHost = "true";
+          (() => {
+            if (window.__miyinRefreshSignalsInstalled) return;
+            window.__miyinRefreshSignalsInstalled = true;
+            let idleTimer = 0;
+            let lastSignalAt = 0;
+            const activePointers = new Set();
+            const post = active => window.MiyinPerformance?.postMessage(active ? "active" : "idle");
+            const scheduleIdle = () => {
+              window.clearTimeout(idleTimer);
+              idleTimer = window.setTimeout(() => {
+                if (activePointers.size === 0 && !window.__miyinVoiceRefreshActive) post(false);
+              }, 1100);
+            };
+            const markActive = () => {
+              const now = performance.now();
+              if (now - lastSignalAt >= 120) {
+                post(true);
+                lastSignalAt = now;
+              }
+              scheduleIdle();
+            };
+            document.addEventListener("pointerdown", event => {
+              activePointers.add(event.pointerId);
+              window.__miyinPointerInteractionActive = true;
+              window.clearTimeout(idleTimer);
+              post(true);
+            }, {capture: true, passive: true});
+            const releasePointer = event => {
+              activePointers.delete(event.pointerId);
+              window.__miyinPointerInteractionActive = activePointers.size > 0;
+              if (activePointers.size === 0) scheduleIdle();
+            };
+            document.addEventListener("pointerup", releasePointer, {capture: true, passive: true});
+            document.addEventListener("pointercancel", releasePointer, {capture: true, passive: true});
+            ["wheel", "keydown", "scroll"].forEach(type => {
+              document.addEventListener(type, markActive, {capture: true, passive: true});
+            });
+            post(false);
+            window.dispatchEvent(new Event("miyin:refresh-state-sync"));
+          })();
+        ''');
+      _nativeHostReady = true;
     } catch (error) {
-      debugPrint('Could not apply native viewport insets: $error');
+      debugPrint('Could not initialize native performance signals: $error');
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(_syncNativeRefreshState());
+    } else if (state == AppLifecycleState.inactive ||
+        state == AppLifecycleState.paused) {
+      _refreshCoordinator.returnToSystemPolicy();
+    }
+  }
+
+  Future<void> _syncNativeRefreshState() async {
+    if (!_nativeHostReady) return;
+    try {
+      await _controller.runJavaScript(
+        'window.dispatchEvent(new Event("miyin:refresh-state-sync"));',
+      );
+    } on PlatformException catch (error) {
+      debugPrint('Could not sync native refresh state: ${error.message}');
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _refreshCoordinator.dispose();
+    super.dispose();
   }
 
   @override

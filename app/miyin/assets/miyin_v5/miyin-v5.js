@@ -112,8 +112,16 @@
   }
   function renderVoiceTranscript() {
     const box = $("#voice-transcript", voiceOverlay);
-    if (!box) return;
+    if (!box || voiceDisplayMode !== "captions") return;
     const stickToLatest = box.scrollHeight - box.scrollTop - box.clientHeight < 44;
+    const streamingParagraph = voiceStreamingActive
+      ? $(".voice-transcript-line.is-streaming p", box)
+      : null;
+    if (streamingParagraph) {
+      streamingParagraph.textContent = voiceStreamingText;
+      if (stickToLatest) box.scrollTop = box.scrollHeight;
+      return;
+    }
     const messages = window.MiyinV5Chat && typeof window.MiyinV5Chat.getActiveMessages === "function"
       ? window.MiyinV5Chat.getActiveMessages()
       : [];
@@ -229,9 +237,20 @@
   function setVoiceSessionState(nextState) {
     if (!voiceStates.includes(nextState)) return false;
     voiceState = nextState;
+    reportNativeRefreshActivity(["listening", "processing", "speaking"].includes(nextState));
     renderVoiceSession();
     return true;
   }
+  function reportNativeRefreshActivity(active) {
+    window.__miyinVoiceRefreshActive = active;
+    if (!window.MiyinPerformance) return;
+    if (active || !window.__miyinPointerInteractionActive) {
+      window.MiyinPerformance.postMessage(active ? "active" : "idle");
+    }
+  }
+  window.addEventListener("miyin:refresh-state-sync", () => {
+    reportNativeRefreshActivity(["listening", "processing", "speaking"].includes(voiceState));
+  });
   function applyVoiceEvent(eventName) {
     const nextState = window.MiyinV5Core.transitionVoiceSession(voiceState, eventName);
     setVoiceSessionState(nextState);
