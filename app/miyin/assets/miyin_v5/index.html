@@ -16,7 +16,7 @@
     button,input,textarea { font:inherit; }
     button,input,textarea,a,[role="button"] { -webkit-tap-highlight-color:transparent; }
     button { color:inherit; }
-    .workspace { min-height:100dvh; display:grid; grid-template-columns:238px minmax(460px,1fr); gap:30px; padding:30px; }
+    .workspace { min-height:100vh; min-height:100dvh; display:grid; grid-template-columns:238px minmax(460px,1fr); gap:30px; padding:30px; }
     .preview-nav { align-self:start; position:sticky; top:28px; padding:20px 14px 16px; border:1px solid #ffffffa8; border-radius:22px; background:#f7f7f3cc; backdrop-filter:blur(16px); box-shadow:0 12px 40px rgba(30,35,31,.07); }
     .nav-brand { display:flex; align-items:center; gap:11px; padding:1px 8px 20px; border-bottom:1px solid #dedfda; }
     .brand-mark { width:36px; height:36px; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(145deg,#2c3537,#101617); box-shadow:inset 0 1px 1px #ffffff54; }
@@ -31,7 +31,7 @@
     .screen-nav button[aria-current="page"] { background:#fff;color:#202522;box-shadow:0 2px 10px #2223; }
     .nav-note { margin:18px 8px 0;padding-top:14px;border-top:1px solid #dedfda;color:#808581;font-size:10px;line-height:1.65; }
     .stage { min-width:0;display:grid;place-items:center;position:relative; }
-    .device { width:min(390px,100%);height:min(844px,calc(100dvh - 60px));min-height:680px;position:relative;border:1px solid #ffffffc9;border-radius:32px;overflow:hidden;background:var(--page);box-shadow:0 28px 84px rgba(28,31,29,.2),inset 0 0 0 1px #ffffff74; }
+    .device { width:min(390px,100%);height:min(844px,calc(100vh - 60px));height:min(844px,calc(100dvh - 60px));min-height:680px;position:relative;border:1px solid #ffffffc9;border-radius:32px;overflow:hidden;background:var(--page);box-shadow:0 28px 84px rgba(28,31,29,.2),inset 0 0 0 1px #ffffff74; }
     #app { height:100%;width:100%;position:relative;overflow:hidden;background:var(--page);color:var(--ink);transition:background .24s,color .24s; }
     .screen { display:none;height:100%;width:100%;flex-direction:column;position:absolute;inset:0;background:var(--page); }
     .screen.active { display:flex;animation:screen-in .22s ease-out both; }
@@ -294,7 +294,7 @@
     .file-input { display:none; }
     button:focus-visible,input:focus-visible,textarea:focus-visible { outline:2px solid color-mix(in srgb,var(--accent) 68%,white);outline-offset:2px; }
     button:focus:not(:focus-visible),input:focus:not(:focus-visible),textarea:focus:not(:focus-visible) { outline:none; }
-    @media (max-width:850px) { .workspace { display:block;padding:0;min-height:100dvh; } .preview-nav { display:none; } .stage { min-height:100dvh; } .device { width:100%;height:100dvh;min-height:620px;border:0;border-radius:0;box-shadow:none; } }
+    @media (max-width:850px) { .workspace { display:block;padding:0;min-height:100vh;min-height:100dvh; } .preview-nav { display:none; } .stage { min-height:100vh;min-height:100dvh; } .device { width:100%;height:100vh;height:100dvh;min-height:620px;border:0;border-radius:0;box-shadow:none; } }
     @media (max-width:370px) { .topbar { grid-template-columns:46px 1fr 46px;padding-left:9px;padding-right:9px; } .home-controls { padding-left:8px;padding-right:8px; } .mic-button { width:76px;height:76px; } .mode-wheel { right:7px;width:52px; } .translate-panel { padding-left:11px;padding-right:11px; } .history-content { padding-left:13px;padding-right:13px; } }
     /* V5 refinement: the face-to-face transcript uses only its top divider. */
     #screen-face .topbar { border-bottom:0; }
@@ -308,7 +308,7 @@
     #screen-chat .top-brand strong.chat-title .chat-ai-mark { width:18px; height:18px; }
     #screen-chat .chat-empty { align-self:stretch; max-width:320px; margin:clamp(50px, 15vh, 130px) 8px auto; color:var(--title); text-align:left; font-size:23px; line-height:1.35; }
     #screen-chat .chat-empty small { display:block; max-width:260px; color:var(--muted); font-size:11px; line-height:1.6; }
-    #screen-chat .chat-bubble.user { max-width:86%; padding:10px 14px; border:0; border-radius:18px 18px 5px 18px; background:#f1f5f3; box-shadow:none; }
+    #screen-chat .chat-bubble.user { max-width:86%; padding:10px 14px; border:1px solid var(--line); border-radius:18px 18px 5px 18px; background:var(--selected); color:var(--selected-ink); box-shadow:none; }
     #screen-chat .chat-bubble.assistant { width:100%; max-width:100%; padding:8px 2px 3px; border:0; border-radius:0; background:transparent; box-shadow:none; color:var(--title); font-size:14px; }
     #screen-chat .chat-bubble.assistant.failed { color:var(--danger); }
     #screen-chat .message-context { align-self:flex-start; justify-content:flex-start; max-width:100%; margin:0; }
@@ -440,6 +440,7 @@
     .wheel-mode:hover,.wheel-mode:focus-visible { z-index:4;opacity:1;transform:scale(1.18);box-shadow:0 4px 11px rgba(13,148,136,.2); }
     .wheel-center { left:5px;top:40px;width:58px;height:62px;overflow:hidden;border:1px solid #ffffffe8;border-radius:22px;background:linear-gradient(145deg,rgba(230,249,243,.86),rgba(255,255,255,.72) 48%,rgba(200,245,232,.82));backdrop-filter:blur(18px) saturate(1.12);box-shadow:0 5px 14px #56636a33,inset 0 1px 0 #fff;isolation:isolate;transition:width .2s,height .2s,left .2s,top .2s,transform .2s,box-shadow .2s; }
     .wheel-center::before { content:"";position:absolute;z-index:-1;inset:0;background:radial-gradient(ellipse at 18% 20%,#7dd3c044,transparent 45%),radial-gradient(ellipse at 84% 72%,#e0bbe433,transparent 44%),radial-gradient(ellipse at 60% 20%,#f5e6a322,transparent 42%);opacity:.78;animation:wheel-color-drift 7s ease-in-out infinite alternate; }
+    @media (max-width:600px) { .wheel-center::before { animation:none; } }
     .wheel-center::after { content:"";position:absolute;z-index:1;inset:-25% -45%;background:linear-gradient(110deg,transparent 42%,#ffffffcc 49%,#7dd3c04a 53%,#e0bbe43d 57%,transparent 64%);transform:translateX(-75%) rotate(0deg);pointer-events:none;opacity:.72; }
     .wheel-glass { position:absolute;z-index:0;inset:0;width:100%;height:100%;display:block;border-radius:inherit;pointer-events:none; }
     .wheel-center-content { position:relative;z-index:3;display:grid;justify-items:center;align-content:center;pointer-events:none; }
@@ -458,14 +459,14 @@
     @keyframes wheel-rock { 0%,100%{transform:rotate(0) scale(1.08)}25%{transform:rotate(-5deg) scale(1.1)}75%{transform:rotate(5deg) scale(1.1)} }
 
     /* The mic uses the same animated aurora shader and Pen uniform values. */
-    .mic-button { position:relative;justify-self:center;isolation:isolate;overflow:visible;width:91px;height:85px;padding:0;border:0;border-radius:50%;background:#cfcfcf;color:#071a2b;display:grid;place-items:center;cursor:pointer;touch-action:none;box-shadow:0 4px 12px rgba(7,26,43,.15),0 0 0 2px rgba(31,111,156,.25);transition:transform .18s,filter .2s,box-shadow .22s;animation:mic-contour 8s ease-in-out infinite; }
+    .mic-button { position:relative;justify-self:center;isolation:isolate;overflow:visible;width:91px;height:85px;padding:0;border:0;border-radius:50%;background:#cfcfcf;color:#071a2b;display:grid;place-items:center;cursor:pointer;touch-action:none;box-shadow:0 4px 12px rgba(7,26,43,.15),0 0 0 2px rgba(31,111,156,.25);transition:transform .18s,filter .2s,box-shadow .22s; }
     .mic-surface { position:absolute;z-index:1;inset:0;width:100%;height:100%;display:block;pointer-events:none;border-radius:50%; }
     .mic-button.shader-fallback { background:radial-gradient(circle at 38% 27%,#eafaff 0 8%,#7fd4e8 28%,#1f6f9c 62%,#071a2b 100%); }
     .mic-button::before { content:"";position:absolute;z-index:2;inset:0;border:2px solid rgba(7,26,43,.88);border-radius:48% 52% 47% 53% / 52% 46% 54% 48%;box-shadow:inset 0 0 2px #eafaff,0 0 0 1px rgba(31,111,156,.3);pointer-events:none; }
     .mic-button::after { content:"";position:absolute;z-index:0;inset:-7px;border:1px solid rgba(20,184,166,.42);border-radius:50%;opacity:.72;transition:inset .2s,opacity .2s;pointer-events:none; }
     .mic-button svg { position:relative;z-index:3;width:24px;height:24px;color:#071a2b;filter:drop-shadow(0 1px 1px #eafaff8a); }
     .mic-button:hover { transform:scale(1.045) rotate(-2deg);box-shadow:0 8px 18px rgba(7,26,43,.2),0 0 0 3px rgba(20,184,166,.22); }
-    .mic-button.is-listening { transform:scale(1.035);filter:saturate(1.15);box-shadow:0 0 0 5px rgba(20,184,166,.13),0 0 24px rgba(125,211,192,.5); }
+    .mic-button.is-listening { transform:scale(1.035);filter:saturate(1.15);box-shadow:0 0 0 5px rgba(20,184,166,.13),0 0 24px rgba(125,211,192,.5);animation:mic-contour 8s ease-in-out infinite; }
     .mic-button.is-listening::after { inset:-12px;opacity:.9;animation:ring 1.15s ease-out infinite; }
     .mic-button.is-listening::before { animation:voice-outline 1.4s ease-in-out infinite alternate; }
     .mic-button.is-listening svg { transform:scale(1.06); }
@@ -568,6 +569,7 @@
     html[data-theme="night"] #app::before { background:radial-gradient(ellipse 62% 31% at 108% 0%,rgba(69,91,88,.16),transparent 72%),radial-gradient(ellipse 68% 34% at -10% 100%,rgba(47,58,56,.18),transparent 70%); }
     html[data-theme="night"] .avatar-button { background:#303638;border-color:#4c5458;color:#f1f2ef; }
     html[data-theme="night"] .bubble,html[data-theme="night"] .text-entry,html[data-theme="night"] .language-pill,html[data-theme="night"] .face-language,html[data-theme="night"] .record-row,html[data-theme="night"] .video-setting,html[data-theme="night"] .subtitle-lang { border-color:#383d40; }
+    html[data-theme="night"] .face-language { background:rgba(41,45,48,.94);border-color:#485153;box-shadow:0 5px 18px rgba(0,0,0,.2); }
     html[data-theme="night"] .bubble,html[data-theme="night"] .chat-bubble.assistant { background:#222527;color:#f1f2ef; }
     html[data-theme="night"] .bubble.source,html[data-theme="night"] .chat-bubble.user,html[data-theme="night"] .face-turn { background:#303638;color:#f1f2ef;border-color:#485153; }
     html[data-theme="night"] .bubble.translation,html[data-theme="night"] .face-turn .translated { color:#bdc1c0; }
@@ -1312,50 +1314,74 @@
           fragmentSource=original.replace(/float sceneSDF\(vec2 p\)\s*\{[\s\S]*?\n\}/,"float sceneSDF(vec2 p) {\n  vec2 shapeUv = vec2(p.x / (u_resolution.x / u_resolution.y), p.y) + 0.5;\n  float signedDistance = (texture2D(u_shape, shapeUv).r - 0.5) * 2.0;\n  return -signedDistance;\n}");
           if(fragmentSource===original)throw new Error("Could not adapt Pen SDF sampling for the browser canvas");
           if(window.matchMedia("(max-width: 600px)").matches){
-            const mobileFlow="float flowField(vec2 p, float t, out float warp) {\n  float broad = octave(p * 0.92, t * 0.62);\n  float detail = octave(p * 1.38 + vec2(2.1, 3.4), t * 0.44);\n  warp = abs(broad) * 0.7 + abs(detail) * 0.3;\n  return broad * 0.72 + detail * 0.28;\n}";
+            const mobileFlow="float flowField(vec2 p, float t, out float warp) {\n  float horizontal = sin(p.x * 3.0 + t);\n  float vertical = sin(p.y * 3.7 - t * 0.8);\n  float broad = (horizontal + vertical) * 0.5;\n  warp = abs(broad);\n  return broad;\n}";
             fragmentSource=fragmentSource.replace(/float flowField\(vec2 p, float t, out float warp\)\s*\{[\s\S]*?\n\}/,mobileFlow);
+            fragmentSource=fragmentSource.replace(/color \+= \(hash\(gl_FragCoord\.xy\) - 0\.5\) \* GRAIN_AMOUNT;/,"");
           }
         }catch(error){window.__miyinShaderStatus="fallback: "+error.message;console.error("[miyin shader fetch/patch]",error);setFallback();return}
         const vertexSource="attribute vec2 a_position;void main(){gl_Position=vec4(a_position,0.0,1.0);}";
         const colorVector=hex=>new Float32Array([parseInt(hex.slice(1,3),16)/255,parseInt(hex.slice(3,5),16)/255,parseInt(hex.slice(5,7),16)/255]);
         let rendered=0;
         buttons.forEach(button=>{
-          const canvas=$(".mic-surface, .ai-orb-surface",button),gl=canvas&&canvas.getContext("webgl",{alpha:true,antialias:true,premultipliedAlpha:true});
-          if(!canvas||!gl){button.classList.add("shader-fallback");return}
-          const compile=(type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader)||"shader compile failed");return shader};
-          try{
-            const precision=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT),precisionSource=precision&&precision.precision>0?"precision highp float;\n":"precision mediump float;\n",program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vertexSource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,precisionSource+fragmentSource));gl.linkProgram(program);
-            if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program)||"program link failed");
-            gl.useProgram(program);
-            const vertices=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vertices);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
-            const position=gl.getAttribLocation(program,"a_position");gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
-            const uniforms={};["u_resolution","u_time","u_shape","u_speed","u_color1","u_color2","u_color3","u_color4","u_gradientAngle","u_turbulence","u_detail","u_edgeWarp","u_rim","u_rimColor","u_spread"].forEach(name=>uniforms[name]=gl.getUniformLocation(program,name));
-            const size=128,aspect=canvas.clientWidth?canvas.clientWidth/Math.max(1,canvas.clientHeight):1,isOrb=button.classList.contains("ai-orb-renderer"),distanceMap=new Uint8Array(size*size);
-            for(let y=0;y<size;y++)for(let x=0;x<size;x++){
-              const nx=((x+.5)/size-.5)*aspect,ny=(y+.5)/size-.5,angle=Math.atan2(ny,nx),radius=isOrb ? .468+.006*Math.sin(angle*3+.6)+.004*Math.sin(angle*5+1.7) : .465+.018*Math.sin(angle*3+.6)+.012*Math.sin(angle*5+1.7)+.008*Math.sin(angle*2-.8),signedDistance=Math.max(-.6,Math.min(.6,radius-Math.hypot(nx,ny)));
-              distanceMap[y*size+x]=Math.round((.5+signedDistance*.5)*255);
-            }
-            const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,size,size,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,distanceMap);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
-            gl.uniform1i(uniforms.u_shape,0);gl.uniform3fv(uniforms.u_color1,colorVector("#071a2b"));gl.uniform3fv(uniforms.u_color2,colorVector("#1f6f9c"));gl.uniform3fv(uniforms.u_color3,colorVector("#7fd4e8"));gl.uniform3fv(uniforms.u_color4,colorVector("#eafaff"));gl.uniform1f(uniforms.u_gradientAngle,200);gl.uniform1f(uniforms.u_detail,window.matchMedia("(max-width: 600px)").matches ? 0.14 : 0.2);gl.uniform1f(uniforms.u_edgeWarp,1);gl.uniform1f(uniforms.u_rim,.22);gl.uniform3fv(uniforms.u_rimColor,colorVector("#cfe6ff"));gl.uniform1f(uniforms.u_spread,.5);
-            let intersecting=false,visible=false,running=false,raf=0,startTime=0;
-            const prefersReduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-            const draw=now=>{
-              if(!visible){running=false;return}const ratio=renderPixelRatio(),orbSide=Math.max(1,Math.round(Math.min(window.innerWidth*.6,232)*ratio)),width=isOrb?orbSide:Math.max(1,Math.round(canvas.clientWidth*ratio)),height=isOrb?orbSide:Math.max(1,Math.round(canvas.clientHeight*ratio));
-              if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height)}
-              gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(uniforms.u_resolution,canvas.width,canvas.height);
-              const active=button.classList.contains("is-listening")||button.classList.contains("is-thinking")||button.classList.contains("is-speaking"),elapsed=prefersReduced?0:(now-startTime)/1000;
-              gl.uniform1f(uniforms.u_time,elapsed);gl.uniform1f(uniforms.u_speed,active ? (button.classList.contains("is-thinking") ? .45 : .78) : .2);gl.uniform1f(uniforms.u_turbulence,active ? .92 : .55);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
-              if(visible&&!document.hidden&&!prefersReduced)raf=requestAnimationFrame(draw);else running=false;
-            };
-            const start=()=>{if(running)return;running=true;if(!startTime)startTime=performance.now();raf=requestAnimationFrame(draw)};
-            const stop=()=>{if(raf)cancelAnimationFrame(raf);raf=0;running=false};const refresh=()=>{visible=intersecting&&!document.hidden&&isMiyinRenderSurfaceVisible(button);if(visible)start();else stop()};
-            if("IntersectionObserver" in window){const observer=new IntersectionObserver(entries=>{intersecting=entries.some(entry=>entry.isIntersecting);refresh()},{threshold:.05});observer.observe(button)}else{intersecting=true;refresh()}
-            window.addEventListener("miyin:surface-visibility-change",refresh);document.addEventListener("visibilitychange",refresh);
-            if(prefersReduced)refresh();
-            button.classList.remove("shader-fallback");rendered++;
-          }catch(error){button.classList.add("shader-fallback");console.error("[miyin shader compile]",error)}
+          const canvas=$(".mic-surface, .ai-orb-surface",button);
+          if(!canvas){button.classList.add("shader-fallback");return}
+          let gl=null,intersecting=false,visible=false,running=false,raf=0,startTime=0,failed=false,start=()=>{},stop=()=>{};
+          const prefersReduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+          const mobileRendering=window.matchMedia("(max-width: 600px)").matches;
+          const initialize=()=>{
+            if(gl)return true;
+            if(failed)return false;
+            gl=canvas.getContext("webgl",{alpha:true,antialias:true,premultipliedAlpha:true});
+            if(!gl){failed=true;button.classList.add("shader-fallback");return false}
+            const compile=(type,source)=>{const shader=gl.createShader(type);gl.shaderSource(shader,source);gl.compileShader(shader);if(!gl.getShaderParameter(shader,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(shader)||"shader compile failed");return shader};
+            try{
+              const precision=gl.getShaderPrecisionFormat(gl.FRAGMENT_SHADER,gl.HIGH_FLOAT),precisionSource=precision&&precision.precision>0?"precision highp float;\n":"precision mediump float;\n",program=gl.createProgram();gl.attachShader(program,compile(gl.VERTEX_SHADER,vertexSource));gl.attachShader(program,compile(gl.FRAGMENT_SHADER,precisionSource+fragmentSource));gl.linkProgram(program);
+              if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(program)||"program link failed");
+              gl.useProgram(program);
+              const vertices=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,vertices);gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),gl.STATIC_DRAW);
+              const position=gl.getAttribLocation(program,"a_position");gl.enableVertexAttribArray(position);gl.vertexAttribPointer(position,2,gl.FLOAT,false,0,0);
+              const uniforms={};["u_resolution","u_time","u_shape","u_speed","u_color1","u_color2","u_color3","u_color4","u_gradientAngle","u_turbulence","u_detail","u_edgeWarp","u_rim","u_rimColor","u_spread"].forEach(name=>uniforms[name]=gl.getUniformLocation(program,name));
+              const size=128,aspect=canvas.clientWidth?canvas.clientWidth/Math.max(1,canvas.clientHeight):1,isOrb=button.classList.contains("ai-orb-renderer"),distanceMap=new Uint8Array(size*size);
+              for(let y=0;y<size;y++)for(let x=0;x<size;x++){
+                const nx=((x+.5)/size-.5)*aspect,ny=(y+.5)/size-.5,angle=Math.atan2(ny,nx),radius=isOrb ? .468+.006*Math.sin(angle*3+.6)+.004*Math.sin(angle*5+1.7) : .465+.018*Math.sin(angle*3+.6)+.012*Math.sin(angle*5+1.7)+.008*Math.sin(angle*2-.8),signedDistance=Math.max(-.6,Math.min(.6,radius-Math.hypot(nx,ny)));
+                distanceMap[y*size+x]=Math.round((.5+signedDistance*.5)*255);
+              }
+              const texture=gl.createTexture();gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,texture);gl.pixelStorei(gl.UNPACK_ALIGNMENT,1);gl.texImage2D(gl.TEXTURE_2D,0,gl.LUMINANCE,size,size,0,gl.LUMINANCE,gl.UNSIGNED_BYTE,distanceMap);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);
+              gl.uniform1i(uniforms.u_shape,0);gl.uniform3fv(uniforms.u_color1,colorVector("#071a2b"));gl.uniform3fv(uniforms.u_color2,colorVector("#1f6f9c"));gl.uniform3fv(uniforms.u_color3,colorVector("#7fd4e8"));gl.uniform3fv(uniforms.u_color4,colorVector("#eafaff"));gl.uniform1f(uniforms.u_gradientAngle,200);gl.uniform1f(uniforms.u_detail,mobileRendering ? 0.14 : 0.2);gl.uniform1f(uniforms.u_edgeWarp,1);gl.uniform1f(uniforms.u_rim,.22);gl.uniform3fv(uniforms.u_rimColor,colorVector("#cfe6ff"));gl.uniform1f(uniforms.u_spread,.5);
+              const isActive=()=>button.classList.contains("is-listening")||button.classList.contains("is-thinking")||button.classList.contains("is-speaking");
+              const scheduleNextFrame=active=>{
+                if(!visible||document.hidden||prefersReduced){running=false;return}
+                if(mobileRendering&&!active){running=false;return}
+                raf=requestAnimationFrame(draw);
+              };
+              const draw=now=>{
+                raf=0;
+                if(!visible){running=false;return}
+                const active=isActive();
+                const ratio=renderPixelRatio(),orbSide=Math.max(1,Math.round(Math.min(window.innerWidth*.6,232)*ratio)),width=isOrb?orbSide:Math.max(1,Math.round(canvas.clientWidth*ratio)),height=isOrb?orbSide:Math.max(1,Math.round(canvas.clientHeight*ratio));
+                if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;gl.viewport(0,0,width,height)}
+                gl.clearColor(0,0,0,0);gl.clear(gl.COLOR_BUFFER_BIT);gl.uniform2f(uniforms.u_resolution,width,height);
+                const elapsed=prefersReduced?0:(now-startTime)/1000;
+                gl.uniform1f(uniforms.u_time,elapsed);gl.uniform1f(uniforms.u_speed,active ? (button.classList.contains("is-thinking") ? .45 : .78) : .2);gl.uniform1f(uniforms.u_turbulence,active ? .92 : .55);gl.drawArrays(gl.TRIANGLE_STRIP,0,4);
+                scheduleNextFrame(active);
+              };
+              const stateObserver=new MutationObserver(()=>{
+                if(!visible||document.hidden||!isActive())return;
+                if(!running)start();
+              });
+              stateObserver.observe(button,{attributes:true,attributeFilter:["class"]});
+              start=()=>{if(running)return;running=true;if(!startTime)startTime=performance.now();raf=requestAnimationFrame(draw)};
+              stop=()=>{if(raf)cancelAnimationFrame(raf);raf=0;running=false};
+              button.classList.remove("shader-fallback");rendered++;window.__miyinShaderStatus="ready";
+              return true;
+            }catch(error){failed=true;button.classList.add("shader-fallback");console.error("[miyin shader compile]",error);return false}
+          };
+          const refresh=()=>{visible=intersecting&&!document.hidden&&isMiyinRenderSurfaceVisible(button);if(visible){if(initialize())start()}else stop()};
+          if("IntersectionObserver" in window){const observer=new IntersectionObserver(entries=>{intersecting=entries.some(entry=>entry.isIntersecting);refresh()},{threshold:.05});observer.observe(button)}else{intersecting=true;refresh()}
+          window.addEventListener("miyin:surface-visibility-change",refresh);window.addEventListener("resize",refresh);document.addEventListener("visibilitychange",refresh);
+          if(prefersReduced)refresh();
         });
-        window.__miyinShaderStatus=rendered?"ready":"fallback";
+        if(!rendered)window.__miyinShaderStatus="loading";
       }
       window.addEventListener("miyin:v5-renderers-ready",initAuroraButtons,{once:true});syncOrbStyle();const savedTheme=load("theme","mint-holographic");setTheme(themeNames[savedTheme]?savedTheme:"mint-holographic",true);updateLanguages();renderChatConversation(getConversation(activeConversationId));const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled));renderWheel();renderHistory();initWheelGlass();
       $$(".screen-nav [data-screen]").forEach(b=>{if(b.dataset.screen==="home")b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
