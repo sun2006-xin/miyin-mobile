@@ -59,18 +59,19 @@
     idle: { start: "permission-required" },
     "permission-required": {
       allow: "listening",
+      "submit-text": "processing",
       deny: "permission-denied",
       unavailable: "unavailable",
       cancel: "idle",
       end: "idle",
     },
-    listening: { process: "processing", pause: "paused", error: "error", end: "idle" },
+    listening: { process: "processing", "submit-text": "processing", pause: "paused", error: "error", end: "idle" },
     processing: { respond: "speaking", error: "error", end: "idle" },
-    speaking: { "finish-response": "listening", pause: "paused", error: "error", end: "idle" },
-    paused: { resume: "listening", error: "error", end: "idle" },
-    "permission-denied": { retry: "permission-required", end: "idle" },
-    unavailable: { retry: "permission-required", end: "idle" },
-    error: { retry: "permission-required", end: "idle" },
+    speaking: { "finish-response": "listening", interrupt: "listening", "submit-text": "processing", pause: "paused", error: "error", end: "idle" },
+    paused: { resume: "listening", "submit-text": "processing", error: "error", end: "idle" },
+    "permission-denied": { retry: "permission-required", "submit-text": "processing", end: "idle" },
+    unavailable: { retry: "permission-required", "submit-text": "processing", end: "idle" },
+    error: { retry: "permission-required", "submit-text": "processing", end: "idle" },
   };
 
   function transitionVoiceSession(state, event) {

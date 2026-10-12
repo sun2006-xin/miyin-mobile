@@ -250,6 +250,10 @@
         modal.querySelector(".modal-close")?.click();
         return true;
       }
+      if (document.querySelector("#screen-orb-style.active")) {
+        document.querySelector("#screen-orb-style [data-action='orb-style-back']")?.click();
+        return true;
+      }
       if (document.querySelector("#screen-settings.active")) {
         const settingsBack = document.querySelector("#screen-settings [data-action='settings-back']");
         if (settingsBack) {

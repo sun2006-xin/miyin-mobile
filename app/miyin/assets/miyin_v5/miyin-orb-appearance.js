@@ -15,7 +15,7 @@
     "living-aurora": { name: "生命极光", a: "#14245f", b: "#2675bd", c: "#54d7f2", d: "#8b70e7", warm: "#ffb45e", glow: "#58d9ff", second: "#a77aff" }
   };
   const materials = {
-    "picked-orb": { name: "我选定的原球体", desc: "保留你确认的深海蓝流体核心" },
+    "picked-orb": { name: "默认球体", desc: "觅音内置的深海蓝流体核心" },
     "flow-glass": { name: "深海流光", desc: "动态色流与清透玻璃质感" },
     "miyin-frosted": { name: "雾面晶透", desc: "静态柔雾与浅色折射" },
     toon: { name: "卡通软胶", desc: "静态软胶与清晰轮廓" },
@@ -192,7 +192,7 @@
     if (name) name.textContent = material.name;
     if (copy) copy.textContent = material.desc;
     if (comboNode) comboNode.textContent = combo;
-    if (summary) summary.textContent = materialKey === "picked-orb" ? "觅音原款 · " + combo : material.name + " · " + combo;
+    if (summary) summary.textContent = materialKey === "picked-orb" ? "默认球体" : material.name + " · " + combo;
 
     $$("[data-orb-style-choice]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.orbStyleChoice === materialKey)));
     $$("[data-orb-wave-family-choice]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.orbWaveFamilyChoice === family)));
@@ -260,7 +260,7 @@
       write("orb-wave", "layered");
       write("orb-palette", "deep-sea");
       sync();
-      announce("已恢复觅音原款：V2 环形声波与深海蓝");
+      announce("已恢复默认外观：深海蓝流体球体");
       return;
     }
     if (event.target.closest("[data-orb-style-choice]")) {

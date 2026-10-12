@@ -89,23 +89,30 @@ test('dictionary lookup keeps the submitted query and never fabricates or fetche
   assertDoesNotMatch(handler[1], /MiyinNativeBridge\.request|\bfetch\s*\(/);
 });
 
-test('AI chat keeps a compact composer aligned with the right mode wheel and preserves the two-sided conversation', () => {
+test('AI chat keeps a narrower touch-friendly composer aligned with the right mode wheel', () => {
   assertMatches(appShell, /#screen-chat \.chat-bubble\.user \{[^}]*background:var\(--selected\)/);
   assertMatches(appStyles, /#screen-chat \.chat-bubble\.assistant \{[^}]*border: 1px solid var\(--line\)[^}]*background: var\(--surface\)/);
-  assertMatches(appStyles, /#screen-chat \{[^}]*--chat-compose-side: 12px;[^}]*--chat-wheel-width: 68px;[^}]*--chat-control-gap: 4px;[^}]*--chat-compose-width: min\(calc\(100% - var\(--chat-wheel-width\) - var\(--chat-control-gap\) - 24px\), 300px\)/);
+  assertMatches(appStyles, /#screen-chat \{[^}]*--chat-compose-side: 12px;[^}]*--chat-wheel-width: 68px;[^}]*--chat-control-gap: 8px;[^}]*--chat-wheel-side: 0px;[^}]*--chat-compose-width: min\(calc\(100% - var\(--chat-wheel-width\) - var\(--chat-compose-side\) - var\(--chat-control-gap\) - var\(--chat-wheel-side\)\), 280px\)/);
   assertMatches(appStyles, /#screen-chat \.chat-compose \{[^}]*width: var\(--chat-compose-width\);[^}]*min-width: 0;[^}]*align-self: flex-start;[^}]*margin: 0 0 0 var\(--chat-compose-side\)/);
-  assertMatches(appStyles, /#screen-chat \.mode-wheel \{[^}]*right: var\(--chat-compose-side\);[^}]*width: var\(--chat-wheel-width\)/);
-  assertMatches(appShell, /--chat-compose-side:12px;--chat-wheel-width:68px;--chat-control-gap:4px;--chat-compose-width:min\(calc\(100% - var\(--chat-wheel-width\) - var\(--chat-control-gap\) - 24px\),300px\)/);
-  assertMatches(appShell, /#screen-chat \.mode-wheel \{ right:var\(--chat-compose-side\);width:var\(--chat-wheel-width\); \}/);
+  assertMatches(appStyles, /@media \(max-width: 370px\)[\s\S]*?#screen-chat \{ --chat-wheel-side: 7px; \}/);
+  assertDoesNotMatch(appStyles, /#screen-chat \.mode-wheel/);
+  assertMatches(appShell, /--chat-compose-side:12px;--chat-wheel-width:68px;--chat-control-gap:8px;--chat-wheel-side:0px;--chat-compose-width:min\(calc\(100% - var\(--chat-wheel-width\) - var\(--chat-compose-side\) - var\(--chat-control-gap\) - var\(--chat-wheel-side\)\),280px\)/);
+  assertMatches(appShell, /#screen-chat \{ --chat-wheel-side:7px; \}/);
+  assertMatches(appShell, /\.mode-wheel \{ position:absolute;z-index:5;right:0;bottom:12px;width:68px;height:140px/);
+  assertMatches(appShell, /@media \(max-width:370px\) \{ \.mode-wheel \{ right:7px;width:68px;height:140px; \}/);
+  assertDoesNotMatch(appShell, /#screen-chat \.mode-wheel/);
+  assertMatches(appShell, /class="mode-wheel" data-wheel="translate"/);
+  assertMatches(appShell, /class="mode-wheel" data-wheel="chat"/);
   assertDoesNotMatch(appStyles, /#screen-chat \.chat-compose \{[^}]*min-width: 244px/);
-  assertMatches(appStyles, /#screen-chat \.compose-card textarea \{ height: 20px; min-height: 20px; max-height: 64px; resize: none; overflow-y: hidden; line-height: 1\.35; \}/);
-  assertMatches(appStyles, /@media \(max-width: 370px\)[\s\S]*?#screen-chat \.compose-tools \.model-select \{ max-width: 56px; font-size: 8px; \}[\s\S]*?#screen-chat \.compose-tools \[data-action="chat-voice"\] span \{ display: none; \}/);
+  assertMatches(appStyles, /#screen-chat \.compose-card textarea \{ height: 48px; min-height: 48px; max-height: 104px; padding: 5px 1px; resize: none; overflow-y: hidden; font-size: 15px; line-height: 1\.42; \}/);
+  assertMatches(appStyles, /#screen-chat \.compose-tools button \{ min-height: 44px;[^}]*\}/);
+  assertMatches(appStyles, /@media \(max-width: 370px\)[\s\S]*?#screen-chat \.compose-tools \.model-select \{ max-width: 64px; font-size: 9px; \}[\s\S]*?#screen-chat \.compose-tools \[data-action="chat-voice"\] span \{ display: none; \}/);
   assertMatches(appShell, /<textarea id="chat-input" rows="1"/);
-  assertMatches(appShell, /function resizeChatInput\(\)[^\n]*chatInput\.style\.height="20px"[^\n]*Math\.min\(chatInput\.scrollHeight,64\)/);
+  assertMatches(appShell, /function resizeChatInput\(\)[^\n]*chatInput\.style\.height="48px"[^\n]*Math\.min\(chatInput\.scrollHeight,104\)/);
   assertMatches(appShell, /let chatDraftRevision=0/);
   assertMatches(appShell, /chatInput\?\.addEventListener\("input",\(\)=>\{chatDraftRevision\+\+;resizeChatInput\(\)\}\)/);
-  assertMatches(appStyles, /#screen-chat \.compose-card \{ padding: 1px 5px; border-radius: 14px; \}/);
-  assertMatches(appStyles, /#screen-chat \.compose-tools \{ gap: 2px; \}/);
+  assertMatches(appStyles, /#screen-chat \.compose-card \{ padding: 5px 8px 7px; border-radius: 16px; \}/);
+  assertMatches(appStyles, /#screen-chat \.compose-tools \{ gap: 4px; \}/);
   assertMatches(appShell, /input\.value="";resizeChatInput\(\);renderChatConversation\(getConversation\(conversation\.id\)\)/);
   assertMatches(appShell, /function startNewConversation\(\)[^\n]*resizeChatInput\(\)/);
   assertMatches(previewStyles, /#screen-chat \.chat-compose \{[^}]*width: min\(68%, 320px\);[^}]*align-self: flex-start/);
@@ -320,13 +327,15 @@ test('settings/resource return keeps its original destination and system back cl
     assert.ok(backHandler, 'system back handler must exist');
     assert.ok(backHandler[1].indexOf('#modal-scrim.open') < backHandler[1].indexOf('navigateBackFromResourceArea'));
   }
-  for (const source of [appShell, previewShell]) {
-    assertMatches(source, /restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true/);
-    assertMatches(source, /settingsReturnStack=\[\]/);
-    assertMatches(source, /if\(origin!=="settings"&&!restoringSettingsRoute(?:&&options\.recordSettingsReturn!==false)?\)\{settingsReturnStack\.push\(origin\)/);
-    assertMatches(source, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home"/);
-    assertDoesNotMatch(source, /settingsReturnScreen|isSettingsOwnedRoute/);
-  }
+  assertMatches(appShell, /restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true/);
+  assertMatches(appShell, /settingsReturnStack=\[\]/);
+  assertMatches(appShell, /if\(origin==="orb-style"\)\{if\(!settingsReturnStack\.length\)settingsReturnStack\.push\("home"\)\}else if\(origin!=="settings"&&!restoringSettingsRoute&&options\.recordSettingsReturn!==false\)\{settingsReturnStack\.length=0;settingsReturnStack\.push\(origin\)/);
+  assertMatches(appShell, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home";settingsReturnStack\.length=0;const target=candidate!=="orb-style"/);
+  assertDoesNotMatch(appShell, /settingsReturnScreen|isSettingsOwnedRoute/);
+
+  assertMatches(previewShell, /function showScreen\(name\)\{[\s\S]*?restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true;if\(origin!=="settings"&&!restoringSettingsRoute\)\{settingsReturnStack\.push\(origin\)/);
+  assertMatches(previewShell, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home"/);
+  assertDoesNotMatch(previewShell, /settingsReturnScreen|isSettingsOwnedRoute/);
 
   for (const core of [appCore, previewCore]) {
     const stack = core.createScreenReturnStack();

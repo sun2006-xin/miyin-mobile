@@ -49,7 +49,15 @@
 
   let voiceState = "idle";
   let voiceTimers = [];
-  let lastVoiceExchange = null;
+  let voiceDisplayMode = "immersive";
+  let microphoneEnabled = false;
+  let voiceDraft = "";
+  let voiceFiles = [];
+  let voiceCycle = 0;
+  let voiceHintTimer = 0;
+  let voiceStreamTimer = 0;
+  let voiceStreamingText = "";
+  let voiceStreamingActive = false;
   const voiceOverlay = $("#voice-overlay");
   const voiceStates = ["idle", "permission-required", "unavailable", "listening", "processing", "speaking", "paused", "permission-denied", "error"];
   const escapeHTML = value => String(value).replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[character]));
@@ -57,43 +65,164 @@
   function clearVoiceTimers() {
     voiceTimers.forEach(timer => window.clearTimeout(timer));
     voiceTimers = [];
+    window.clearTimeout(voiceStreamTimer);
+    voiceStreamTimer = 0;
+    voiceCycle += 1;
+  }
+  function commitVoiceStream() {
+    if (!voiceStreamingActive) return "";
+    const text = voiceStreamingText.trim();
+    voiceStreamingActive = false;
+    voiceStreamingText = "";
+    if (text && window.MiyinV5Chat && typeof window.MiyinV5Chat.appendVoiceAssistant === "function") {
+      window.MiyinV5Chat.appendVoiceAssistant(text);
+    }
+    renderVoiceTranscript();
+    return text;
+  }
+  function startVoiceAnswerStream(answer, cycle) {
+    const characters = typeof Intl.Segmenter === "function"
+      ? Array.from(new Intl.Segmenter("zh-CN", { granularity: "grapheme" }).segment(answer), part => part.segment)
+      : Array.from(answer);
+    let cursor = 0;
+    voiceStreamingText = "";
+    voiceStreamingActive = true;
+
+    const revealNext = () => {
+      if (cycle !== voiceCycle || voiceState !== "speaking" || !voiceStreamingActive) return;
+      if (cursor >= characters.length) {
+        commitVoiceStream();
+        voiceTimers.push(window.setTimeout(() => {
+          if (cycle === voiceCycle && voiceState === "speaking") applyVoiceEvent("finish-response");
+        }, 1050));
+        return;
+      }
+
+      const character = characters[cursor++];
+      voiceStreamingText += character;
+      renderVoiceTranscript();
+      const delay = /[，。！？；：,.!?;:]/u.test(character) ? 135 : 31;
+      voiceStreamTimer = window.setTimeout(revealNext, delay);
+    };
+
+    voiceStreamTimer = window.setTimeout(revealNext, 100);
   }
   function voicePanelMarkup() {
-    const states = {
-      "permission-required": { title: "开始 AI 语音对话？", copy: "正式应用会先申请麦克风权限。当前网页只演示界面，不会采集声音或请求模型。", status: "需要你的确认" },
-      unavailable: { title: "当前环境暂不可用", copy: "这里先展示设备不可用时的状态。你仍然可以回到文字聊天继续使用 AI。", status: "语音对话不可用" },
-      listening: { title: "正在聆听", copy: "连续交谈 · 本地预览模拟，不访问麦克风", status: "等待你说话" },
-      processing: { title: "正在整理你的话", copy: "预览正在模拟识别与组织回答", status: "识别中 · 演示状态" },
-      speaking: { title: "AI 正在回答", copy: "这一轮会加入当前 AI 对话记录", status: "回答中 · 演示状态" },
-      paused: { title: "语音对话已暂停", copy: "再次继续后可接着进行语音交谈", status: "麦克风未启动 · 预览" },
-      "permission-denied": { title: "麦克风权限未开启", copy: "你可以重新尝试授权，也可以返回文字聊天；当前网页没有申请任何权限。", status: "权限未授予" },
-      error: { title: "语音对话暂时中断", copy: "可重试语音会话，或保留当前 AI 对话改用文字继续。", status: "需要恢复" },
-    };
-    const view = states[voiceState];
-    if (!view) return "";
-    let transcript = "";
-    if (voiceState === "speaking" && lastVoiceExchange) {
-      transcript = '<div class="voice-transcript"><b>你说：</b>' + escapeHTML(lastVoiceExchange.user) + '<br><b>AI：</b>' + escapeHTML(lastVoiceExchange.assistant) + '</div>';
+    return '<div class="voice-experience"><header class="voice-topbar"><button class="voice-history" type="button" data-screen="history" aria-label="AI 会话历史" title="AI 会话历史"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="voice-top-title"><strong id="voice-title">觅音</strong><small>AI 对话</small></div><button class="voice-profile" type="button" data-screen="settings" aria-label="用户与设置" title="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header><main class="voice-stage"><p class="sr-only" id="voice-copy">AI 实时聊天的单一会话页面。上滑或点按箭头查看字幕，下滑或再次点按箭头收起字幕。</p><div class="voice-orb-row"><button class="voice-caption-toggle" type="button" data-v5-voice-action="toggle-captions" aria-label="上滑查看对话" aria-expanded="false"><svg class="voice-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg><svg class="voice-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 10 6 6 6-6"/></svg></button><div class="voice-orb-slot"></div><div class="voice-state-label" id="voice-state-label" role="status" aria-live="polite"></div><span class="voice-hint" id="voice-hint" aria-hidden="true">上滑查看对话</span></div><div class="voice-transcript" id="voice-transcript" role="log" aria-label="AI 实时聊天字幕" aria-live="off" aria-hidden="true" inert></div></main><footer class="voice-controls"><div class="voice-interrupt-slot"><button class="voice-interrupt" type="button" data-v5-voice-action="interrupt" hidden>点击中断回答</button></div><div class="voice-extension-menu" id="voice-extension-menu" aria-label="更多能力" hidden><button type="button" data-v5-voice-action="camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.4-2h5.2L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.2"/></svg>打开摄像头</button><button type="button" data-v5-voice-action="screen-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4m-3-10 3-3 3 3m-3-3v7"/></svg>共享屏幕</button><button type="button" data-v5-voice-action="image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="1.3"/><path d="m20 15-4-4-7 8"/></svg>发送图片</button><button type="button" data-v5-voice-action="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6m-6 4h6"/></svg>发送文件</button><div class="voice-selected-files" id="voice-selected-files" aria-live="polite"></div></div><form class="voice-controls-row" id="voice-composer"><button class="voice-add" type="button" data-v5-voice-action="toggle-menu" aria-label="更多能力" aria-expanded="false" aria-controls="voice-extension-menu" title="更多能力"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><div class="voice-input-capsule"><input id="voice-input" type="text" enterkeyhint="send" autocomplete="off" placeholder="回复 AI…" aria-label="在 AI 实时聊天中输入消息"><button class="voice-microphone is-muted" type="button" data-v5-voice-action="toggle-mic" aria-label="开启麦克风" aria-pressed="false" title="开启麦克风"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6M4 4l16 16"/></svg></button></div><button class="voice-end" type="button" data-v5-voice-action="end" aria-label="结束 AI 实时会话" title="结束 AI 实时会话"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><input class="voice-file-input" id="voice-image-file" type="file" accept="image/*" aria-label="选择图片"><input class="voice-file-input" id="voice-document-file" type="file" accept=".pdf,.doc,.docx,.txt,.md,.ppt,.pptx,.xls,.xlsx" aria-label="选择文件"></footer></div>';
+  }
+  function renderVoiceTranscript() {
+    const box = $("#voice-transcript", voiceOverlay);
+    if (!box) return;
+    const stickToLatest = box.scrollHeight - box.scrollTop - box.clientHeight < 44;
+    const messages = window.MiyinV5Chat && typeof window.MiyinV5Chat.getActiveMessages === "function"
+      ? window.MiyinV5Chat.getActiveMessages()
+      : [];
+    const recent = messages.slice(-18);
+    const lastAssistant = recent.reduce((index, message, current) => message.role === "assistant" ? current : index, -1);
+    if (!recent.length) {
+      box.innerHTML = '<div class="voice-transcript-empty">你的对话会显示在这里</div>';
+      return;
     }
-    let actions = "";
-    if (voiceState === "permission-required") actions = '<div class="voice-buttons"><button type="button" data-v5-voice-action="cancel">暂不</button><button class="primary" type="button" data-v5-voice-action="allow">继续</button><button type="button" data-v5-voice-action="deny">模拟拒绝权限</button><button type="button" data-v5-voice-action="unavailable">模拟设备不可用</button></div>';
-    if (voiceState === "listening") actions = '<div class="voice-buttons"><button class="primary" type="button" data-v5-voice-action="simulate">模拟说一句</button><button type="button" data-v5-voice-action="pause">暂停</button><button type="button" data-v5-voice-action="simulate-error">模拟异常状态</button><button type="button" data-v5-voice-action="end">结束语音对话</button></div>';
-    if (voiceState === "processing") actions = '<div class="voice-buttons"><button class="wide" type="button" data-v5-voice-action="end">结束语音对话</button></div>';
-    if (voiceState === "speaking") actions = '<div class="voice-buttons"><button type="button" data-v5-voice-action="pause">暂停</button><button class="primary" type="button" data-v5-voice-action="continue">继续聆听</button><button class="wide" type="button" data-v5-voice-action="end">结束语音对话</button></div>';
-    if (voiceState === "paused") actions = '<div class="voice-buttons"><button class="primary" type="button" data-v5-voice-action="resume">继续</button><button type="button" data-v5-voice-action="end">结束语音对话</button></div>';
-    if (["permission-denied", "unavailable", "error"].includes(voiceState)) actions = '<div class="voice-buttons"><button class="primary" type="button" data-v5-voice-action="retry">重新尝试</button><button type="button" data-v5-voice-action="text">返回文字聊天</button></div>';
-    return '<div class="voice-grip" aria-hidden="true"></div><div class="voice-heading"><div class="voice-orb">' + icon.mic + '</div><h2 id="voice-title">' + view.title + '</h2><p id="voice-copy">' + view.copy + '</p></div><div class="voice-live-state" role="status"><i class="voice-pulse"></i><span>' + view.status + '</span></div>' + transcript + actions;
+    box.innerHTML = recent.map((message, index) => {
+      const speaker = message.role === "user" ? "你" : "觅音 AI";
+      const roleClass = message.role === "user" ? "user" : "assistant";
+      const current = !voiceStreamingActive && index === lastAssistant && (voiceState === "speaking" || message.status === "pending");
+      const older = index < recent.length - 4 ? " is-older" : "";
+      const attachments = Array.isArray(message.attachments) && message.attachments.length
+        ? '<small class="voice-message-attachments">' + message.attachments.map(file => escapeHTML(file.name)).join(" · ") + "</small>"
+        : "";
+      return '<article class="voice-transcript-line ' + roleClass + older + (current ? " is-current" : "") + '" data-message-id="' + escapeHTML(message.id) + '"><small>' + speaker + '</small><p>' + escapeHTML(message.text) + '</p>' + attachments + '</article>';
+    }).join("");
+    if (voiceState === "processing") {
+      box.insertAdjacentHTML("beforeend", '<article class="voice-transcript-line assistant is-current"><small>觅音 AI</small><p class="voice-thinking">正在思考…</p></article>');
+    }
+    if (voiceStreamingActive) {
+      box.insertAdjacentHTML("beforeend", '<article class="voice-transcript-line assistant is-current is-streaming"><small>觅音 AI</small><p>' + escapeHTML(voiceStreamingText) + '</p></article>');
+    }
+    if (stickToLatest) box.scrollTop = box.scrollHeight;
+  }
+  function updateVoiceControls() {
+    if (!voiceOverlay) return;
+    voiceOverlay.dataset.voiceState = voiceState;
+    voiceOverlay.dataset.displayMode = voiceDisplayMode;
+    voiceOverlay.dataset.micMuted = String(!microphoneEnabled);
+    const label = $("#voice-state-label", voiceOverlay);
+    const mic = $("[data-v5-voice-action='toggle-mic']", voiceOverlay);
+    const interrupt = $("[data-v5-voice-action='interrupt']", voiceOverlay);
+    const transcript = $("#voice-transcript", voiceOverlay);
+    const captionToggle = $("[data-v5-voice-action='toggle-captions']", voiceOverlay);
+    const orb = $(".ai-orb-renderer", voiceOverlay);
+    const statuses = {
+      "permission-required": "点按麦克风开始语音 · 也可直接输入",
+      unavailable: "语音暂不可用 · 仍可输入文字",
+      listening: microphoneEnabled ? "正在聆听 · 本地交互预览" : "麦克风已静音 · 可继续输入文字",
+      processing: "觅音正在思考",
+      speaking: "觅音正在回答",
+      paused: "语音已暂停 · 点按麦克风继续",
+      "permission-denied": "麦克风未开启 · 仍可输入文字",
+      error: "语音暂时中断 · 仍可输入文字"
+    };
+    if (label) label.textContent = statuses[voiceState] || "";
+    if (mic) {
+      const micLabel = microphoneEnabled ? "静音麦克风" : "开启麦克风";
+      mic.setAttribute("aria-label", micLabel);
+      mic.setAttribute("title", micLabel);
+      mic.setAttribute("aria-pressed", String(microphoneEnabled));
+      mic.classList.toggle("is-muted", !microphoneEnabled);
+      mic.innerHTML = microphoneEnabled
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6M4 4l16 16"/></svg>';
+    }
+    if (interrupt) interrupt.hidden = voiceState !== "speaking";
+    if (transcript) {
+      const hidden = voiceDisplayMode !== "captions";
+      transcript.setAttribute("aria-hidden", String(hidden));
+      transcript.inert = hidden;
+    }
+    if (captionToggle) {
+      const expanded = voiceDisplayMode === "captions";
+      captionToggle.setAttribute("aria-expanded", String(expanded));
+      captionToggle.setAttribute("aria-label", expanded ? "收起字幕，返回沉浸聊天" : "上滑查看对话");
+      captionToggle.title = expanded ? "收起字幕" : "查看对话";
+    }
+    if (orb) {
+      orb.classList.toggle("is-listening", voiceState === "listening");
+      orb.classList.toggle("is-thinking", voiceState === "processing");
+      orb.classList.toggle("is-speaking", voiceState === "speaking");
+    }
+    renderVoiceTranscript();
+    renderVoiceFiles();
+  }
+  function renderVoiceFiles() {
+    const box = $("#voice-selected-files", voiceOverlay);
+    if (!box) return;
+    box.innerHTML = voiceFiles.map((file, index) => '<span class="voice-file-chip"><span class="voice-file-name">' + escapeHTML(file.name) + '</span><button type="button" data-v5-voice-action="remove-file" data-file-index="' + index + '" aria-label="移除 ' + escapeHTML(file.name) + '">×</button></span>').join("");
   }
   function renderVoiceSession() {
     if (!voiceOverlay) return;
-    voiceOverlay.dataset.voiceState = voiceState;
+    const panel = $(".voice-panel", voiceOverlay);
+    const wasOpen = voiceOverlay.getAttribute("aria-hidden") === "false";
     const open = voiceState !== "idle";
     voiceOverlay.setAttribute("aria-hidden", String(!open));
-    const panel = $(".voice-panel", voiceOverlay);
-    panel.innerHTML = voicePanelMarkup();
-    if (open) {
-      const firstAction = $("[data-v5-voice-action]", panel);
-      if (firstAction) window.setTimeout(() => firstAction.focus(), 0);
+    if (open && !$(".voice-experience", panel)) {
+      const orb = $(".ai-orb-renderer", panel);
+      panel.innerHTML = voicePanelMarkup();
+      if (orb) $(".voice-orb-slot", panel).append(orb);
+      const selectedFiles = $("#voice-selected-files", panel);
+      const composer = $("#voice-composer", panel);
+      if (selectedFiles && composer) composer.parentElement.insertBefore(selectedFiles, composer);
+      panel.dataset.voiceBuilt = "true";
+    }
+    updateVoiceControls();
+    if (open && !wasOpen) {
+      panel.focus();
+      if (!load("voice-hint-seen", false)) {
+        const hint = $("#voice-hint", voiceOverlay);
+        if (hint) hint.classList.add("visible");
+        save("voice-hint-seen", true);
+        window.clearTimeout(voiceHintTimer);
+        voiceHintTimer = window.setTimeout(() => $("#voice-hint", voiceOverlay)?.classList.remove("visible"), 3400);
+      }
     }
   }
   function setVoiceSessionState(nextState) {
@@ -108,37 +237,161 @@
     return nextState;
   }
   function startVoiceSession() {
+    if (voiceState !== "idle") { renderVoiceSession(); return; }
     clearVoiceTimers();
-    lastVoiceExchange = null;
+    voiceStreamingText = "";
+    voiceStreamingActive = false;
+    voiceDisplayMode = "immersive";
+    microphoneEnabled = false;
+    voiceFiles = [];
+    voiceDraft = "";
     if (applyVoiceEvent("start") !== "permission-required") return;
   }
-  function pauseVoiceSession() { applyVoiceEvent("pause"); }
-  function resumeVoiceSession() { applyVoiceEvent("resume"); }
+  function setVoiceDisplayMode(mode) {
+    if (mode !== "immersive" && mode !== "captions") return;
+    const openingCaptions = mode === "captions" && voiceDisplayMode !== "captions";
+    voiceDisplayMode = mode;
+    updateVoiceControls();
+    if (openingCaptions) {
+      const transcript = $("#voice-transcript", voiceOverlay);
+      if (transcript) transcript.scrollTop = transcript.scrollHeight;
+    }
+  }
+  function toggleVoiceDisplayMode() {
+    setVoiceDisplayMode(voiceDisplayMode === "immersive" ? "captions" : "immersive");
+  }
+  function toggleMicrophone() {
+    if (voiceState === "permission-required") {
+      microphoneEnabled = true;
+      applyVoiceEvent("allow");
+      notify("麦克风已开启（本地预览）");
+      return;
+    }
+    if (["permission-denied", "unavailable", "error"].includes(voiceState)) {
+      applyVoiceEvent("retry");
+      microphoneEnabled = true;
+      applyVoiceEvent("allow");
+      notify("麦克风已开启（本地预览）");
+      return;
+    }
+    if (voiceState === "paused") applyVoiceEvent("resume");
+    microphoneEnabled = !microphoneEnabled;
+    updateVoiceControls();
+    notify(microphoneEnabled ? "麦克风已开启（本地预览）" : "麦克风已静音");
+  }
+  function previewAnswer(text) {
+    const shortText = String(text).replace(/\s+/gu, " ").trim().slice(0, 20);
+    return "收到，我会围绕“" + shortText + "”继续和你讨论。这是本地预览回复，没有调用模型 API。";
+  }
+  function sendVoiceMessage(text = voiceDraft) {
+    const message = String(text || "").trim();
+    if (voiceState === "idle") return;
+    if (voiceState === "speaking") interruptVoiceAnswer();
+    if (!message && !voiceFiles.length) { $("#voice-input", voiceOverlay)?.focus(); return; }
+    if (voiceState === "processing") { notify("觅音正在思考，请稍候"); return; }
+    clearVoiceTimers();
+    voiceDraft = "";
+    const input = $("#voice-input", voiceOverlay);
+    if (input) input.value = "";
+    const submittedText = message || "请帮我看看这个附件。";
+    const attachments = voiceFiles.map(file => ({ name: file.name, type: file.type }));
+    voiceFiles = [];
+    const chat = window.MiyinV5Chat;
+    if (!chat || typeof chat.appendVoiceUser !== "function") { applyVoiceEvent("error"); return; }
+    chat.appendVoiceUser(submittedText, attachments);
+    applyVoiceEvent("submit-text");
+    const answer = previewAnswer(submittedText);
+    const cycle = voiceCycle;
+    voiceTimers.push(window.setTimeout(() => {
+      if (voiceCycle !== cycle || voiceState !== "processing") return;
+      applyVoiceEvent("respond");
+      startVoiceAnswerStream(answer, cycle);
+    }, 720));
+    const menu = $("#voice-extension-menu", voiceOverlay);
+    const plus = $("[data-v5-voice-action='toggle-menu']", voiceOverlay);
+    if (menu) menu.hidden = true;
+    if (plus) plus.setAttribute("aria-expanded", "false");
+    updateVoiceControls();
+  }
+  function interruptVoiceAnswer() {
+    if (voiceState !== "speaking") return;
+    commitVoiceStream();
+    clearVoiceTimers();
+    applyVoiceEvent("interrupt");
+    notify("已中断觅音回答");
+  }
   function endVoiceSession() {
+    if (voiceState === "speaking") commitVoiceStream();
     clearVoiceTimers();
     if (voiceState !== "idle") applyVoiceEvent("end");
+    microphoneEnabled = false;
+    voiceFiles = [];
+    window.clearTimeout(voiceHintTimer);
     setVoiceSessionState("idle");
+    const menu = $("#voice-extension-menu", voiceOverlay);
+    const plus = $("[data-v5-voice-action='toggle-menu']", voiceOverlay);
+    if (menu) menu.hidden = true;
+    if (plus) plus.setAttribute("aria-expanded", "false");
     const trigger = $("[data-action='chat-voice']");
     if (trigger) trigger.focus();
   }
-  function simulateVoiceExchange() {
-    if (voiceState !== "listening" || applyVoiceEvent("process") !== "processing") return;
-    lastVoiceExchange = {
-      user: "帮我推荐一家附近安静的咖啡馆。",
-      assistant: "可以告诉我你所在的区域。我会根据距离、环境和营业时间帮你筛选。",
-    };
-    const generation = voiceState;
-    voiceTimers.push(window.setTimeout(() => {
-      if (voiceState !== generation || voiceState !== "processing") return;
-      const chat = window.MiyinV5Chat;
-      if (!chat || typeof chat.appendVoiceTurn !== "function") { applyVoiceEvent("error");return; }
-      chat.appendVoiceTurn(lastVoiceExchange.user, lastVoiceExchange.assistant);
-      applyVoiceEvent("respond");
-      voiceTimers.push(window.setTimeout(() => {
-        if (voiceState === "speaking") applyVoiceEvent("finish-response");
-      }, 1600));
-    }, 620));
+  function addVoiceFiles(fileList) {
+    const selected = Array.from(fileList || []).map(file => ({ name: file.name, type: file.type || "application/octet-stream" }));
+    voiceFiles = voiceFiles.concat(selected).slice(0, 4);
+    renderVoiceFiles();
+    if (selected.length) notify("已添加附件 · 仅在本地预览，不会上传");
   }
+  function onVoicePointerDown(event) {
+    if (voiceState === "idle" || event.target.closest(".voice-controls, button, input, textarea, select")) return;
+    const transcript = event.target.closest(".voice-transcript");
+    if (transcript && (voiceDisplayMode !== "captions" || transcript.scrollTop > 0)) return;
+    voiceOverlay.dataset.swipeStartX = String(event.clientX);
+    voiceOverlay.dataset.swipeStartY = String(event.clientY);
+  }
+  function onVoicePointerUp(event) {
+    if (!voiceOverlay.dataset.swipeStartY) return;
+    const startX = Number(voiceOverlay.dataset.swipeStartX || 0);
+    const startY = Number(voiceOverlay.dataset.swipeStartY || 0);
+    delete voiceOverlay.dataset.swipeStartX;
+    delete voiceOverlay.dataset.swipeStartY;
+    const deltaX = event.clientX - startX;
+    const deltaY = event.clientY - startY;
+    if (Math.abs(deltaY) < 48 || Math.abs(deltaY) < Math.abs(deltaX) * 1.15) return;
+    if (deltaY < 0 && voiceDisplayMode === "immersive") setVoiceDisplayMode("captions");
+    else if (deltaY > 0 && voiceDisplayMode === "captions") setVoiceDisplayMode("immersive");
+  }
+  function bindVoiceInteractions() {
+    if (!voiceOverlay) return;
+    voiceOverlay.addEventListener("pointerdown", onVoicePointerDown);
+    voiceOverlay.addEventListener("pointerup", onVoicePointerUp);
+    voiceOverlay.addEventListener("pointercancel", () => {
+      delete voiceOverlay.dataset.swipeStartX;
+      delete voiceOverlay.dataset.swipeStartY;
+    });
+    voiceOverlay.addEventListener("submit", event => {
+      if (event.target.id !== "voice-composer") return;
+      event.preventDefault();
+      sendVoiceMessage($("#voice-input", voiceOverlay)?.value || "");
+    });
+    voiceOverlay.addEventListener("input", event => {
+      if (event.target.id === "voice-input") voiceDraft = event.target.value;
+    });
+    voiceOverlay.addEventListener("change", event => {
+      if (!["voice-image-file", "voice-document-file"].includes(event.target.id)) return;
+      addVoiceFiles(event.target.files);
+      event.target.value = "";
+    });
+    voiceOverlay.addEventListener("click", event => {
+      if (event.target.closest(".voice-controls")) return;
+      const menu = $("#voice-extension-menu", voiceOverlay);
+      const plus = $("[data-v5-voice-action='toggle-menu']", voiceOverlay);
+      if (menu && !menu.hidden) {
+        menu.hidden = true;
+        plus?.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+  bindVoiceInteractions();
   window.addEventListener("miyin-v5:start-voice-session", startVoiceSession);
 
   function shortLanguage(value) {
@@ -472,18 +725,38 @@
     const voiceAction = target.closest("[data-v5-voice-action]");
     if (voiceAction) {
       const action = voiceAction.dataset.v5VoiceAction;
-      if (action === "allow") { applyVoiceEvent("allow");return; }
-      if (action === "deny") { applyVoiceEvent("deny");return; }
-      if (action === "unavailable") { applyVoiceEvent("unavailable");return; }
-      if (action === "cancel") { applyVoiceEvent("cancel");const trigger=$("[data-action='chat-voice']");if(trigger)trigger.focus();return; }
-      if (action === "retry") { applyVoiceEvent("retry");return; }
-      if (action === "simulate") { simulateVoiceExchange();return; }
-      if (action === "simulate-error") { applyVoiceEvent("error");return; }
-      if (action === "pause") { pauseVoiceSession();return; }
-      if (action === "resume") { resumeVoiceSession();return; }
-      if (action === "continue") { applyVoiceEvent("finish-response");return; }
-      if (action === "text") { endVoiceSession();const input=$("#chat-input");if(input)input.focus();return; }
+      if (action === "toggle-captions") { toggleVoiceDisplayMode();return; }
+      if (action === "toggle-mic") { toggleMicrophone();return; }
+      if (action === "interrupt") { interruptVoiceAnswer();return; }
       if (action === "end") { endVoiceSession();notify("语音对话已结束");return; }
+      if (action === "toggle-menu") {
+        const menu = $("#voice-extension-menu", voiceOverlay);
+        const expanded = menu && menu.hidden;
+        if (menu) menu.hidden = !expanded;
+        voiceAction.setAttribute("aria-expanded", String(Boolean(expanded)));
+        return;
+      }
+      if (action === "camera" || action === "screen-share") {
+        const menu = $("#voice-extension-menu", voiceOverlay);
+        const plus = $("[data-v5-voice-action='toggle-menu']", voiceOverlay);
+        if (menu) menu.hidden = true;
+        if (plus) plus.setAttribute("aria-expanded", "false");
+        notify(action === "camera" ? "摄像头能力将在 Android 阶段接入 · 当前为界面预览" : "屏幕共享能力将在 Android 阶段接入 · 当前为界面预览");
+        return;
+      }
+      if (action === "image" || action === "file") {
+        const menu = $("#voice-extension-menu", voiceOverlay);
+        const plus = $("[data-v5-voice-action='toggle-menu']", voiceOverlay);
+        if (menu) menu.hidden = true;
+        if (plus) plus.setAttribute("aria-expanded", "false");
+        $(action === "image" ? "#voice-image-file" : "#voice-document-file", voiceOverlay)?.click();
+        return;
+      }
+      if (action === "remove-file") {
+        voiceFiles.splice(Number(voiceAction.dataset.fileIndex), 1);
+        renderVoiceFiles();
+        return;
+      }
     }
     const action = target.closest("[data-v4-action]");
     if (action) {
@@ -538,7 +811,7 @@
       else closeFloatMenu();
     }
     if (event.key === "Tab" && voiceOverlay && voiceOverlay.getAttribute("aria-hidden") === "false") {
-      const focusable = $$('button:not(:disabled)', voiceOverlay);
+      const focusable = $$('button:not(:disabled), input:not(:disabled)', voiceOverlay).filter(element => element.offsetParent !== null && !element.hidden);
       if (!focusable.length) return;
       const first = focusable[0], last = focusable[focusable.length - 1];
       if (event.shiftKey && document.activeElement === first) { event.preventDefault();last.focus(); }

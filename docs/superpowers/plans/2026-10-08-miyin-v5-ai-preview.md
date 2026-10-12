@@ -118,11 +118,11 @@ The V4 preview is implemented as `index.html` with inline page logic plus compan
 - [x] **Step 2: Add a distinct voice-conversation control to the composer.** Its accessible label must say it starts AI voice conversation; it must not look or behave like a language selector or single-answer read-aloud action.
 - [x] **Step 3: Write voice transition tests first and confirm the expected assertion failures.** Cover idle → permission-required → listening → processing → speaking, pause/resume, end, denied, and error recovery.
   **Expected:** Tests fail only because the required transition function/behavior is missing.
-- [x] **Step 4: Implement an in-chat voice overlay and the state transitions in the Interfaces block.** It must show permission-required, unavailable, listening, processing, speaking, paused, permission-denied, and error states, with explicit pause/resume/end controls.
+- [x] **Step 4: Implement the Pen-specified in-chat voice page as two display states in one session.** Immersive mode centers the dynamic AI orb without transcript text; captions mode shrinks and raises the orb, then reveals a scrollable, non-bubble transcript. Both states keep the same header and fixed “＋ / text + microphone / ×” footer. The microphone toggles input state; the light interruption action stops a simulated answer; no real audio or permission API is called.
 - [x] **Step 5: Run the focused Node tests, then simulate a voice exchange without capturing real audio.** Append the mock user transcript and AI reply to the same conversation; ending the session returns to that thread.
   **Expected:** All voice-state tests pass; transcript and reply appear in the active AI conversation, and no audio capture API is called.
-- [x] **Step 6: Manually verify the distinction.** Opening voice mode must not populate the text composer; ending returns to the same chat; answer read-aloud (added in Task 4) must not open this overlay; denied permission/error state must offer text chat recovery.
-  **Expected:** Voice actions remain within the active AI thread and the text recovery path preserves that thread.
+- [x] **Step 6: Verify the voice page’s visible interactions.** Enter from the mobile home mode wheel, open AI voice, switch immersive/captions with the arrow and vertical gestures, keep the footer at the same screen position, send text into the active AI thread, interrupt a simulated answer, toggle microphone state, select/remove a local attachment, and end back in the same chat.
+  **Expected:** Transcript and attachments remain in the same AI conversation; the footer does not shift between display modes; attachments remain visible and removable after the extension menu closes.
 - [x] **Step 7: Commit the voice interaction.** `git add docs/designs/miyin-full-app-preview-v5 tests/miyin-v5-core.test.js` and commit as `feat: add simulated AI voice conversation`.
 
 ### Task 4: Add answer actions and generation recovery
@@ -203,13 +203,13 @@ The V4 preview is implemented as `index.html` with inline page logic plus compan
 
 - [x] **Step 1: Run all dependency-free logic tests and syntax checks.** Run `node --test tests/miyin-v5-core.test.js`, `node --check` on both V5 JavaScript files and the extracted inline page scripts; verify the page, CSS, JS, and GLSL assets return HTTP 200.
   **Expected:** Node tests pass, both syntax checks exit 0, and every local page/asset request returns 200.
-- [x] **Step 2: Run the requested viewport review.** Use browser review at 390 × 844, 375 × 667, and 1280 × 900. Check horizontal overflow, clipped controls, focus/touch targets, and the V4 theme and mode wheel.
+- [x] **Step 2: Run the requested viewport review.** Use browser review at 390 × 844, 375 × 667, 360 × 800, and 1280 × 900. Check horizontal overflow, clipped controls, focus/touch targets, and the V4 theme and mode wheel.
   **Expected:** No horizontal overflow or clipped primary actions at any viewport; V4 visual system and wheel remain intact.
-- [x] **Step 3: Walk the complete preview flows.** Test new chat, multi-turn persistence, save-history off, voice entry and exit, answer operations, model-unavailable recovery without silent fallback, search, history detail/continue/rename/share/delete, attachment selection/removal/send, empty state, permission-required/denied voice states, and error retry.
+- [x] **Step 3: Walk the complete preview flows.** Test new chat, multi-turn persistence, save-history off, the Pen-specified immersive/captions voice states and fixed footer, voice entry and exit, answer operations, model-unavailable recovery without silent fallback, search, history detail/continue/rename/share/delete, attachment selection/removal/send, empty state, permission-required voice entry, and error retry.
   **Expected:** Every listed interaction reaches its labeled state; no browser console errors occur.
 - [x] **Step 4: Check V4 isolation.** Compare pre/post SHA-256 for the existing V4 `index.html`, `miyin-v4.css`, and `miyin-v4.js`; confirm none changed. Confirm V5 localStorage uses only the V5 namespace.
   **Expected:** All three V4 hashes match `v4-baseline.sha256`; only V5-prefixed browser keys are created or changed.
-- [x] **Step 5: Update repository docs accurately.** State that V4 is the approved visual baseline, V5 is implemented and awaiting review, Android source and real model/audio services are not yet implemented.
+- [x] **Step 5: Update repository docs accurately.** State that V4 is the approved visual baseline, V5’s latest Pen-based voice interface is ready for review, and Android source plus real model/audio services are not yet implemented.
 - [x] **Step 6: Commit final V5 QA and documentation.** Stage only the reviewed V5 model-recovery preview, the updated README/product/spec/plan docs, and the four newly generated `output/playwright/miyin-v5-*.png` screenshots, then commit as `feat: finalize Miyin V5 preview and review evidence`.
   **Expected:** Final commit contains the final QA screenshots and truthful status docs; tests are already present in earlier commits, and no pre-existing user file is staged.
 
