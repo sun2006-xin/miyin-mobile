@@ -56,6 +56,15 @@ test('dictionary mode stays on the translation home; the separate dictionary but
   assertDoesNotMatch(previewOpen[0], /\.focus\s*\(/, 'entering the preview dictionary page must not summon the keyboard');
 });
 
+test('returning from orb appearance to settings does not replace the original settings return destination', () => {
+  const orbStyleHeader = appShell.match(/<header class="settings-head orb-style-head">([\s\S]*?)<\/header>/);
+  assert.ok(orbStyleHeader, 'orb appearance screen header must exist');
+  assertMatches(orbStyleHeader[1], /data-action="orb-style-back"/);
+  assertDoesNotMatch(orbStyleHeader[1], /data-screen="settings"/);
+  assertMatches(appShell, /function showScreen\(name,options=\{\}\)[\s\S]*?options\.recordSettingsReturn!==false/);
+  assertMatches(appShell, /case "orb-style-back":showScreen\("settings",\{recordSettingsReturn:false\}\);break;/);
+});
+
 test('the translation home shows dictionary entry only for word mode and restores sentence input tools', () => {
   const syncTools = v6Ui.match(/const syncTranslationInputTool = \(\) => \{([\s\S]*?)\n  \};/);
   assert.ok(syncTools, 'production must switch the home input tool with translation mode');
@@ -314,7 +323,7 @@ test('settings/resource return keeps its original destination and system back cl
   for (const source of [appShell, previewShell]) {
     assertMatches(source, /restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true/);
     assertMatches(source, /settingsReturnStack=\[\]/);
-    assertMatches(source, /if\(origin!=="settings"&&!restoringSettingsRoute\)\{settingsReturnStack\.push\(origin\)/);
+    assertMatches(source, /if\(origin!=="settings"&&!restoringSettingsRoute(?:&&options\.recordSettingsReturn!==false)?\)\{settingsReturnStack\.push\(origin\)/);
     assertMatches(source, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home"/);
     assertDoesNotMatch(source, /settingsReturnScreen|isSettingsOwnedRoute/);
   }

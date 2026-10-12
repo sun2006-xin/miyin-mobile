@@ -1,0 +1,286 @@
+/* V1.3 user-selectable palettes. Existing mint, mist and night themes remain intact. */
+html[data-theme="palette-business-blue"] {
+  color-scheme: light;
+  --page: #F4F7FB; --surface: #FFFFFF; --surface-2: #EAF0F8;
+  --ink: #263A52; --title: #173D6E; --muted: #4E6684;
+  --accent: #2057A5; --accent-ink: #FFFFFF; --theme-accent: #ED9B39;
+  --mint: #E8F0FB; --mint-deep: #D5E3F4; --mint-icon: #E6EFFB;
+  --line: #DCE5F0; --line-strong: #B9CCE3; --selected: #DCE9F8; --selected-ink: #173D6E;
+  --shadow: 0 18px 55px rgba(32, 68, 112, .12);
+  --theme-glow-a: rgba(67, 140, 234, .13); --theme-glow-b: rgba(237, 155, 57, .09);
+  --theme-wash: rgba(32, 87, 165, .08); --theme-wash-strong: rgba(32, 87, 165, .16); --theme-highlight-wash: rgba(237, 155, 57, .14);
+  --voice-a: #C6E0FF; --voice-b: #5798DF; --voice-c: #2057A5;
+}
+
+html[data-theme="palette-forest-cream"] {
+  color-scheme: light;
+  --page: #F6F2E8; --surface: #EEECE0; --surface-2: #E5E3D7;
+  --ink: #304B40; --title: #1E5147; --muted: #4F6252;
+  --accent: #175A4D; --accent-ink: #FFFFFF; --theme-accent: #BC7B26;
+  --mint: #E7EBDD; --mint-deep: #D7DEC9; --mint-icon: #E5E8D8;
+  --line: #E1DDCF; --line-strong: #C9CFB8; --selected: #E1E7D5; --selected-ink: #25483E;
+  --shadow: 0 18px 55px rgba(69, 78, 51, .12);
+  --theme-glow-a: rgba(110, 135, 82, .12); --theme-glow-b: rgba(188, 123, 38, .08);
+  --theme-wash: rgba(23, 90, 77, .08); --theme-wash-strong: rgba(23, 90, 77, .16); --theme-highlight-wash: rgba(188, 123, 38, .13);
+  --voice-a: #D9E4CE; --voice-b: #71917D; --voice-c: #175A4D;
+}
+
+html[data-theme="palette-violet-coral"] {
+  color-scheme: light;
+  --page: #FFF5F1; --surface: #FFFFFF; --surface-2: #F8EDEB;
+  --ink: #51445B; --title: #52366E; --muted: #685576;
+  --accent: #643A88; --accent-ink: #FFFFFF; --theme-accent: #F07B67;
+  --mint: #F1E9F5; --mint-deep: #E3D6EC; --mint-icon: #F0E8F5;
+  --line: #E9DDE9; --line-strong: #D6C5E0; --selected: #EDE2F2; --selected-ink: #52366E;
+  --shadow: 0 18px 55px rgba(89, 58, 113, .12);
+  --theme-glow-a: rgba(132, 94, 166, .11); --theme-glow-b: rgba(240, 123, 103, .12);
+  --theme-wash: rgba(100, 58, 136, .08); --theme-wash-strong: rgba(100, 58, 136, .16); --theme-highlight-wash: rgba(240, 123, 103, .16);
+  --voice-a: #E4D5F2; --voice-b: #A274C5; --voice-c: #643A88;
+}
+
+html[data-theme="palette-graphite-lake"] {
+  color-scheme: light;
+  --page: #F2F4F5; --surface: #FFFFFF; --surface-2: #E8EFF0;
+  --ink: #34494C; --title: #174F57; --muted: #52696B;
+  --accent: #0A6872; --accent-ink: #FFFFFF; --theme-accent: #C1D66D;
+  --mint: #E1EFF0; --mint-deep: #CFE3E4; --mint-icon: #E6F0F1;
+  --line: #DDE5E6; --line-strong: #B9D0D2; --selected: #DDEBEC; --selected-ink: #174F57;
+  --shadow: 0 18px 55px rgba(43, 78, 81, .12);
+  --theme-glow-a: rgba(10, 104, 114, .11); --theme-glow-b: rgba(193, 214, 109, .12);
+  --theme-wash: rgba(10, 104, 114, .08); --theme-wash-strong: rgba(10, 104, 114, .16); --theme-highlight-wash: rgba(193, 214, 109, .16);
+  --voice-a: #C8E8E9; --voice-b: #53A1A8; --voice-c: #0A6872;
+}
+
+html[data-theme="palette-midnight-orange"] {
+  color-scheme: dark;
+  --page: #0D182B; --surface: #182A44; --surface-2: #223754;
+  --ink: #E7EEF8; --title: #F3F6FC; --muted: #AFBED2;
+  --accent: #A5C7FA; --accent-ink: #10213A; --theme-accent: #F9B260;
+  --mint: #213D60; --mint-deep: #294A70; --mint-icon: #243E5D;
+  --line: #304461; --line-strong: #49617E; --selected: #284563; --selected-ink: #F3F6FC;
+  --shadow: 0 20px 58px rgba(0, 0, 0, .36);
+  --theme-glow-a: rgba(67, 121, 194, .16); --theme-glow-b: rgba(249, 178, 96, .09);
+  --theme-wash: rgba(165, 199, 250, .09); --theme-wash-strong: rgba(165, 199, 250, .18); --theme-highlight-wash: rgba(249, 178, 96, .14);
+  --voice-a: #91B6E7; --voice-b: #4379C2; --voice-c: #1B416E;
+}
+
+html[data-theme="palette-black-gold"] {
+  color-scheme: dark;
+  --page: #15181C; --surface: #272A31; --surface-2: #343840;
+  --ink: #E8E8E6; --title: #F4F0E7; --muted: #B9C3D1;
+  --accent: #E9BA65; --accent-ink: #211B11; --theme-accent: #B9C3D1;
+  --mint: #373128; --mint-deep: #4A3C28; --mint-icon: #37322A;
+  --line: #41454C; --line-strong: #68645A; --selected: #443A2B; --selected-ink: #F4E7CC;
+  --shadow: 0 20px 58px rgba(0, 0, 0, .43);
+  --theme-glow-a: rgba(196, 145, 62, .14); --theme-glow-b: rgba(133, 145, 161, .07);
+  --theme-wash: rgba(233, 186, 101, .09); --theme-wash-strong: rgba(233, 186, 101, .19); --theme-highlight-wash: rgba(185, 195, 209, .11);
+  --voice-a: #E5BE7C; --voice-b: #977343; --voice-c: #49351F;
+}
+
+html[data-theme^="palette-"] body { background: var(--page); color: var(--ink); }
+html[data-theme^="palette-"] .workspace {
+  background: radial-gradient(ellipse at 92% 4%, var(--theme-glow-a), transparent 34%), radial-gradient(ellipse at 5% 96%, var(--theme-glow-b), transparent 36%), var(--page);
+}
+html[data-theme^="palette-"] .preview-nav {
+  border-color: var(--line); background: var(--surface); color: var(--ink); box-shadow: var(--shadow);
+}
+html[data-theme^="palette-"] .nav-brand { border-color: var(--line); }
+html[data-theme^="palette-"] .brand-mark { background: linear-gradient(145deg, var(--accent), var(--title)); }
+html[data-theme^="palette-"] .nav-brand small,
+html[data-theme^="palette-"] .nav-caption,
+html[data-theme^="palette-"] .nav-note { color: var(--muted); }
+html[data-theme^="palette-"] .screen-nav button { color: var(--muted); }
+html[data-theme^="palette-"] .screen-nav button:hover,
+html[data-theme^="palette-"] .screen-nav button[aria-current="page"] { background: var(--selected); color: var(--selected-ink); box-shadow: 0 2px 10px var(--theme-wash); }
+html[data-theme^="palette-"] .device { border-color: var(--line-strong); box-shadow: var(--shadow), inset 0 0 0 1px var(--theme-wash); }
+html[data-theme^="palette-"] #app { background: var(--page); color: var(--ink); }
+html[data-theme^="palette-"] #app::before {
+  background: radial-gradient(ellipse 62% 31% at 108% 0%, var(--theme-glow-a), transparent 72%), radial-gradient(ellipse 68% 34% at -10% 100%, var(--theme-glow-b), transparent 70%);
+}
+html[data-theme^="palette-"] .screen { background: transparent; }
+html[data-theme^="palette-"] .topbar,
+html[data-theme^="palette-"] .history-head { border-color: var(--line); }
+html[data-theme^="palette-"] .top-brand strong,
+html[data-theme^="palette-"] .history-head h1,
+html[data-theme^="palette-"] .settings-head h1 { color: var(--title); }
+html[data-theme^="palette-"] .top-icon,
+html[data-theme^="palette-"] .back-button { color: var(--accent); }
+html[data-theme^="palette-"] .top-icon:hover,
+html[data-theme^="palette-"] .back-button:hover { background: var(--selected); }
+html[data-theme^="palette-"] .avatar-button,
+html[data-theme^="palette-"] .profile-avatar { background: var(--mint-icon); border-color: var(--line-strong); color: var(--accent); }
+html[data-theme^="palette-"] .profile-name { color: var(--title); }
+html[data-theme^="palette-"] .profile-name button { color: var(--accent); }
+html[data-theme^="palette-"] .profile-name button:hover { background: var(--selected); }
+html[data-theme^="palette-"] .bubble,
+html[data-theme^="palette-"] .text-entry,
+html[data-theme^="palette-"] .language-pill,
+html[data-theme^="palette-"] .face-language,
+html[data-theme^="palette-"] .record-row,
+html[data-theme^="palette-"] .video-setting,
+html[data-theme^="palette-"] .subtitle-lang,
+html[data-theme^="palette-"] .compose-card { border-color: var(--line); }
+html[data-theme^="palette-"] .bubble,
+html[data-theme^="palette-"] .chat-bubble.assistant,
+html[data-theme^="palette-"] .text-entry,
+html[data-theme^="palette-"] .compose-card,
+html[data-theme^="palette-"] .record-row,
+html[data-theme^="palette-"] .video-setting,
+html[data-theme^="palette-"] .modal-card { background: var(--surface); color: var(--ink); }
+html[data-theme^="palette-"] .bubble.source,
+html[data-theme^="palette-"] .chat-bubble.user,
+html[data-theme^="palette-"] .face-turn { background: var(--mint); color: var(--title); border-color: var(--line-strong); }
+html[data-theme^="palette-"] .bubble.other,
+html[data-theme^="palette-"] .face-turn.left { background: var(--surface-2); color: var(--ink); }
+html[data-theme^="palette-"] .bubble.translation,
+html[data-theme^="palette-"] .face-turn .translated { border-color: var(--line-strong); color: var(--muted); }
+html[data-theme^="palette-"] .face-language { background: var(--surface); color: var(--ink); }
+html[data-theme^="palette-"] .round-tool,
+html[data-theme^="palette-"] .value-control,
+html[data-theme^="palette-"] .subtitle-lang,
+html[data-theme^="palette-"] .face-entry .face-icon,
+html[data-theme^="palette-"] .back-translate span:first-child { background: var(--surface-2); border-color: var(--line-strong); color: var(--accent); }
+html[data-theme^="palette-"] .language-swap:hover { color: var(--theme-accent); }
+html[data-theme^="palette-"] .switch[aria-pressed="true"] { background: var(--accent); }
+html[data-theme^="palette-"] .send-button,
+html[data-theme^="palette-"] .modal-footer .confirm { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+html[data-theme^="palette-"] .source-pills button[aria-pressed="true"],
+html[data-theme^="palette-"] .video-start.active { background: var(--selected); color: var(--selected-ink); border-color: var(--line-strong); }
+html[data-theme^="palette-"] .subtitle-preview { background: var(--surface-2); border-color: var(--line); color: var(--ink); }
+html[data-theme^="palette-"] .toast { background: var(--title); color: var(--surface); }
+html[data-theme^="palette-"] .modal-card { border-color: var(--line-strong); box-shadow: var(--shadow); }
+html[data-theme^="palette-"] input,
+html[data-theme^="palette-"] textarea { color: var(--ink); }
+html[data-theme^="palette-"] input::placeholder,
+html[data-theme^="palette-"] textarea::placeholder { color: var(--muted); opacity: 1; }
+html[data-theme^="palette-"] input::placeholder { color: var(--muted); opacity: 1; }
+html[data-theme^="palette-"] button:focus-visible,
+html[data-theme^="palette-"] input:focus-visible,
+html[data-theme^="palette-"] textarea:focus-visible { outline-color: var(--accent); }
+
+html[data-theme^="palette-"] .settings-head h1::after { background: var(--theme-accent); box-shadow: 0 1px 8px var(--theme-highlight-wash); }
+html[data-theme^="palette-"] .settings-head .back-button,
+html[data-theme^="palette-"] .settings-sparkle { border-color: var(--line); background: var(--surface); color: var(--accent); box-shadow: 0 4px 12px var(--theme-wash); }
+html[data-theme^="palette-"] .settings-head .back-button:hover,
+html[data-theme^="palette-"] .settings-sparkle:hover { background: var(--selected); }
+html[data-theme^="palette-"] .settings-sparkle { border-color: var(--line); background: var(--surface); color: var(--theme-accent); }
+html[data-theme^="palette-"] .setting-trigger {
+  border-color: var(--line); background: linear-gradient(115deg, var(--surface), var(--surface-2)); box-shadow: 0 3px 12px var(--theme-wash);
+}
+html[data-theme^="palette-"] .setting-trigger::before {
+  background: linear-gradient(108deg, transparent 25%, var(--theme-wash) 45%, var(--theme-highlight-wash) 58%, transparent 78%);
+}
+html[data-theme^="palette-"] .setting-trigger > span:first-child,
+html[data-theme^="palette-"] .setting-copy b,
+html[data-theme^="palette-"] .value-control,
+html[data-theme^="palette-"] .theme-spectrum { color: var(--title); }
+html[data-theme^="palette-"] .setting-trigger > span:first-child svg { background: var(--mint-icon); color: var(--accent); }
+html[data-theme^="palette-"] .setting-trigger > svg:last-child,
+html[data-theme^="palette-"] .setting-copy small { color: var(--muted); }
+html[data-theme^="palette-"] .setting-panel { border-color: var(--line); background: var(--surface); color: var(--ink); }
+html[data-theme^="palette-"] .value-control { border-color: var(--line-strong); background: var(--surface-2); }
+html[data-theme^="palette-"] .theme-choice {
+  min-height: 59px; padding: 6px 3px; border-color: var(--line); background: var(--surface); color: var(--muted); font-size: 9.2px;
+}
+html[data-theme^="palette-"] .theme-choice[aria-pressed="true"] { border-color: var(--accent); box-shadow: 0 0 0 2px var(--theme-wash-strong); color: var(--title); }
+html[data-theme^="palette-"] .theme-swatch { border-color: var(--surface); box-shadow: 0 1px 4px var(--theme-wash); }
+html[data-theme^="palette-"] .profile-footer button { border-color: var(--line-strong); background: var(--surface); color: var(--accent); }
+html[data-theme^="palette-"] .wheel-track path { stroke: var(--line-strong); }
+html[data-theme^="palette-"] .wheel-arrow { color: var(--accent); }
+html[data-theme^="palette-"] .wheel-mode { border-color: var(--line); background: var(--surface); color: var(--accent); }
+html[data-theme^="palette-"] .wheel-center { border-color: var(--line-strong); background: linear-gradient(145deg, var(--mint), var(--surface) 52%, var(--mint-deep)); box-shadow: 0 5px 14px var(--theme-wash-strong), inset 0 1px 0 var(--surface); }
+html[data-theme^="palette-"] .wheel-center::before { background: radial-gradient(ellipse at 18% 20%, var(--theme-glow-a), transparent 48%), radial-gradient(ellipse at 84% 72%, var(--theme-highlight-wash), transparent 46%); }
+html[data-theme^="palette-"] .wheel-center::after { background: linear-gradient(110deg, transparent 42%, var(--surface) 49%, var(--theme-wash-strong) 53%, var(--theme-highlight-wash) 57%, transparent 64%); }
+html[data-theme^="palette-"] .wheel-center-icon,
+html[data-theme^="palette-"] .wheel-center-label { color: var(--title); }
+
+html[data-theme="palette-midnight-orange"] .screen-nav button[aria-current="page"],
+html[data-theme="palette-black-gold"] .screen-nav button[aria-current="page"] { color: var(--title); }
+html[data-theme="palette-midnight-orange"] .theme-choice,
+html[data-theme="palette-black-gold"] .theme-choice { background: var(--surface-2); }
+html[data-theme="palette-midnight-orange"] .theme-swatch,
+html[data-theme="palette-black-gold"] .theme-swatch { border-color: var(--line); }
+
+/* Keep every theme preset consistent through voice and history actions.
+   The microphone orb keeps its separately selected material; only its frame follows the UI theme. */
+html[data-theme^="palette-"] .mic-button {
+  --mic-theme-ring: var(--accent);
+  --mic-theme-glow: var(--theme-wash-strong);
+  box-shadow: 0 4px 12px var(--theme-wash-strong), 0 0 0 2px var(--mic-theme-glow);
+}
+html[data-theme^="palette-"] .mic-button::before {
+  border-color: var(--mic-theme-ring);
+  box-shadow: inset 0 0 2px var(--surface), 0 0 0 1px var(--mic-theme-glow);
+}
+html[data-theme^="palette-"] .mic-button::after { border-color: var(--theme-highlight-wash); }
+html[data-theme^="palette-"] .mic-button.is-listening {
+  box-shadow: 0 0 0 5px var(--theme-wash-strong), 0 0 24px var(--theme-highlight-wash);
+}
+html[data-theme^="palette-"] .mic-button.is-listening::before { border-color: var(--theme-accent); }
+html[data-theme^="palette-"] .mic-button svg { color: var(--title); filter: drop-shadow(0 1px 1px var(--surface)); }
+html[data-theme^="palette-"] .voice-orb {
+  background: radial-gradient(circle at 35% 28%, var(--surface) 0%, var(--mint) 52%, var(--surface-2) 100%);
+  box-shadow: 0 8px 20px var(--theme-wash-strong);
+}
+html[data-theme^="palette-"] .voice-live-state { background: var(--surface-2); }
+html[data-theme^="palette-"] .voice-pulse { background: var(--accent); box-shadow: 0 0 0 4px var(--theme-wash-strong); }
+html[data-theme^="palette-"] .voice-overlay[data-voice-state="listening"] .voice-pulse { animation-name: palette-voice-pulse; }
+html[data-theme^="palette-"] .voice-visual {
+  border-color: var(--line-strong);
+  background: linear-gradient(145deg, var(--surface), var(--mint) 56%, var(--surface-2));
+  box-shadow: 0 10px 26px var(--theme-wash-strong), inset 0 1px 0 var(--surface);
+}
+html[data-theme^="palette-"] .voice-wave i { background: linear-gradient(180deg, var(--voice-b), var(--voice-c)); }
+html[data-theme^="palette-"] .voice-input-capsule {
+  border-color: var(--line-strong);
+  background: linear-gradient(112deg, var(--surface), var(--surface-2) 52%, var(--mint));
+  box-shadow: 0 4px 13px var(--theme-wash-strong), inset 0 1px 0 var(--surface);
+}
+html[data-theme^="palette-"] .voice-input-capsule::before { background: linear-gradient(108deg, transparent 36%, var(--theme-wash-strong) 46%, var(--theme-highlight-wash) 52%, transparent 63%); }
+html[data-theme^="palette-"] .voice-input-capsule input { color: var(--ink); }
+html[data-theme^="palette-"] .voice-input-capsule input::placeholder { color: var(--muted); opacity: 1; }
+html[data-theme^="palette-"] .voice-microphone { border: 1px solid var(--line); background: var(--mint); color: var(--accent); }
+html[data-theme^="palette-"] .voice-microphone[aria-pressed="true"] { background: var(--selected); box-shadow: 0 0 0 3px var(--theme-wash-strong); }
+html[data-theme^="palette-"] .voice-microphone.is-muted { color: var(--muted); }
+html[data-theme^="palette-"] .history-detail-actions button.primary,
+html[data-theme^="palette-"] .voice-buttons button.primary {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+@keyframes palette-voice-pulse {
+  50% { box-shadow: 0 0 0 8px var(--theme-wash); transform: scale(.88); }
+}
+
+@supports (background: color-mix(in srgb, #fff 50%, #000)) {
+  html[data-theme^="palette-"] .mic-button {
+    --mic-theme-ring: color-mix(in srgb, var(--accent) 76%, var(--title));
+    --mic-theme-glow: color-mix(in srgb, var(--accent) 22%, transparent);
+  }
+  html[data-theme^="palette-"] .mic-button::after { border-color: color-mix(in srgb, var(--theme-accent) 58%, transparent); }
+  html[data-theme^="palette-"] .voice-orb {
+    background: radial-gradient(circle at 35% 28%, var(--surface) 0%, var(--mint) 52%, color-mix(in srgb, var(--voice-a) 74%, var(--surface)) 100%);
+  }
+  html[data-theme^="palette-"] .voice-visual {
+    background: linear-gradient(145deg, var(--surface), color-mix(in srgb, var(--voice-a) 28%, var(--surface)) 56%, color-mix(in srgb, var(--voice-b) 18%, var(--surface)));
+  }
+  html[data-theme^="palette-"] .voice-input-capsule {
+    background: linear-gradient(112deg, var(--surface), var(--surface-2) 52%, color-mix(in srgb, var(--voice-b) 22%, var(--surface)));
+  }
+  html[data-theme^="palette-"] .history-detail-actions button.primary,
+  html[data-theme^="palette-"] .voice-buttons button.primary {
+    background: linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 82%, var(--theme-accent)));
+  }
+  @keyframes palette-voice-pulse {
+    50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--accent) 7%, transparent); transform: scale(.88); }
+  }
+}
+
+@media (max-width: 370px) {
+  html[data-theme^="palette-"] .theme-choice { min-height: 59px; padding-inline: 2px; font-size: 9px; }
+  html[data-theme^="palette-"] .theme-swatch { width: 31px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-theme^="palette-"] .setting-trigger::before { animation: none !important; }
+}
