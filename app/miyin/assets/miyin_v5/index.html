@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#ffffff">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='14' fill='%232f3635'/%3E%3Cpath d='M10 19v10m7-16v22m7-26v30m7-21v12m7-17v22' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
-  <title>觅音 · 手机端交互预览 V5</title>
+  <title>觅音</title>
   <link rel="stylesheet" href="./miyin-v5.css?v=5-orb-settings-r2">
   <script src="./miyin-mobile-shaders.js"></script>
   <style>
@@ -43,15 +43,15 @@
     .top-brand { text-align:center;min-width:0; }
     .top-brand strong { font-size:17px;font-weight:650;letter-spacing:.12em; }
     .top-brand small { display:block;margin-top:1px;color:var(--muted);font-size:10px; }
-    .session-state { display:inline-flex;align-items:center;gap:5px;margin-top:2px;padding:2px 7px;border:0;border-radius:99px;background:transparent;color:var(--muted);font-size:9px;cursor:pointer; }
-    .session-state i { width:5px;height:5px;border-radius:50%;background:#6e9b7d; }
-    .session-state[aria-pressed="true"] i { background:#a38455; }
-    .avatar-button { justify-self:end;width:36px;height:36px;border:1px solid var(--line);border-radius:50%;background:var(--surface);display:grid;place-items:center;cursor:pointer; }
+    .avatar-button { position:relative;justify-self:end;flex:0 0 36px;width:36px;height:36px;aspect-ratio:1 / 1;border:1px solid var(--line);border-radius:50%;background:var(--surface);display:grid;place-items:center;cursor:pointer;overflow:hidden;padding:0;clip-path:circle(50%); }
     .avatar-button svg { width:19px;height:19px; }
+    .avatar-image { position:absolute;inset:0;display:none;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:center;clip-path:circle(50%); }
+    .has-avatar .avatar-image { display:block; }
+    .has-avatar > svg { display:none; }
     .scroll-area { min-height:0;flex:1;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line-strong) transparent; }
     .scroll-area::-webkit-scrollbar { width:4px; }
     .scroll-area::-webkit-scrollbar-thumb { background:var(--line-strong);border-radius:99px; }
-    .home-transcript { min-height:0;flex:1;display:flex;flex-direction:column;gap:13px;padding:26px 21px 12px;overflow:auto;scrollbar-width:thin; }
+    .home-transcript { min-height:0;flex:1;display:flex;flex-direction:column;gap:13px;padding:12px 21px 5px;overflow:auto;scrollbar-width:thin; }
     .bubble { max-width:84%;padding:13px 15px;border:1px solid var(--line);border-radius:19px;background:var(--surface);box-shadow:0 3px 12px rgba(40,44,41,.035);line-height:1.52;font-size:14px; }
     .bubble.source { align-self:flex-end;border-radius:19px 19px 6px 19px;background:var(--selected);color:var(--selected-ink); }
     .bubble.translation { align-self:flex-end;margin-right:9px;padding:8px 14px;border-radius:15px;background:transparent;border-color:transparent;color:var(--muted);font-size:12px;box-shadow:none; }
@@ -69,14 +69,30 @@
     .round-tool { width:36px;height:36px;flex:none;border:0;border-radius:12px;background:var(--surface-2);display:grid;place-items:center;cursor:pointer; }
     .round-tool svg { width:18px;height:18px; }
     .entry-tools { display:none;gap:8px;padding:8px 3px 0; }
-    .entry-tools.open { display:flex; }
+    .entry-tools.open { display:none; }
     .entry-tools button { flex:1;min-height:35px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--muted);font-size:10px;cursor:pointer; }
+    .translation-mode { display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 4px 7px; }
+    .translation-mode button { min-height:44px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font-size:11px;cursor:pointer;touch-action:manipulation;transition:background .16s,color .16s,border-color .16s; }
+    .translation-mode button[aria-pressed="true"] { border-color:var(--line-strong);background:var(--selected);color:var(--selected-ink);font-weight:600; }
+    .translation-mode button:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
     .language-row { display:flex;align-items:center;justify-content:center;gap:10px;padding:9px 14px 2px; }
-    .language-pill { min-width:96px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--ink);font-size:12px;cursor:pointer; }
-    .language-swap { width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:transform .22s,color .16s; }
+    .language-pill { position:relative;min-width:96px;height:36px;padding:0 12px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--ink);font-size:12px;cursor:pointer; }
+    .language-pill::before { content:"";position:absolute;inset:-4px 0;border-radius:inherit; }
+    .language-swap { position:relative;width:34px;height:34px;border:0;border-radius:50%;background:transparent;color:var(--muted);display:grid;place-items:center;cursor:pointer;transition:transform .22s,color .16s; }
+    .language-swap::before { content:"";position:absolute;inset:-5px;border-radius:50%; }
     .language-swap:hover { transform:rotate(180deg);color:var(--ink); }
     .language-swap svg { width:19px;height:19px; }
-    .home-controls { position:relative;flex:none;height:122px;padding:9px 15px calc(10px + var(--safe-bottom));display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center; }
+    .translation-feedback { max-width:92%;padding:8px 11px;border:1px solid var(--line);border-radius:12px;background:var(--surface-2);color:var(--muted);font-size:11px;line-height:1.45;display:flex;flex-wrap:wrap;align-items:center;gap:6px;flex:none; }
+    .translation-feedback.is-error { color:var(--danger); }
+    .translation-feedback button { min-height:44px;margin:0;padding:0 11px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);font-size:11px;cursor:pointer;touch-action:manipulation; }
+    .translation-attribution { display:block;margin-top:4px;color:var(--muted);font-size:9px; }
+    .native-history-summary { display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 12px;color:var(--muted);font-size:10px; }
+    .native-history-summary button { min-height:32px;padding:0 9px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--danger);font-size:10px;cursor:pointer; }
+    .native-history-entry { margin:0 0 12px;padding:13px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--ink);line-height:1.55;overflow-wrap:anywhere; }
+    .native-history-entry small { display:block;margin-bottom:7px;color:var(--muted);font-size:10px; }
+    .native-history-entry p { margin:0 0 9px;white-space:pre-wrap; }
+    .native-history-entry p:last-child { margin-bottom:0; }
+    .home-controls { position:relative;flex:none;height:110px;padding:7px 15px calc(8px + var(--safe-bottom));display:grid;grid-template-columns:1fr 1fr 1fr;align-items:center; }
     .face-entry { justify-self:start;min-width:61px;padding:4px 7px;border:0;background:transparent;display:grid;justify-items:center;gap:5px;color:var(--muted);font-size:10px;cursor:pointer; }
     .face-entry .face-icon { width:42px;height:42px;border:1px solid var(--line);border-radius:50%;background:var(--surface);display:grid;place-items:center;color:var(--ink);transition:transform .18s,box-shadow .18s; }
     .face-entry:hover .face-icon { transform:translateY(-2px);box-shadow:0 7px 15px rgba(20,35,36,.11); }
@@ -115,24 +131,48 @@
     .face-turn .translated { display:block;margin-top:4px;padding-top:5px;border-top:1px solid var(--line);font-size:12px;cursor:pointer; }
     .face-turn .translated:hover { text-decoration:underline;text-decoration-style:dotted;text-underline-offset:3px; }
     .face-turn.pending .translated { color:var(--muted); }
-    .face-bottom { position:relative;flex:none;display:grid;grid-template-columns:68px 1fr 68px;align-items:center;gap:4px;padding:5px 12px calc(10px + var(--safe-bottom)); }
-    .face-language { grid-column:1/-1;justify-self:center;display:flex;align-items:center;gap:10px;margin:5px 0 2px;padding:4px 11px;border:1px solid var(--line);border-radius:99px;background:var(--surface);font-size:11px; }
-    .face-language button { min-width:35px;border:0;background:transparent;color:var(--ink);cursor:pointer; }
-    .face-language .language-swap { width:28px;height:28px; }
+    .face-bottom { position:relative;flex:none;display:grid;grid-template-columns:minmax(58px,68px) minmax(0,1fr) minmax(58px,68px);align-items:center;gap:3px;padding:4px 12px calc(8px + var(--safe-bottom)); }
+    .face-language { grid-column:1/-1;justify-self:center;display:flex;align-items:center;gap:10px;margin:0 0 5px;padding:4px 11px;border:1px solid var(--line);border-radius:99px;background:var(--surface);font-size:11px; }
+    .face-language button:not(.language-swap) { position:relative;min-width:35px;min-height:28px;border:0;background:transparent;color:var(--ink);cursor:pointer; }
+    .face-language button:not(.language-swap)::before { content:"";position:absolute;inset:-8px -5px;border-radius:8px; }
+    .face-language .language-swap { width:34px;height:28px; }
+    .face-language .language-swap::before { inset:-8px -5px; }
     .back-translate { align-self:end;justify-self:center;width:58px;min-height:62px;border:0;background:transparent;color:var(--muted);display:grid;justify-items:center;align-content:center;gap:5px;font-size:10px;cursor:pointer; }
     .back-translate span:first-child { width:38px;height:38px;border:1px solid var(--line);border-radius:50%;background:var(--surface);display:grid;place-items:center;color:var(--ink); }
     .back-translate svg { width:18px;height:18px; }
-    .face-mic-wrap { display:grid;justify-items:center;align-items:center;position:relative; }
+    .face-mic-wrap { width:100%;min-width:0;display:grid;justify-items:center;align-items:center;position:relative; }
     .face-mic { width:100px;height:100px; }
     .face-mic svg { width:34px;height:34px; }
-    .face-mic-wrap small { margin-top:5px;color:var(--muted);font-size:9px;white-space:nowrap; }
-    .face-wheel-slot { height:113px; }
+    .face-status-row { position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);clip-path:inset(50%);white-space:nowrap;border:0; }
+    .face-status-row small { flex:none; }
+    .face-wheel-slot { height:88px; }
     .history-head,.settings-head { height:56px;flex:none;display:grid;grid-template-columns:42px 1fr 42px;align-items:center;padding:5px 14px;border-bottom:1px solid var(--line); }
     .history-head h1,.settings-head h1 { margin:0;text-align:center;font-size:16px;font-weight:650; }
     .back-button { width:38px;height:38px;border:0;border-radius:12px;background:transparent;display:grid;place-items:center;cursor:pointer; }
     .back-button:hover { background:var(--surface-2); }
     .back-button svg { width:20px;height:20px; }
     .history-content { padding:25px 18px 24px; }
+    .history-unified-toolbar { position:sticky;top:0;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:7px;margin:-4px 0 12px;padding:4px 0 8px;background:var(--surface); }
+    .history-unified-toolbar .back-button { flex:0 0 auto;width:auto;min-width:94px;height:34px;padding:0 8px;display:flex;align-items:center;justify-content:flex-start;gap:4px;color:var(--muted);font-size:11px;white-space:nowrap; }
+    .history-unified-toolbar .history-count { min-width:0;overflow:hidden;color:var(--muted);font-size:10px;text-overflow:ellipsis;white-space:nowrap; }
+    .history-tool-actions { display:flex;flex:0 0 auto;align-items:center;gap:4px; }
+    .history-tool-actions button { min-height:30px;padding:0 8px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--muted);font-size:10px;white-space:nowrap;cursor:pointer; }
+    .history-tool-actions button[data-history-bulk-delete],.history-tool-actions button[data-history-clear-category],.history-tool-actions button[data-native-clear-history] { color:var(--danger); }
+    .history-tool-actions button:disabled { opacity:.45;cursor:default; }
+    @media (max-width:370px) {
+      .history-unified-toolbar { flex-wrap:wrap; }
+      .history-unified-toolbar .back-button { flex:0 0 auto; }
+      .history-unified-toolbar .history-count { flex:1 1 0;min-width:0;text-align:right; }
+      .history-tool-actions { flex:0 0 100%;width:100%;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px; }
+      .history-tool-actions button { min-width:0;padding:0 4px;overflow:hidden;text-overflow:ellipsis; }
+    }
+    .history-selection-control { display:none;flex:0 0 auto;align-items:center;justify-content:center;width:26px; }
+    .history-selection-control input { width:18px;height:18px;margin:0;accent-color:var(--accent); }
+    .history-content.is-selection-mode .history-selection-control { display:flex; }
+    .history-content.is-selection-mode .record-row { border-color:var(--line-strong); }
+    .history-content.is-selection-mode .record-actions,.history-content.is-selection-mode .delete-record { display:none; }
+    .history-content.is-selection-mode .record-row.is-selected { background:var(--selected); }
+    .history-secondary-action { display:flex;justify-content:flex-end;margin:0 0 8px; }
     .history-cats { display:grid;gap:14px; }
     .history-cat { width:100%;min-height:68px;padding:0 15px;border:1px solid var(--line);border-radius:18px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;gap:14px;text-align:left;cursor:pointer;box-shadow:0 4px 14px rgba(36,40,37,.025);transition:transform .18s,border-color .18s,box-shadow .18s; }
     .history-cat:hover { transform:translateY(-2px);border-color:var(--line-strong);box-shadow:0 8px 18px rgba(36,40,37,.07); }
@@ -172,10 +212,12 @@
     .delete-record:hover { background:#c2383017;color:var(--danger); }
     .delete-record svg { width:16px;height:16px; }
     .profile-summary { display:flex;flex-direction:column;align-items:center;padding:23px 18px 18px; }
-    .profile-avatar { width:88px;height:88px;border:1px solid var(--line);border-radius:50%;background:linear-gradient(155deg,var(--surface),var(--surface-2));display:grid;place-items:center;color:var(--muted);box-shadow:0 8px 22px rgba(34,38,35,.07); }
+    .profile-avatar { position:relative;flex:0 0 88px;width:88px;height:88px;aspect-ratio:1 / 1;padding:0;border:1px solid var(--line);border-radius:50%;background:linear-gradient(155deg,var(--surface),var(--surface-2));display:grid;place-items:center;color:var(--muted);box-shadow:0 8px 22px rgba(34,38,35,.07);cursor:pointer;overflow:hidden;clip-path:circle(50%);-webkit-tap-highlight-color:transparent; }
     .profile-avatar svg { width:33px;height:33px; }
-    .profile-name { display:flex;align-items:center;gap:6px;margin-top:8px;font-size:13px; }
-    .profile-name button { width:28px;height:28px;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer; }
+    .profile-avatar-note { margin-top:6px;color:var(--muted);font-size:9px; }
+    .profile-name { display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;width:min(100%,240px);margin-top:8px;font-size:13px; }
+    .profile-name span { grid-column:2;min-width:0;max-width:180px;overflow:hidden;text-align:center;text-overflow:ellipsis;white-space:nowrap; }
+    .profile-name button { grid-column:3;justify-self:end;width:28px;height:28px;margin:0;border:0;border-radius:9px;background:transparent;color:var(--muted);cursor:pointer; }
     .settings-list { display:grid;gap:9px;padding:0 16px 18px; }
     .setting-card { border:1px solid var(--line);border-radius:16px;background:var(--surface);overflow:hidden; }
     .setting-trigger { width:100%;min-height:53px;padding:0 15px;border:0;background:transparent;display:flex;align-items:center;justify-content:space-between;text-align:left;cursor:pointer; }
@@ -242,6 +284,7 @@
     .chat-compose { flex:none;margin-right:59px;padding:9px 6px calc(12px + var(--safe-bottom)) 13px; }
     .compose-card { padding:9px 10px 7px;border:1px solid var(--line);border-radius:18px;background:var(--surface);box-shadow:0 5px 18px rgba(25,30,27,.05); }
     .context-chips { display:flex;flex-wrap:wrap;gap:6px;margin:0 0 6px; }
+    .context-chips:empty { display:none; }
     .context-chip { max-width:100%;min-height:26px;padding:3px 5px 3px 9px;border:1px solid var(--line);border-radius:9px;background:var(--surface-2);display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-size:9px; }
     .context-chip span { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
     .context-chip button { width:20px;height:20px;border:0;border-radius:6px;background:transparent;color:var(--muted);font-size:13px;cursor:pointer; }
@@ -284,6 +327,11 @@
     .modal-close { width:31px;height:31px;border:0;border-radius:10px;background:var(--surface-2);color:var(--muted);font-size:19px;cursor:pointer; }
     .modal-copy { margin:0 0 13px;color:var(--muted);font-size:10px;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere; }
     .modal-options { display:grid;gap:8px; }
+    .chat-attachment-grid { grid-template-columns:repeat(5,minmax(0,1fr));gap:6px; }
+    .chat-attachment-option { width:100%;min-width:44px;height:auto;min-height:48px;padding:0;border:1px solid var(--line);border-radius:14px;background:var(--surface-2);color:var(--ink);display:grid;place-items:center;cursor:pointer;touch-action:manipulation; }
+    .chat-attachment-option svg { width:22px;height:22px; }
+    .chat-attachment-option:hover,.chat-attachment-option:focus-visible { background:var(--selected);border-color:var(--line-strong); }
+    .chat-attachment-option:focus-visible { outline:2px solid var(--accent);outline-offset:2px; }
     .modal-option { min-height:47px;padding:0 12px;border:1px solid var(--line);border-radius:12px;background:var(--surface);display:flex;align-items:center;justify-content:space-between;text-align:left;cursor:pointer; }
     .modal-option:hover { background:var(--surface-2); }
     .modal-option small { color:var(--muted);font-size:9px; }
@@ -308,19 +356,21 @@
     #screen-chat .top-brand strong.chat-title .chat-ai-mark { width:18px; height:18px; }
     #screen-chat .chat-empty { align-self:stretch; max-width:320px; margin:clamp(50px, 15vh, 130px) 8px auto; color:var(--title); text-align:left; font-size:23px; line-height:1.35; }
     #screen-chat .chat-empty small { display:block; max-width:260px; color:var(--muted); font-size:11px; line-height:1.6; }
-    #screen-chat .chat-bubble.user { max-width:86%; padding:10px 14px; border:1px solid var(--line); border-radius:18px 18px 5px 18px; background:var(--selected); color:var(--selected-ink); box-shadow:none; }
-    #screen-chat .chat-bubble.assistant { width:100%; max-width:100%; padding:8px 2px 3px; border:0; border-radius:0; background:transparent; box-shadow:none; color:var(--title); font-size:14px; }
+    #screen-chat .chat-bubble.user { max-width:84%; padding:10px 14px; border:1px solid var(--line); border-radius:18px 18px 5px 18px; background:var(--selected); color:var(--selected-ink); box-shadow:none; }
+    #screen-chat .chat-bubble.assistant { width:auto; max-width:84%; padding:12px 14px; border:1px solid var(--line); border-radius:17px 17px 17px 5px; background:var(--surface); box-shadow:none; color:var(--title); font-size:14px; }
     #screen-chat .chat-bubble.assistant.failed { color:var(--danger); }
-    #screen-chat .message-context { align-self:flex-start; justify-content:flex-start; max-width:100%; margin:0; }
     #screen-chat .chat-time { margin-top:-3px; }
-    #screen-chat .chat-compose { margin:0; padding:8px 68px calc(10px + var(--safe-bottom)) 12px; }
-    #screen-chat .compose-card { padding:9px 10px 7px; border-radius:21px; box-shadow:0 3px 13px rgba(25,30,27,.035); }
-    #screen-chat .compose-card textarea { min-height:47px; }
-    #screen-chat .compose-tools { gap:4px; }
-    #screen-chat .compose-tools [data-action="chat-voice"] { min-height:32px; padding:0 9px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); display:inline-flex; align-items:center; gap:5px; color:var(--ink); }
-    #screen-chat .compose-tools [data-action="chat-voice"] svg { width:15px; height:15px; }
-    #screen-chat .compose-tools [data-action="chat-voice"] span { font-size:10px; white-space:nowrap; }
-    #screen-chat .compose-tools .model-select { max-width:112px; overflow:hidden; text-overflow:ellipsis; }
+    #screen-chat .chat-compose { margin:0; padding:8px 78px calc(10px + var(--safe-bottom)) 22px; }
+    #screen-chat .compose-card { padding:2px 6px; border-radius:14px; box-shadow:0 3px 13px rgba(25,30,27,.035); }
+    #screen-chat .compose-card textarea { height:22px; min-height:22px; max-height:64px; resize:none; overflow-y:hidden; line-height:1.35; }
+    #screen-chat .compose-tools { gap:2px; }
+    #screen-chat .compose-tools button { min-height:25px; padding:0 5px; font-size:9px; }
+    #screen-chat .compose-tools > [data-action="chat-attach"] { flex:0 0 24px; width:24px; padding:0; }
+    #screen-chat .compose-tools .model-select { flex:1 1 58px; min-width:0; max-width:76px; overflow:hidden; text-overflow:ellipsis; }
+    #screen-chat .compose-tools [data-action="chat-voice"] { min-height:25px; flex:0 1 auto; gap:3px; padding:0 5px; border:1px solid var(--line); border-radius:10px; background:var(--surface-2); display:inline-flex; align-items:center; color:var(--ink); }
+    #screen-chat .compose-tools [data-action="chat-voice"] svg { width:14px; height:14px; }
+    #screen-chat .compose-tools [data-action="chat-voice"] span { font-size:9px; white-space:nowrap; }
+    #screen-chat .compose-tools .send-button { flex:0 0 26px; width:26px; height:26px; min-height:26px; padding:0; }
     .chat-actions { flex-wrap:wrap; align-items:center; gap:4px; padding:0 2px 8px; }
     .chat-actions button { width:auto; min-height:31px; padding:0 8px; border-radius:9px; display:inline-flex; align-items:center; gap:5px; font-size:10px; }
     .chat-actions button:hover { background:var(--surface-2); }
@@ -374,13 +424,31 @@
     .voice-qa-option-list button { min-height:29px; padding:0 8px; border:1px solid var(--line); border-radius:9px; background:var(--surface); color:var(--muted); font-size:9px; cursor:pointer; }
     @media (max-width:370px) {
       #screen-chat .chat-messages { padding-left:15px; padding-right:15px; }
-      #screen-chat .chat-compose { padding-right:62px; padding-left:9px; }
+      #screen-chat .chat-compose { padding-right:0; padding-left:0; }
       #screen-chat .compose-tools { gap:2px; }
-      #screen-chat .compose-tools .model-select { max-width:88px; }
+      #screen-chat .compose-tools .model-select { max-width:66px; font-size:8px; }
       .voice-main { padding-left:17px; padding-right:17px; }
       .voice-controls { padding-left:13px; padding-right:13px; }
     }
     @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important; } }
+    /* Compact mobile controls, with the composer and mode wheel sharing one row. */
+    #screen-face .face-bottom { gap:2px;padding-top:2px; }
+    #screen-face .face-language { margin:0 0 4px; }
+    #screen-face .face-mic { width:88px;height:88px; }
+    #screen-face .face-status-row { position:absolute;right:0;bottom:0;width:34px;height:34px;min-height:0;margin:0;padding:0;justify-content:flex-end;overflow:visible;clip:auto;clip-path:none;white-space:normal;border:0; }
+    #screen-face .face-status-row small { position:absolute;right:50%;bottom:calc(100% + 8px);width:max-content;max-width:190px;padding:5px 9px;overflow:hidden;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--accent);font-size:10px;line-height:1.3;text-overflow:ellipsis;white-space:nowrap;opacity:0;pointer-events:none;transform:translate(50%,3px);transition:opacity .15s,transform .15s; }
+    #screen-face .face-status-row.is-visible small { opacity:1;transform:translate(50%,0); }
+    #screen-face .face-wheel-slot { height:88px; }
+    #screen-chat { --chat-compose-side:12px;--chat-wheel-width:68px;--chat-control-gap:4px;--chat-compose-width:min(calc(100% - var(--chat-wheel-width) - var(--chat-control-gap) - 24px),300px); }
+    #screen-chat .chat-compose { margin:0 0 0 var(--chat-compose-side);width:var(--chat-compose-width);min-width:0;align-self:flex-start;padding:2px 0 calc(4px + var(--safe-bottom)); }
+    #screen-chat .mode-wheel { right:var(--chat-compose-side);width:var(--chat-wheel-width); }
+    @media (max-width:370px) {
+      #screen-face .face-mic { width:78px;height:78px; }
+      #screen-face .face-wheel-slot { height:78px; }
+      #screen-chat .compose-tools .model-select { max-width:56px;font-size:8px; }
+      #screen-chat .compose-tools [data-action="chat-voice"] { flex:0 0 25px;width:25px;padding:0;justify-content:center; }
+      #screen-chat .compose-tools [data-action="chat-voice"] span { display:none; }
+    }
 
     /* Mint holographic theme: keep the page white and reserve color for controls. */
     body { background:#f6fbf9;color:var(--ink); }
@@ -401,8 +469,6 @@
     .top-icon,.back-button { color:var(--ink); }
     .top-icon:hover,.back-button:hover { background:#e6f9f3; }
     .avatar-button { background:var(--mint-icon);border-color:#bfeade;color:var(--ink); }
-    .session-state i { background:var(--accent); }
-    .session-state[aria-pressed="true"] i { background:#d0a64d; }
     .bubble { border-color:#dcefe8;box-shadow:0 3px 12px rgba(13,148,136,.045); }
     .bubble.source,.chat-bubble.user { background:#e6f9f3;color:#134e4a;border-color:#ccece2; }
     .bubble.other,.face-turn.left { background:#f2fcf8; }
@@ -478,8 +544,8 @@
 
     /* Settings capsules follow the supplied 58 px mint-glass reference. */
     .settings-head { height:100px;border:0;padding:9px 16px 0; }
-    .settings-head h1 { align-self:center;padding-top:8px;color:#134e4a;font-size:34px;font-weight:750;letter-spacing:.02em; }
-    .settings-head h1::after { content:"";display:block;width:82px;height:3px;margin:7px auto 0;border-radius:99px;background:#14b8a6;box-shadow:0 1px 8px rgba(20,184,166,.22); }
+    .settings-head h1 { align-self:center;padding-top:0;color:#134e4a;font-size:24px;font-weight:680;line-height:1.15;letter-spacing:.02em; }
+    .settings-head h1::after { content:"";display:block;width:54px;height:2px;margin:4px auto 0;border-radius:99px;background:#14b8a6;box-shadow:0 1px 8px rgba(20,184,166,.22); }
     .settings-head .back-button,.settings-sparkle { width:42px;height:42px;border:1px solid #ffffff;background:rgba(255,255,255,.76);border-radius:50%;color:#0f766e;box-shadow:0 4px 12px rgba(13,148,136,.12);backdrop-filter:blur(10px); }
     .settings-sparkle svg { width:21px;height:21px; }
     .settings-head .back-button:hover,.settings-sparkle:hover { background:#f1fcf8;transform:scale(1.04); }
@@ -516,11 +582,11 @@
     .profile-footer button { border-color:#d7eee7;border-radius:999px;background:#ffffffd9;color:#0f766e; }
     .profile-footer button:hover { background:#e6f9f3; }
     @keyframes capsule-holo { from{background-position:0% 0%}to{background-position:100% 80%} }
-    @media (max-width:370px) { .mode-wheel { right:7px;width:68px;height:140px; } .mic-button { width:82px;height:78px; } .face-mic { width:80px;height:80px; } .settings-head h1 { font-size:31px; } .setting-trigger { padding:0 16px; } .setting-trigger>span:first-child { gap:11px;font-size:15px; } }
+    @media (max-width:370px) { .mode-wheel { right:7px;width:68px;height:140px; } .mic-button { width:82px;height:78px; } .face-mic { width:80px;height:80px; } .settings-head h1 { font-size:23px; } .setting-trigger { padding:0 16px; } .setting-trigger>span:first-child { gap:11px;font-size:15px; } }
 
     /* Retain the two previously requested optional themes; mint is the new default. */
     html[data-theme="mist"] { --page:#eef1f3;--surface:#f9fafb;--surface-2:#e8edf0;--ink:#334149;--title:#31434c;--muted:#526b78;--accent:#526574;--mint:#e9eef1;--mint-deep:#d7e0e5;--mint-icon:#f9fafb;--line:#dfe4e8;--line-strong:#c5d0d6;--selected:#e2e8ec;--selected-ink:#33434c;--wheel:#f9fafbdd;--wheel-edge:#dfe4e8;--shadow:0 18px 55px rgba(31,43,52,.12); }
-    html[data-theme="night"] { color-scheme:dark;--page:#17191b;--surface:#292d30;--surface-2:#34393b;--ink:#f1f2ef;--title:#f1f2ef;--muted:#bdc1c0;--accent:#c5cac8;--mint:#303638;--mint-deep:#3d4548;--mint-icon:#343b3f;--line:#383d40;--line-strong:#535b5f;--selected:#34393b;--selected-ink:#f1f2ef;--wheel:#24292bdd;--wheel-edge:#535b5f;--shadow:0 18px 55px rgba(0,0,0,.32); }
+    html[data-theme="night"] { color-scheme:dark;--page:#17191b;--surface:#292d30;--surface-2:#34393b;--ink:#f1f2ef;--title:#f1f2ef;--muted:#bdc1c0;--accent:#c5cac8;--mint:#303638;--mint-deep:#3d4548;--mint-icon:#343b3f;--line:#383d40;--line-strong:#535b5f;--selected:#34393b;--selected-ink:#f1f2ef;--wheel:#24292bdd;--wheel-edge:#535b5f;--shadow:0 18px 55px rgba(0,0,0,.32);--danger:#ff938a; }
     html[data-theme="mist"] body { background:#eef1f3; }
     html[data-theme="mist"] .workspace { background:radial-gradient(ellipse at 92% 4%,#dce6ec88,transparent 32%),radial-gradient(ellipse at 5% 96%,#e2e8ec99,transparent 34%); }
     html[data-theme="mist"] .preview-nav { border-color:#dfe4e8;background:#f9fafbdd; }
@@ -828,6 +894,7 @@
     @keyframes orb-style-float { from { transform:translate(-3%,-2%) scale(.97); } to { transform:translate(4%,3%) scale(1.04); } }
     @media (max-width:370px) { .orb-style-grid-v2 { gap:5px; } .orb-style-choice { border-radius:14px; } .orb-style-choice strong { font-size:9px; } .orb-style-choice small { font-size:7px; } .orb-current-preview { min-height:92px; } }
   </style>
+  <link rel="stylesheet" href="./miyin-v6-app.css?v=6">
 </head>
 <body>
   <div class="workspace">
@@ -849,12 +916,7 @@
         <div id="app">
           <section class="screen active" id="screen-home" aria-label="翻译首页">
             <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="历史记录" title="历史记录"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音</strong></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
-            <div class="home-transcript" id="home-transcript" aria-live="polite">
-              <div class="bubble source"><span class="lang-tag" data-source-label>中文 · 你说</span>请问去地铁站怎么走？</div>
-              <div class="bubble translation"><span class="lang-tag" data-target-label>English · 译文</span>How do I get to the subway station?</div>
-              <div class="bubble source"><span class="lang-tag" data-source-label>中文 · 你说</span>一直往前走，大约五分钟就到了。</div>
-              <div class="bubble translation"><span class="lang-tag" data-target-label>English · 译文</span>Go straight ahead. It’s about a five-minute walk.</div>
-            </div>
+            <div class="home-transcript" id="home-transcript" aria-live="polite"></div>
             <div class="translate-panel">
               <div class="text-entry"><input id="translation-input" type="text" placeholder="输入文字翻译…" aria-label="输入文字翻译"><button class="round-tool" type="button" data-action="open-input-tools" aria-label="图片、文档或拍照翻译" title="图片、文档或拍照翻译"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.1 0l2.5-2.5a5 5 0 0 0-7.1-7.1L11 5"/><path d="M14 11a5 5 0 0 0-7.1 0l-2.5 2.5a5 5 0 0 0 7.1 7.1L13 19"/></svg></button><button class="round-tool" type="button" data-action="translate-text" aria-label="翻译文字"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M12 4v15m0 0-5-5m5 5 5-5"/></svg></button></div>
               <div class="entry-tools" id="entry-tools"><button type="button" data-action="camera">拍照翻译</button><button type="button" data-action="photo">选择图片</button><button type="button" data-action="document">图片 / 文档</button></div>
@@ -864,9 +926,9 @@
           </section>
 
           <section class="screen" id="screen-face" aria-label="面对面对话">
-            <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="历史记录"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音</strong><button class="session-state" type="button" data-action="toggle-pause" aria-pressed="false"><i></i><span id="session-state-label">对话中 · 点按暂停</span></button></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
-            <div class="face-transcript" id="face-transcript" aria-live="polite"><div class="face-turn"><small>你 · 中文</small>你好，我想去附近的博物馆。<span class="translated" data-action="read-translation">Hello, I’d like to go to a nearby museum.</span></div><div class="face-turn left"><small>对方 · English</small>Sure. There’s one two blocks from here.<span class="translated" data-action="read-translation">当然，这附近两个街区就有一家。</span></div><div class="face-turn"><small>你 · 中文</small>谢谢，步行需要多久？<span class="translated" data-action="read-translation">Thank you. How long does it take to walk there?</span></div></div>
-            <div class="face-bottom"><div class="face-language"><button type="button" data-action="source-language">中</button><button class="language-swap" type="button" data-action="swap-language" aria-label="交换语言"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7h12l-3-3m3 3-3 3M17 17H5l3 3m-3-3 3-3"/></svg></button><button type="button" data-action="target-language">英</button></div><button class="back-translate" type="button" data-action="leave-face"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 5-7 7 7 7M7 12h13"/></svg></span><span>返回翻译</span></button><div class="face-mic-wrap"><button class="mic-button face-mic" type="button" data-voice="face" aria-label="按住开始面对面翻译"><canvas class="mic-surface" aria-hidden="true"></canvas><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/></svg></button><small id="face-status">按住说话 · 松开显示译文</small></div><div class="face-wheel-slot"></div><div class="mode-wheel" data-wheel="translate" aria-label="切换功能"><button class="wheel-arrow" type="button" data-wheel-step="-1" aria-label="切换到上一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 14 6-6 6 6"/></svg></button><div class="wheel-modes"></div><button class="wheel-arrow" type="button" data-wheel-step="1" aria-label="切换到下一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 10 6 6 6-6"/></svg></button></div></div>
+            <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="历史记录"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音</strong></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
+            <div class="face-transcript" id="face-transcript" aria-live="polite"></div>
+            <div class="face-bottom"><div class="face-language"><button type="button" data-action="source-language">中</button><button class="language-swap" type="button" data-action="swap-language" aria-label="交换语言"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7h12l-3-3m3 3-3 3M17 17H5l3 3m-3-3 3-3"/></svg></button><button type="button" data-action="target-language">英</button></div><button class="back-translate" type="button" data-action="leave-face"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 5-7 7 7 7M7 12h13"/></svg></span><span>返回翻译</span></button><div class="face-mic-wrap"><button class="mic-button face-mic" type="button" data-voice="face" aria-label="按住开始面对面翻译"><canvas class="mic-surface" aria-hidden="true"></canvas><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/></svg></button><div class="face-status-row"><small id="face-status" role="status" aria-live="polite">准备就绪</small></div></div><div class="face-wheel-slot"></div><div class="mode-wheel" data-wheel="translate" aria-label="切换功能"><button class="wheel-arrow" type="button" data-wheel-step="-1" aria-label="切换到上一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 14 6-6 6 6"/></svg></button><div class="wheel-modes"></div><button class="wheel-arrow" type="button" data-wheel-step="1" aria-label="切换到下一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 10 6 6 6-6"/></svg></button></div></div>
           </section>
 
           <section class="screen" id="screen-history" aria-label="历史记录">
@@ -876,12 +938,12 @@
           </section>
 
           <section class="screen" id="screen-settings" aria-label="设置">
-            <header class="settings-head"><button class="back-button" type="button" data-screen="home" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 5-7 7 7 7M7 12h13"/></svg></button><h1>设置</h1><button class="top-icon settings-sparkle" type="button" data-action="theme-preview" aria-label="主题预览"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8L12 3Z"/><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z"/></svg></button></header>
+            <header class="settings-head"><button class="back-button" type="button" data-action="settings-back" aria-label="返回"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m14 5-7 7 7 7M7 12h13"/></svg></button><h1>设置</h1><button class="top-icon settings-sparkle" type="button" data-action="theme-preview" aria-label="主题预览"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><path d="m12 3 1.9 5.2L19 10l-5.1 1.8L12 17l-1.9-5.2L5 10l5.1-1.8L12 3Z"/><path d="m19 16 .9 2.1L22 19l-2.1.9L19 22l-.9-2.1L16 19l2.1-.9L19 16Z"/></svg></button></header>
             <div class="scroll-area">
-              <div class="profile-summary"><div class="profile-avatar" aria-label="默认头像"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35"><circle cx="12" cy="8" r="3.5"/><path d="M4.8 20c.5-4 2.9-6 7.2-6s6.7 2 7.2 6"/><path d="M5 5.5c1.6-2 4-3 7-3" opacity=".55"/></svg></div><div class="profile-name"><span id="profile-name">本地用户</span><button type="button" data-action="rename" aria-label="编辑用户名">✎</button></div></div>
+              <div class="profile-summary"><button type="button" class="profile-avatar" data-action="change-avatar" aria-label="更换头像"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.35"><circle cx="12" cy="8" r="3.5"/><path d="M4.8 20c.5-4 2.9-6 7.2-6s6.7 2 7.2 6"/><path d="M5 5.5c1.6-2 4-3 7-3" opacity=".55"/></svg></button><small class="profile-avatar-note">点击头像更换照片</small><div class="profile-name"><span id="profile-name">本地用户</span><button type="button" data-action="rename" aria-label="编辑用户名">✎</button></div></div>
               <div class="settings-list">
                 <article class="setting-card"><button class="setting-trigger" type="button"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="m12 3 8 4.5-8 4.5-8-4.5 8-4.5Z"/><path d="M20 7.5v9L12 21l-8-4.5v-9M12 12v9"/></svg>模型与服务</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button><div class="setting-panel"><div class="setting-row"><div class="setting-copy"><b>默认 AI 模型</b><small id="model-summary">OpenAI · GPT 系列（预览）</small></div><button class="value-control" type="button" data-action="model-picker">配置模型</button></div><div class="setting-row"><div class="setting-copy"><b>模型服务商</b><small>先配置 API，再选择已连接模型</small></div><button class="value-control" type="button" data-action="provider-picker">服务商列表</button></div><div class="setting-row"><div class="setting-copy"><b>隐私选择</b><small>本地或远程服务按用户配置使用</small></div><button class="value-control" type="button" data-action="provider-picker">查看选项</button></div></div></article>
-                <article class="setting-card"><button class="setting-trigger" type="button"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.4 3.5 5.4 3.5 9s-1 6.6-3.5 9c-2.5-2.4-3.5-5.4-3.5-9S9.5 5.4 12 3Z"/></svg>语言</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button><div class="setting-panel"><div class="setting-row"><div class="setting-copy"><b>界面语言</b><small>菜单与设置文字</small></div><button class="value-control" type="button" data-action="ui-language">简体中文⌄</button></div><div class="setting-row"><div class="setting-copy"><b>默认翻译语言</b><small>可以在翻译页面随时切换</small></div><button class="value-control" type="button" data-action="source-language">中文 ⇄ English</button></div></div></article>
+                <article class="setting-card" data-settings-language-card><button class="setting-trigger" type="button"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.4 3.5 5.4 3.5 9s-1 6.6-3.5 9c-2.5-2.4-3.5-5.4-3.5-9S9.5 5.4 12 3Z"/></svg>语言</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button><div class="setting-panel"><div class="setting-row"><div class="setting-copy"><b>界面语言</b><small>菜单与设置文字</small></div><button class="value-control" type="button" data-action="ui-language">简体中文⌄</button></div><div class="setting-row"><div class="setting-copy"><b>默认翻译语言</b><small>可以在翻译页面随时切换</small></div><button class="value-control" type="button" data-action="source-language">中文 ⇄ English</button></div><div class="setting-row"><div class="setting-copy"><b>离线翻译模型</b><small>当前中英模型由 Google ML Kit / Google Play 服务管理</small></div><button class="value-control" type="button" data-action="offline-model-manager">管理模型</button></div><div class="setting-row"><div class="setting-copy"><b>离线词典</b><small>目前尚无词典包；查词不会用翻译模型代替</small></div><button class="value-control" type="button" data-action="dictionary-info">查看状态</button></div></div></article>
                 <article class="setting-card"><button class="setting-trigger" type="button"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="8" y="3" width="8" height="13" rx="4"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-3 0h6"/></svg>语音设置</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button><div class="setting-panel"><div class="setting-row"><div class="setting-copy"><b>译文自动播报</b><small>可在面对面对话中关闭</small></div><button class="switch" type="button" aria-pressed="true" aria-label="译文自动播报"></button></div><div class="setting-row"><div class="setting-copy"><b>播报速度</b><small>标准</small></div><button class="value-control" type="button" data-action="speech-speed">标准⌄</button></div><div class="setting-row"><div class="setting-copy"><b>默认收音方式</b><small>按住说话</small></div><button class="value-control" type="button" data-action="speech-mode">按住说话⌄</button></div></div></article>
                 <article class="setting-card"><button class="setting-trigger" type="button"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 3 5 6v5c0 4.7 2.8 8 7 10 4.2-2 7-5.3 7-10V6l-7-3Z"/><path d="m9 12 2 2 4-4"/></svg>隐私与权限</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button><div class="setting-panel"><div class="setting-row"><div class="setting-copy"><b>保存会话历史</b><small>仅在本机预览保存示例状态</small></div><button class="switch" type="button" aria-pressed="true" aria-label="保存会话历史"></button></div><div class="setting-row"><div class="setting-copy"><b>音频与文字处理说明</b><small>开始前明确显示使用的数据来源</small></div><button class="value-control" type="button" data-action="privacy-info">查看说明</button></div></div></article>
                 <article class="setting-card"><button class="setting-trigger" type="button"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2m10-10h-2M4 12H2m17.1-7.1-1.4 1.4M6.3 17.7l-1.4 1.4m14.2 0-1.4-1.4M6.3 6.3 4.9 4.9"/></svg>显示与偏好</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 9 6 6 6-6"/></svg></button><div class="setting-panel"><div class="setting-row"><div class="setting-copy"><b>界面主题</b><small>选择适合当前环境的外观</small></div><span class="setting-copy" id="theme-current" style="text-align:right;font-size:9px">薄荷全息</span></div><div class="theme-choice-list" role="group" aria-label="选择界面主题"><button class="theme-choice" type="button" data-theme-choice="mint-holographic" aria-pressed="true"><span class="theme-swatch"><i style="background:#e6f9f3"></i><i style="background:#7dd3c0"></i><i style="background:#e0bbe4"></i></span><span>薄荷全息</span></button><button class="theme-choice" type="button" data-theme-choice="mist" aria-pressed="false"><span class="theme-swatch"><i style="background:#eef1f3"></i><i style="background:#fff"></i><i style="background:#526574"></i></span><span>冷雾 · 铅灰</span></button><button class="theme-choice" type="button" data-theme-choice="night" aria-pressed="false"><span class="theme-swatch"><i style="background:#17191b"></i><i style="background:#292d30"></i><i style="background:#c5cac8"></i></span><span>石墨夜 · 银灰</span></button></div><button class="setting-row orb-style-entry" type="button" data-screen="orb-style"><span class="setting-copy"><b>AI 球体外观</b><small id="orb-style-summary">觅音原款 · 你选定的深海蓝球体</small></span><span class="orb-entry-side"><span class="orb-entry-preview"><span class="orb-style-orb" data-orb-material="picked-orb"><span class="orb-style-core"></span><span class="orb-style-glint"></span></span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg></span></button><div class="setting-row"><div class="setting-copy"><b>字幕文字大小</b><small>标准</small></div><button class="value-control" type="button" data-action="caption-size">标准⌄</button></div></div></article>
@@ -949,15 +1011,15 @@
             </div>
           </section>
           <section class="screen" id="screen-chat" aria-label="AI 对话">
-            <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="AI 对话历史" title="AI 对话历史"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音 AI 对话</strong><small>文字与语音共用本次会话</small></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
+            <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="AI 对话历史" title="AI 对话历史"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音</strong></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
             <div class="chat-messages" id="chat-messages" aria-live="polite"></div>
-            <div class="chat-compose"><div class="compose-card"><div class="context-chips" id="chat-context-chips" aria-label="待附加的历史内容"></div><textarea id="chat-input" placeholder="发消息给觅音…" aria-label="发送消息"></textarea><div class="compose-tools"><button type="button" data-action="chat-attach" aria-label="添加会话或资料" title="添加会话或资料">＋</button><button class="model-select" type="button" data-action="model-picker">选择模型⌄</button><button type="button" data-action="chat-voice" aria-label="开始 AI 语音对话" title="开始 AI 语音对话"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4m4-7v10m4-13v16m4-11v6m4-9v12"/></svg><span>语音</span></button><button class="send-button" type="button" data-action="send-chat" aria-label="发送"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5m-7 7 7-7 7 7"/></svg></button></div></div></div>
+            <div class="chat-compose"><div class="compose-card"><div class="context-chips" id="chat-context-chips" aria-label="待附加的历史内容"></div><div class="context-chips" id="chat-file-chips" aria-label="待发送的本地附件"></div><textarea id="chat-input" rows="1" placeholder="发消息给觅音…" aria-label="发送消息"></textarea><div class="compose-tools"><button type="button" data-action="chat-attach" aria-label="添加会话或资料" title="添加会话或资料">＋</button><button class="model-select" type="button" data-action="model-picker">选择模型⌄</button><button type="button" data-action="chat-voice" aria-label="开始 AI 语音对话" title="开始 AI 语音对话"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 10v4m4-7v10m4-13v16m4-11v6m4-9v12"/></svg><span>语音</span></button><button class="send-button" type="button" data-action="send-chat" aria-label="发送"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 19V5m-7 7 7-7 7 7"/></svg></button></div></div></div>
             <div class="mode-wheel" data-wheel="chat" aria-label="切换功能"><button class="wheel-arrow" type="button" data-wheel-step="-1" aria-label="切换到上一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 14 6-6 6 6"/></svg></button><div class="wheel-modes"></div><button class="wheel-arrow" type="button" data-wheel-step="1" aria-label="切换到下一个功能"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 10 6 6 6-6"/></svg></button></div>
             <div class="voice-overlay" id="voice-overlay" data-voice-state="idle" data-display-mode="immersive" aria-hidden="true"><section class="voice-panel" tabindex="-1" role="dialog" aria-modal="true" aria-labelledby="voice-title" aria-describedby="voice-copy"><div class="ai-orb-renderer shader-fallback" data-orb-material="picked-orb" aria-hidden="true"><div class="ai-orb-material-surface"><span class="orb-style-core"></span><span class="orb-style-glint"></span></div><canvas class="ai-orb-surface"></canvas></div></section></div>
           </section>
 
           <section class="screen" id="screen-video" aria-label="视频字幕">
-            <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="历史记录"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音　视频字幕</strong><small>会议 · 课程 · 视频</small></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
+            <header class="topbar"><button class="top-icon" type="button" data-screen="history" aria-label="历史记录"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="top-brand"><strong>觅音</strong></div><button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header>
             <div class="video-controls"><div class="video-setting"><div><b>视频翻译字幕</b><small>识别选定音源并显示翻译</small></div><button class="switch" type="button" aria-pressed="true" aria-label="视频翻译字幕"></button></div><div class="video-setting"><div><b>字幕双语对照</b><small>同时显示原文与译文</small></div><button class="switch" type="button" aria-pressed="true" aria-label="字幕双语对照"></button></div><div class="video-setting"><div><b>保存到历史记录</b><small>结束后可回看这次字幕</small></div><button class="switch" type="button" aria-pressed="true" aria-label="保存到历史记录"></button></div><div class="video-setting"><div><b>字幕画中画 PiP</b><small>切到其他 App 后继续显示字幕</small></div><button class="switch" type="button" aria-pressed="false" aria-label="字幕画中画 PiP"></button></div></div>
             <div class="source-pills"><button type="button" data-source="system" aria-pressed="true">其他 App 音频</button><button type="button" data-source="mic" aria-pressed="false">麦克风 / 会议</button></div>
             <div class="subtitle-preview"><div class="subtitle-head"><span>字幕预览 · 中文 ⇄ English</span><button class="subtitle-lang" type="button" data-action="source-language">中　↻　英</button></div><div class="caption-card"><small>English · 识别原文（示例）</small><span id="video-source-text">The course starts at half past nine.</span></div><div class="caption-card translation"><small>简体中文 · 翻译（示例）</small><span id="video-target-text">课程九点半开始。</span></div><div class="subtitle-actions"><span class="demo-status" id="video-status">尚未开始 · 本页为交互预览</span><button class="video-start" id="video-start" type="button" data-action="video-start">开始识别</button></div></div>
@@ -965,28 +1027,39 @@
           </section>
           <div class="toast" id="toast" role="status" aria-live="polite"></div>
           <div class="modal-scrim" id="modal-scrim" role="presentation"><div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title"><div class="modal-grab"></div><div class="modal-head"><h2 id="modal-title"></h2><button class="modal-close" type="button" aria-label="关闭">×</button></div><p class="modal-copy" id="modal-copy"></p><div class="modal-options" id="modal-options"></div><div class="modal-footer" id="modal-footer"></div></div></div>
-          <input class="file-input" id="file-photo" type="file" accept="image/*" capture="environment"><input class="file-input" id="file-image" type="file" accept="image/*"><input class="file-input" id="file-document" type="file" accept="image/*,.pdf,.doc,.docx,.txt">
+          <input class="file-input" id="file-photo" data-selection-target="translation" type="file" accept="image/*" capture="environment"><input class="file-input" id="file-image" data-selection-target="translation" type="file" accept="image/*"><input class="file-input" id="file-document" data-selection-target="translation" type="file" accept="image/*,.pdf,.doc,.docx,.txt">
+          <input class="file-input" id="chat-file-camera" data-selection-target="chat" type="file" accept="image/*" capture="environment"><input class="file-input" id="chat-file-image" data-selection-target="chat" type="file" accept="image/*"><input class="file-input" id="chat-file-document" data-selection-target="chat" type="file" accept="image/*,.pdf,.doc,.docx,.txt">
         </div>
       </div>
     </main>
   </div>
   <script src="./miyin-v5-core.js"></script>
+  <script src="./miyin-native-bridge.js"></script>
   <script>
     (function(){
       const themeNames={"mint-holographic":"薄荷全息","mist":"冷雾 · 铅灰","night":"石墨夜 · 银灰"};
       const themeColors={"mint-holographic":"#ffffff","mist":"#eef1f3","night":"#17191b"};
       const modes=[{id:"translate",label:"翻译",screen:"home",icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6"/></svg>'},{id:"chat",label:"AI 对话",screen:"chat",icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M7.2 7.1c-.4-1.5-1.8-2.5-3.1-2.3-1.4.2-2.2 1.7-1.8 3.2.4 1.4 1.8 2.4 3.2 2.2M16.8 7.1c.4-1.5 1.8-2.5 3.1-2.3 1.4.2 2.2 1.7 1.8 3.2-.4 1.4-1.8 2.4-3.2 2.2"/><path d="M5.2 10.1c0-3.6 2.9-6.1 6.8-6.1s6.8 2.5 6.8 6.1v5.2c0 3.4-2.7 5.7-6.8 5.7s-6.8-2.3-6.8-5.7z"/><path d="M8.4 12.1h.1m7 0h.1M9.4 16c.8.7 1.6 1 2.6 1s1.8-.3 2.6-1"/><circle cx="8.5" cy="12.2" r="1.4"/><circle cx="15.5" cy="12.2" r="1.4"/></svg>'},{id:"video",label:"视频字幕",screen:"video",icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="m10 9 5 3-5 3z"/></svg>'}];
-      let currentMode=0,currentScreen="home",sourceLanguage="中文",targetLanguage="English",theme="mint-holographic",toastTimer=null,activeVoice=null,voiceStartedAt=0,translationPrompt="",historyCategory=null,activeRecord=null,activeConversationForDelete=null,modelPickerContext="default",facePaused=false,videoActive=false,sourceKind="system",previousFocus=null,suppressWheelClickUntil=0,simulatedModelUnavailable=false;
-      const sampleRecords=[{id:"t1",category:"translation",title:"机场问路",detail:"中文 ⇄ English · 4 句",time:"今天 14:32"},{id:"t2",category:"translation",title:"咖啡店点单",detail:"中文 ⇄ English · 6 句",time:"昨天 18:06"},{id:"f1",category:"face",title:"展会交流",detail:"中文 ⇄ English · 12 句",time:"今天 11:20"},{id:"f2",category:"face",title:"问路 · 京都",detail:"中文 ⇄ 日本語 · 5 句",time:"10月 6日"},{id:"v1",category:"video",title:"英语课程 · Unit 03",detail:"视频字幕 · 6 分钟",time:"昨天 20:42"}];
-      const sampleEntries={t1:[{source:"请问，机场大巴在哪里？",translation:"Excuse me, where is the airport bus?",sourceLanguage:"中文",targetLanguage:"English"},{source:"在出口右转，站台在外面。",translation:"Turn right at the exit. The bus stop is outside.",sourceLanguage:"中文",targetLanguage:"English"}],t2:[{source:"请给我一杯拿铁，少冰。",translation:"A latte with less ice, please.",sourceLanguage:"中文",targetLanguage:"English"}],f1:[{speaker:"你",source:"很高兴认识你们，这次展会有什么新产品？",translation:"Nice to meet you. What new products are you presenting at the expo?",sourceLanguage:"中文",targetLanguage:"English"},{speaker:"对方",source:"我们展示了新一代便携式扫描设备。",translation:"We are presenting our next-generation portable scanning devices.",sourceLanguage:"English",targetLanguage:"中文"}],f2:[{speaker:"你",source:"请问最近的车站怎么走？",translation:"一番近い駅へはどう行けばいいですか？",sourceLanguage:"中文",targetLanguage:"日本語"}],v1:[{at:"00:42",source:"The course starts at half past nine.",translation:"课程九点半开始。",sourceLanguage:"English",targetLanguage:"中文"},{at:"01:16",source:"Please open your workbook to page twelve.",translation:"请把练习册翻到第十二页。",sourceLanguage:"English",targetLanguage:"中文"}]};
-      sampleRecords.forEach(record=>record.entries=sampleEntries[record.id]||[]);
-      const sampleTime=Date.now();
-      const sampleConversation={id:"demo-chat-1",title:"周末旅行计划",createdAt:sampleTime-600000,updatedAt:sampleTime-600000,modelId:load("model","OpenAI · GPT 系列（预览）"),messages:[{id:"demo-user-1",role:"user",text:"你好 GPT",createdAt:sampleTime-600000,status:"complete",contextAttachments:[]},{id:"demo-assistant-1",role:"assistant",text:"你好，Xin，很高兴认识你。\n\n我可以陪你聊天，也可以结合翻译、字幕或会话记录一起完成任务。",createdAt:sampleTime-590000,status:"complete",contextAttachments:[]} ]};
-      let records=load("records",sampleRecords); if(!Array.isArray(records))records=sampleRecords.slice();
-      let conversations=load("conversations",[sampleConversation]); if(!Array.isArray(conversations))conversations=[];
-      let activeConversationId=conversations.length?conversations[0].id:null,transientConversations=[],historySavingEnabled=load("save-history",true)!==false,readingMessageId=null,readingTimer=0,activeShareAnswer="",activeShareThread="",historyQuery="",activeHistoryDetail=null,activeConversationForRenameId=null,pendingContextAttachments=[];
+      let currentMode=0,currentScreen="home",settingsReturnStack=[],sourceLanguage="中文",targetLanguage="English",theme="mint-holographic",toastTimer=null,activeVoice=null,faceStatusTimer=0,translationPrompt="",historyCategory=null,activeRecord=null,activeConversationForDelete=null,modelPickerContext="default",videoActive=false,sourceKind="system",previousFocus=null,suppressWheelClickUntil=0,simulatedModelUnavailable=false;
+      let translationPending=false,nativeHistoryClearPending=false,translationPendingSettled=Promise.resolve(),resolveTranslationPending=null,translationInputRevision=0,legacyDraftPrompt=null,nativeModelStatus="checking",nativeModelRequest=0,nativeModelBusy=false,nativeModelOperation="idle",nativeModelManagerOpen=false,nativeModelError="",nativeTranslationHistoryCount=0,nativeTranslationOffset=0,nativeTranslationRows=[],nativeHistoryRequest=0,nativeHistoryCountRequest=0,activeNativeHistoryId=null,nativeLanguageOptions=[{tag:"zh-Hans",name:"简体中文"},{tag:"en",name:"English"}],nativeSupportedPairs=[],nativeInstalledPairs=[],nativePairStatuses={},nativePairAvailability="checking",nativePairRequest=0,nativeLanguagePickerRequest=0,translationMode="sentence";
+      const demoRecordIds=new Set(["t1","t2","f1","f2","v1"]);
+      let records=load("records",[]);if(!Array.isArray(records))records=[];
+      const actualRecords=records.filter(record=>!demoRecordIds.has(String(record?.id||"")));
+      if(actualRecords.length!==records.length){records=actualRecords;save("records",records)}
+      let conversations=load("conversations",[]);if(!Array.isArray(conversations))conversations=[];
+      const actualConversations=conversations.filter(conversation=>conversation?.id!=="demo-chat-1");
+      if(actualConversations.length!==conversations.length){conversations=actualConversations;save("conversations",conversations)}
+      let activeConversationId=conversations.length?conversations[0].id:null,transientConversations=[],historySavingEnabled=load("save-history",true)!==false,readingMessageId=null,readingTimer=0,activeShareAnswer="",activeShareThread="",historyQuery="",activeHistoryDetail=null,activeConversationForRenameId=null,pendingContextAttachments=[],pendingChatAttachments=[];
       const generationTimers=new Map();
+      let historySelectionMode=false,pendingHistoryDelete=null,pendingHistoryClearCategory=null;
+      const historySelectedIds=new Set();
       const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>Array.from(r.querySelectorAll(s));
+      const chatInput=$("#chat-input");
+      let chatDraftRevision=0;
+      function resizeChatInput(){if(!chatInput)return;chatInput.style.height="20px";const height=Math.min(chatInput.scrollHeight,64);chatInput.style.height=Math.max(20,height)+"px";chatInput.style.overflowY=chatInput.scrollHeight>64?"auto":"hidden"}
+      chatInput?.addEventListener("input",()=>{chatDraftRevision++;resizeChatInput()});
+      resizeChatInput();
+      $("#translation-input").addEventListener("input",()=>translationInputRevision++);
       function load(key,fallback){try{const v=localStorage.getItem("miyin.full.preview.v5."+key);return v?JSON.parse(v):fallback}catch{return fallback}}
       function save(key,value){try{localStorage.setItem("miyin.full.preview.v5."+key,JSON.stringify(value))}catch{}}
       const orbStyleNames={"picked-orb":"我选定的原球体","flow-glass":"深海流光","miyin-frosted":"雾面晶透",toon:"卡通软胶",frosted:"磨砂玻璃",liquid:"液态玻璃",mist:"云雾光体",hybrid:"玻璃流体核"};
@@ -1000,9 +1073,11 @@
       function ensureConversationForFirstMessage(prompt){let conversation=activeConversationId?getConversation(activeConversationId):null;if(conversation)return conversation;conversation=MiyinV5Core.createConversation({id:nextId("chat"),firstPrompt:prompt,modelId:load("model","OpenAI · GPT 系列（预览）"),now:Date.now()});activeConversationId=conversation.id;return conversation}
       function appendMessage(conversationId,message){const current=getConversation(conversationId)||MiyinV5Core.createConversation({id:conversationId,firstPrompt:message.text,modelId:load("model","OpenAI · GPT 系列（预览）"),now:message.createdAt});const updated=MiyinV5Core.appendConversationMessage(current,message,message.createdAt);if(historySavingEnabled){saveConversations(MiyinV5Core.upsertConversation(conversations,updated));transientConversations=transientConversations.filter(item=>item.id!==conversationId)}else transientConversations=MiyinV5Core.upsertConversation(transientConversations,updated);return updated}
       function updateMessage(conversationId,messageId,updates){const current=getConversation(conversationId);if(!current)return null;const updated=MiyinV5Core.updateConversationMessage(current,messageId,updates,Date.now());if(historySavingEnabled){saveConversations(MiyinV5Core.upsertConversation(conversations,updated));transientConversations=transientConversations.filter(item=>item.id!==conversationId)}else transientConversations=MiyinV5Core.upsertConversation(transientConversations,updated);if(activeConversationId===conversationId)renderChatConversation(updated);return updated}
-      function startNewConversation(){activeConversationId=null;$("#chat-input").value="";pendingContextAttachments=[];renderPendingContextAttachments();historyCategory=null;activeHistoryDetail=null;renderChatConversation(null);showScreen("chat");$("#chat-input").focus()}
+      function startNewConversation(){activeConversationId=null;chatDraftRevision++;$("#chat-input").value="";resizeChatInput();pendingContextAttachments=[];pendingChatAttachments=[];renderPendingContextAttachments();renderPendingChatAttachments();historyCategory=null;activeHistoryDetail=null;renderChatConversation(null);showScreen("chat");$("#chat-input").focus()}
       function contextCategoryName(category){return({translation:"翻译",face:"面对面对话",chat:"AI 对话",video:"视频字幕"})[category]||"历史记录"}
       function renderPendingContextAttachments(){const box=$("#chat-context-chips");if(!box)return;box.innerHTML=pendingContextAttachments.map(item=>'<div class="context-chip"><span>'+escapeHtml(contextCategoryName(item.category)+' · '+item.title)+'</span><button type="button" data-remove-context="'+escapeHtml(item.id)+'" aria-label="移除 '+escapeHtml(item.title)+'">×</button></div>').join("")}
+      function renderPendingChatAttachments(){const box=$("#chat-file-chips");if(!box)return;box.innerHTML=pendingChatAttachments.map((item,index)=>'<div class="context-chip"><span>'+escapeHtml(item.name)+'</span><button type="button" data-remove-chat-attachment="'+index+'" aria-label="移除 '+escapeHtml(item.name)+'">×</button></div>').join("")}
+      document.addEventListener("click",event=>{const remove=event.target.closest("[data-remove-chat-attachment]");if(!remove)return;pendingChatAttachments.splice(Number(remove.dataset.removeChatAttachment),1);renderPendingChatAttachments();announce("已移除待发送附件")});
       function contextMessageMarkup(message){const attachments=Array.isArray(message.contextAttachments)?message.contextAttachments:[];if(!attachments.length)return"";return'<div class="message-context" aria-label="本条消息引用的历史内容">'+attachments.map(item=>'<span>'+escapeHtml(contextCategoryName(item.category)+' · '+item.title)+'</span>').join("")+'</div>'}
       function formatChatTime(timestamp){const date=new Date(timestamp);if(Number.isNaN(date.getTime()))return"刚刚";return date.toLocaleTimeString("zh-CN",{hour:"2-digit",minute:"2-digit",hour12:false})}
       function assistantActionsMarkup(message){const id=escapeHtml(message.id);const icons={stop:'<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>',failure:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v6m0 4h.01"/></svg>',read:'<svg viewBox="0 0 24 24"><path d="M4 10v4h3l5 4V6l-5 4z"/><path d="M16 9a5 5 0 0 1 0 6m2-9a8 8 0 0 1 0 12"/></svg>',pause:'<svg viewBox="0 0 24 24"><path d="M9 5v14m6-14v14"/></svg>',copy:'<svg viewBox="0 0 24 24"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',share:'<svg viewBox="0 0 24 24"><circle cx="18" cy="5" r="2.5"/><circle cx="6" cy="12" r="2.5"/><circle cx="18" cy="19" r="2.5"/><path d="m8.2 10.8 7.5-4.5m-7.5 7 7.5 4.5"/></svg>',retry:'<svg viewBox="0 0 24 24"><path d="M20 7v5h-5M4 17v-5h5"/><path d="M5.6 9A7 7 0 0 1 18 6l2 2M4 16l2 2a7 7 0 0 0 12.4-3"/></svg>'};const button=(action,label,icon,pressed)=>'<button type="button" data-chat-action="'+action+'" data-message-id="'+id+'" aria-label="'+label+'" title="'+label+'"'+(pressed===undefined?'':' aria-pressed="'+String(pressed)+'"')+'><span class="chat-action-icon">'+icon+'</span><span class="chat-action-label">'+label+'</span></button>';if(message.status==="pending")return'<div class="chat-actions" data-actions-for="'+id+'">'+button("stop-generation","停止生成",icons.stop)+button("simulate-failure","演示失败",icons.failure)+'</div>';if(message.status==="failed"||message.status==="stopped")return'<div class="chat-actions" data-actions-for="'+id+'">'+button("retry","重新回答",icons.retry)+'</div>';const read=readingMessageId===message.id;return'<div class="chat-actions" data-actions-for="'+id+'">'+button("read",read?"停止朗读":"朗读",read?icons.pause:icons.read,read)+button("copy","复制",icons.copy)+button("share","分享",icons.share)+button("regenerate","重新生成",icons.retry)+'</div>'}
@@ -1010,6 +1085,7 @@
       function renderChatConversation(conversation){const box=$("#chat-messages");if(!box)return;if(!conversation||!conversation.messages.length){box.innerHTML='<div class="chat-empty">你好，有什么想和我聊的？<br><small>直接输入消息，也可以开启语音对话。</small></div>';updateChatModelLabel(conversation);return}box.innerHTML=conversation.messages.map(message=>{const status=message.status&&message.status!=="complete"?" "+message.status:"";return'<div class="chat-bubble '+(message.role==="user"?"user":"assistant")+status+'" data-message-id="'+escapeHtml(message.id)+'">'+escapeHtml(message.text)+'</div><div class="chat-time">'+formatChatTime(message.createdAt)+'</div>'+contextMessageMarkup(message)+messageAttachmentsMarkup(message)+(message.role==="assistant"?assistantActionsMarkup(message):"")}).join("");box.scrollTop=box.scrollHeight;updateChatModelLabel(conversation)}
       function updateChatModelLabel(conversation){const button=$("#screen-chat .model-select"),model=conversation&&conversation.modelId?conversation.modelId:load("model","选择模型");if(button){const shortName=String(model).replace("OpenAI · ","").replace("（预览）","");button.textContent=(shortName.length>16?shortName.slice(0,15)+"…":shortName)+"⌄";button.title="当前对话模型："+model}}
       function announce(message){const toast=$("#toast");toast.textContent=message;toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),2300)}
+      window.addEventListener("miyin:native-picker-recovered",event=>{const name=String(event.detail?.name||"图片");announce("检测到上次未完成的图片选择「"+name+"」；本版未读取文件内容，请重新选择后再使用")});window.addEventListener("miyin:native-picker-recovery-failed",()=>announce("上次图片选择未能恢复，请重新选择"));
       function setTheme(next,quiet=false){if(!themeNames[next])return;theme=next;document.documentElement.dataset.theme=next;$("meta[name='theme-color']").content=themeColors[next];const label=$("#theme-current");if(label)label.textContent=themeNames[next];$$("[data-theme-choice]").forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.themeChoice===next)));save("theme",next);if(!quiet)announce("主题已切换为「"+themeNames[next]+"」")}
       function renderWheel(){
         const upIndex=(currentMode+1)%modes.length,downIndex=(currentMode+modes.length-1)%modes.length;
@@ -1080,20 +1156,221 @@
         window.__miyinWheelShaderStatus=rendered?"ready":"fallback";
       }
       function setMode(index){currentMode=(index+modes.length)%modes.length;showScreen(modes[currentMode].screen)}
-      function showScreen(name){const screen=$("#screen-"+name);if(!screen)return;const modeIndex=modes.findIndex(mode=>mode.screen===name);if(modeIndex>=0)currentMode=modeIndex;else if(name==="face")currentMode=0;currentScreen=name;$$('.screen').forEach(s=>s.classList.toggle('active',s===screen));$$('.screen-nav [data-screen]').forEach(b=>{if(b.dataset.screen===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(name==="history")renderHistory();if(name==="settings")syncSettings();if(name==="chat"){renderChatConversation(getConversation(activeConversationId));setTimeout(()=>$("#chat-messages").scrollTop=$("#chat-messages").scrollHeight,30)}renderWheel();window.dispatchEvent(new Event("miyin:surface-visibility-change"))}
-      function syncSettings(){const name=load("username","本地用户");$("#profile-name").textContent=name;const model=load("model","OpenAI · GPT 系列（预览）");$("#model-summary").textContent=model;const nameEl=$("#theme-current");if(nameEl)nameEl.textContent=themeNames[theme]||"薄荷全息";const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled))}
-      function openModal(title,copy,options=[],buttons=[]){previousFocus=document.activeElement;$("#modal-title").textContent=title;$("#modal-copy").textContent=copy||"";$("#modal-options").innerHTML="";options.forEach(opt=>{const b=document.createElement("button"),label=document.createElement("span");b.type="button";b.className="modal-option";b.dataset.modalAction=opt.action||"";b.dataset.value=opt.value||"";label.textContent=opt.label;b.appendChild(label);if(opt.hint){const hint=document.createElement("small");hint.textContent=opt.hint;b.appendChild(hint)}$("#modal-options").appendChild(b)});$("#modal-footer").innerHTML="";buttons.forEach(btn=>{const b=document.createElement("button");b.type="button";b.className=btn.className||"";b.dataset.modalAction=btn.action||"close";b.textContent=btn.label;$("#modal-footer").appendChild(b)});$("#modal-scrim").classList.add("open");setTimeout(()=>$(".modal-close").focus(),10)}
-      function closeModal(){ $("#modal-scrim").classList.remove("open");if(previousFocus&&previousFocus.focus)previousFocus.focus() }
+      function showScreen(name){const screen=$("#screen-"+name);if(!screen)return;if(name==="settings"){const active=$(".screen.active"),origin=active?.id.replace(/^screen-/,"")||currentScreen;const restoringSettingsRoute=window.MiyinV6Navigation?.consumeSettingsReturnRestore?.()===true;if(origin!=="settings"&&!restoringSettingsRoute){settingsReturnStack.push(origin);if(settingsReturnStack.length>32)settingsReturnStack.shift()}}const modeIndex=modes.findIndex(mode=>mode.screen===name);if(modeIndex>=0)currentMode=modeIndex;else if(name==="face")currentMode=0;currentScreen=name;$$('.screen').forEach(s=>s.classList.toggle('active',s===screen));$$('.screen-nav [data-screen]').forEach(b=>{if(b.dataset.screen===name)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current')});if(name==="history")renderHistory();if(name==="settings")syncSettings();if(name==="chat"){renderChatConversation(getConversation(activeConversationId));setTimeout(()=>$("#chat-messages").scrollTop=$("#chat-messages").scrollHeight,30)}renderWheel();window.dispatchEvent(new Event("miyin:surface-visibility-change"))}
+      const avatarDataUrlPattern=/^data:image\/(?:jpeg|png|webp);base64,[A-Za-z0-9+/]+={0,2}$/;
+      function syncAvatar(){const stored=load("profile-avatar","");const dataUrl=typeof stored==="string"&&stored.length<=360000&&avatarDataUrlPattern.test(stored)?stored:"";$$(".profile-avatar, .avatar-button").forEach(avatar=>{let image=avatar.querySelector(".avatar-image");if(dataUrl){if(!image){image=document.createElement("img");image.className="avatar-image";image.alt="";image.setAttribute("aria-hidden","true");avatar.appendChild(image)}image.src=dataUrl;avatar.classList.add("has-avatar")}else{image?.remove();avatar.classList.remove("has-avatar")}})}
+      function openAvatarMenu(){const options=[{label:"拍照",hint:"使用手机相机",action:"avatar-camera"},{label:"从相册选择",hint:"选择本机照片",action:"avatar-gallery"}];if(load("profile-avatar",""))options.push({label:"恢复默认头像",hint:"移除保存在本机的照片",action:"avatar-remove"});openModal("选择头像方式","头像只保存在这台设备，不会上传。",options,[{label:"取消",action:"close"}])}
+      async function pickAvatar(source){if(!isNativeHost()){announce("请在觅音手机应用中选择头像");return}try{const selected=await MiyinNativeBridge.request("profile.pickAvatar",{source});if(!selected||selected.canceled)return;const dataUrl=selected.dataUrl;if(typeof dataUrl!=="string"||dataUrl.length>360000||!avatarDataUrlPattern.test(dataUrl)){announce("头像图片无效，请重新选择");return}save("profile-avatar",dataUrl);if(load("profile-avatar","")!==dataUrl){announce("头像保存失败，请检查本机存储空间");return}syncAvatar();announce("头像已保存在本机")}catch(error){announce(nativeErrorMessage(error))}}
+      window.addEventListener("miyin:surface-visibility-change",syncAvatar);
+      function backFromSettings(){const candidate=settingsReturnStack.pop()||"home",target=$("#screen-"+candidate)?candidate:"home";showScreen(target)}
+      function syncSettings(){const name=load("username","本地用户");$("#profile-name").textContent=name;const model=load("model","OpenAI · GPT 系列（预览）");$("#model-summary").textContent=model;const nameEl=$("#theme-current");if(nameEl)nameEl.textContent=themeNames[theme]||"薄荷全息";const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled));syncAvatar()}
+      function openModal(title,copy,options=[],buttons=[]){previousFocus=document.activeElement;$("#modal-title").textContent=title;$("#modal-copy").textContent=copy||"";$("#modal-options").classList.remove("chat-attachment-grid","translation-attachment-grid");$("#modal-options").removeAttribute("aria-label");$("#modal-options").innerHTML="";options.forEach(opt=>{const b=document.createElement("button"),label=document.createElement("span");b.type="button";b.className="modal-option";b.dataset.modalAction=opt.action||"";b.dataset.value=opt.value||"";label.textContent=opt.label;b.appendChild(label);if(opt.hint){const hint=document.createElement("small");hint.textContent=opt.hint;b.appendChild(hint)}$("#modal-options").appendChild(b)});$("#modal-footer").innerHTML="";buttons.forEach(btn=>{const b=document.createElement("button");b.type="button";b.className=btn.className||"";b.dataset.modalAction=btn.action||"close";b.textContent=btn.label;$("#modal-footer").appendChild(b)});$("#modal-scrim").classList.add("open");setTimeout(()=>$(".modal-close").focus(),10)}
+      function closeModal(){ $("#modal-scrim").classList.remove("open");nativeModelManagerOpen=false;if(previousFocus&&previousFocus.focus)previousFocus.focus() }
+      window.addEventListener("miyin:legacy-sent-draft-found",event=>{const input=$("#translation-input"),text=typeof event.detail?.text==="string"?event.detail.text:"";if(!input||!text||input.value.trim()!==text)return;legacyDraftPrompt={text,revision:translationInputRevision};openModal("输入内容可能已翻译","这段文字与最近一次成功翻译相同。清除可避免重复提交；保留则继续作为新草稿。",[],[{label:"保留草稿",action:"close"},{label:"清除已翻译内容",action:"clear-legacy-sent-draft",className:"confirm"}])});
+      document.addEventListener("click",event=>{const button=event.target.closest("[data-modal-action='clear-legacy-sent-draft']");if(!button)return;event.preventDefault();event.stopImmediatePropagation();const input=$("#translation-input"),prompt=legacyDraftPrompt;legacyDraftPrompt=null;if(input&&prompt&&translationInputRevision===prompt.revision&&input.value.trim()===prompt.text){input.value="";input.dispatchEvent(new Event("input",{bubbles:true}));announce("已清除上次已翻译内容")}else announce("输入内容已变化，已为你保留");closeModal()},true);
+      function openLocalFileInput(selector,label){
+        const input=$(selector);
+        if(!input)return;
+        const modalOpen=$("#modal-scrim").classList.contains("open");
+        if(isNativeHost()){
+          if(modalOpen)closeModal();
+          const kind=selector.includes("camera")||selector.includes("photo")?"camera":selector.includes("image")?"image":"document";
+          void pickNativeAttachment(kind,input.dataset.selectionTarget,label);
+          return;
+        }
+        if(modalOpen)closeModal();
+        input.click();
+      }
+      async function pickNativeAttachment(kind,target,label){
+        try{
+          const selected=await MiyinNativeBridge.request("attachment.pickSource",{kind});
+          if(!selected||selected.canceled)return;
+          const name=String(selected.name||label||"已选择文件");
+          if(target==="chat"){
+            pendingChatAttachments=[...pendingChatAttachments,{name,type:selected.mimeType||"application/octet-stream"}];
+            renderPendingChatAttachments();
+            announce("已添加「"+name+"」· 文件内容读取与 AI 发送尚未接入");
+          }else{
+            announce("已选择「"+name+"」· 图片识别与文档翻译尚未接入，文件不会上传");
+          }
+        }catch(error){announce(nativeErrorMessage(error))}
+      }
+      function openChatAttachmentMenu(){
+        openModal("添加到对话",isNativeHost()?"相机、图片和文件可在本机选择；内容读取与 AI 发送尚未接入。投屏也尚未接入。":"相机、图片和文件选择尚未接入；投屏也尚未接入。当前不会读取或上传内容。",[],[{label:"关闭",action:"close"}]);
+        const options=$("#modal-options");
+        options.classList.add("chat-attachment-grid");
+        options.setAttribute("aria-label","对话附件选项");
+        const items=[
+          ["camera","相机拍照",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'],
+          ["screen","投屏",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4M7 10h4m-2-2 2 2-2 2"/></svg>'],
+          ["file","文件",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v6h5M9 13h6m-6 4h6"/></svg>'],
+          ["image","图片",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>'],
+          ["history","历史内容",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2M4 5v4h4"/></svg>']
+        ];
+        options.innerHTML=items.map(([action,label,icon])=>'<button class="chat-attachment-option" type="button" data-chat-attachment="'+action+'" aria-label="'+label+'" title="'+label+'">'+icon+'</button>').join("");
+      }
+      document.addEventListener("click",event=>{
+        const action=event.target.closest("[data-modal-action='language-settings']");
+        if(!action)return;
+        event.preventDefault();event.stopImmediatePropagation();closeModal();languageSettingsCard();
+      },true);
+      document.addEventListener("click",event=>{
+        const mode=event.target.closest("[data-translation-mode]");
+        if(!mode)return;
+        event.preventDefault();event.stopImmediatePropagation();setTranslationMode(mode.dataset.translationMode);
+      },true);
       window.addEventListener("miyin-v5:request-end-voice-session",()=>{const overlay=$("#voice-overlay");if(!overlay||overlay.getAttribute("aria-hidden")!=="false")return;openModal("结束 AI 语音对话？","结束后会返回 AI 对话页面；是否写入历史记录按当前保存设置处理。",[],[{label:"继续对话",action:"close"},{label:"结束对话",action:"confirm-end-voice-session",className:"confirm"}])});
       document.addEventListener("click",event=>{const confirm=event.target.closest("[data-modal-action='confirm-end-voice-session']");if(!confirm)return;event.preventDefault();event.stopImmediatePropagation();closeModal();window.dispatchEvent(new CustomEvent("miyin-v5:confirm-end-voice-session"))},true);
-      function addRecord(category,title,detail,entries){const id=nextId("record"),content=Array.isArray(entries)&&entries.length?entries:(sampleEntries[category]||[]);records.unshift({id,category,title,detail,time:"刚刚",entries:content});save("records",records)}
+      function openTranslationAttachmentMenu(){
+        openModal("添加到翻译",isNativeHost()?"可以在本机选择照片或文档；识别与文档翻译尚未接入，文件不会上传。":"当前网页仅演示文件选择，不会读取内容或执行识别。",[],[{label:"关闭",action:"close"}]);
+        const options=$("#modal-options");options.classList.add("translation-attachment-grid");options.setAttribute("aria-label","句子翻译图片与文档工具");
+        const items=[
+          ["camera","相机拍照",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h3l1.5-2h7L17 7h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>'],
+          ["photo","选择图片",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="m4 17 5-5 4 4 3-3 4 4"/></svg>'],
+          ["document","选择文档",'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h8l5 5v13H6z"/><path d="M14 3v6h5M9 13h6m-6 4h6"/></svg>']
+        ];
+        options.innerHTML=items.map(([action,label,icon])=>'<button class="chat-attachment-option" type="button" data-translation-attachment="'+action+'" aria-label="'+label+'" title="'+label+'">'+icon+'</button>').join("");
+      }
+      function addRecord(category,title,detail,entries){if(category==="face"&&!$("#face-transcript")?.children.length)return null;const id=nextId("record"),content=Array.isArray(entries)?entries:[];records.unshift({id,category,title,detail,time:"刚刚",createdAt:new Date().toISOString(),entries:content});save("records",records);if(category==="face")$$("#face-transcript > .face-turn").forEach(turn=>{turn.dataset.localHistoryId=String(id)});return id}
+      function tagTranslationHistoryNodes(source,translation,kind,id,text){if(id==null)return;const key=kind==="native"?"nativeHistoryId":"localHistoryId";for(const node of [source,translation])node.dataset[key]=String(id);source.dataset.translationSourceText=text;source.dataset.translationHistoryRole="source"}
+      function removeHistoryTranscriptEntries(category,kind,ids){const root=$(category==="face"?"#face-transcript":"#home-transcript"),key=kind==="native"?"nativeHistoryId":"localHistoryId",wanted=new Set(ids.map(String));if(!root||!wanted.size)return;Array.from(root.querySelectorAll(`[data-${key.replace(/[A-Z]/g,letter=>"-"+letter.toLowerCase())}]`)).filter(node=>wanted.has(node.dataset[key])).forEach(node=>node.remove())}
+      function clearHistoryTranscript(category){const root=$(category==="face"?"#face-transcript":"#home-transcript");root?.replaceChildren()}
       const categoryInfo={translation:{title:"翻译历史",sub:"文字与语音翻译",empty:"还没有翻译记录"},face:{title:"面对面翻译历史",sub:"双向交流会话",empty:"还没有面对面对话记录"},chat:{title:"AI 对话历史",sub:"与 AI 助手的聊天",empty:"还没有 AI 对话记录"},video:{title:"字幕翻译历史",sub:"课程、会议与视频字幕",empty:"还没有字幕记录"}};
       function historyTime(timestamp){const date=new Date(timestamp),today=new Date();if(Number.isNaN(date.getTime()))return"刚刚";const time=formatChatTime(timestamp);if(date.toDateString()===today.toDateString())return"今天 "+time;const yesterday=new Date(today);yesterday.setDate(today.getDate()-1);return date.toDateString()===yesterday.toDateString()?"昨天 "+time:(date.getMonth()+1)+"月"+date.getDate()+"日 "+time}
+      function isNativeHost(){return document.documentElement.dataset.nativeHost==="true"&&!!window.MiyinNativeBridge}
+      function languageTag(language){if(language==="中文"||language==="简体中文")return"zh-Hans";if(language==="English")return"en";return nativeLanguageOptions.find(item=>item.name===language)?.tag||language}
+      function languageName(tag){if(tag==="zh-Hans")return"简体中文";if(tag==="en")return"English";return nativeLanguageOptions.find(item=>item.tag===tag)?.name||tag}
+      async function refreshNativeSupportedPairs(){
+        if(!isNativeHost()){nativePairAvailability="unavailable";return}
+        const requestId=++nativePairRequest;
+        nativePairAvailability="checking";
+        nativePairStatuses={};
+        try{
+          const pairs=await MiyinNativeBridge.request("translation.supportedPairs");
+          if(requestId!==nativePairRequest)return;
+          if(!Array.isArray(pairs))throw new Error("invalid_language_response");
+          nativeSupportedPairs=pairs.filter(pair=>pair&&typeof pair.sourceTag==="string"&&typeof pair.targetTag==="string"&&pair.sourceTag!==pair.targetTag);
+          const byTag=new Map();
+          nativeSupportedPairs.forEach(pair=>{byTag.set(pair.sourceTag,typeof pair.sourceName==="string"?pair.sourceName:languageName(pair.sourceTag));byTag.set(pair.targetTag,typeof pair.targetName==="string"?pair.targetName:languageName(pair.targetTag))});
+          nativeLanguageOptions=Array.from(byTag,([tag,name])=>({tag,name}));
+          const checks=await Promise.all(nativeSupportedPairs.map(async pair=>{
+            try{const info=await MiyinNativeBridge.request("translation.modelInfo",{sourceTag:pair.sourceTag,targetTag:pair.targetTag});return[`${pair.sourceTag}->${pair.targetTag}`,info?.status||"unknown"]}
+            catch{return[`${pair.sourceTag}->${pair.targetTag}`,"unknown"]}
+          }));
+          if(requestId!==nativePairRequest)return;
+          const statuses=Object.fromEntries(checks);
+          nativePairStatuses=statuses;
+          nativeInstalledPairs=MiyinV5Core.filterInstalledTranslationPairs(nativeSupportedPairs,statuses);
+          nativePairAvailability=checks.some(([,status])=>status==="unknown"||status==="failed")?"partial":"ready";
+        }catch(error){
+          if(requestId!==nativePairRequest)return;
+          nativePairAvailability="failed";
+          nativePairStatuses={};
+          nativeInstalledPairs=[];
+          console.warn("Could not read installed translation pairs",error);
+        }
+      }
+      function translationPairParams(){return{sourceTag:languageTag(sourceLanguage),targetTag:languageTag(targetLanguage)}}
+      const dictionaryPackageInstalled=false;
+      function syncTranslationMode(){
+        $$('[data-translation-mode]').forEach(button=>button.setAttribute("aria-pressed",String(button.dataset.translationMode===translationMode)));
+        const input=$("#translation-input");
+        if(input){const dictionary=translationMode==="dictionary";input.placeholder=dictionary?"输入要查的单词或短语…":"输入文字翻译…";input.setAttribute("aria-label",dictionary?"输入要查的单词或短语":"输入文字翻译")}
+      }
+      function setTranslationMode(mode){
+        if(mode!=="sentence"&&mode!=="dictionary")return;
+        translationMode=mode;save("translation-mode",mode);syncTranslationMode();$("#dictionary-mode-feedback")?.remove();
+        announce(mode==="dictionary"?"已切换到单词 / 短语模式":"已切换到句子翻译模式");
+      }
+      document.addEventListener("miyin:translation-mode-change",event=>{setTranslationMode(event.detail?.mode)});
+      function languageSettingsCard(){
+        showScreen("settings");
+        const card=$("[data-settings-language-card]");
+        if(card){card.classList.add("open");setTimeout(()=>card.scrollIntoView({block:"center",behavior:"smooth"}),40)}
+      }
+      function nativeErrorMessage(error){if(error?.code==="model_missing")return"离线模型尚未下载，请先下载中英离线包。";if(error?.code==="unsupported_language_pair")return"当前仅支持简体中文与 English 离线互译，请检查语言选择。";if(error?.code==="text_too_long")return"文字超过 10,000 字，请缩短后重试。";if(error?.code==="model_download_failed")return"模型下载失败，请检查网络后重试。";if(error?.code==="model_status_failed")return"暂时无法读取离线模型状态，请重试。";if(error?.code==="model_delete_failed")return"删除离线模型失败，请稍后重试。";if(error?.code==="attachment_picker_failed")return"系统选择器暂时无法打开，请稍后重试。";if(error?.code==="avatar_image_invalid")return"头像图片无法使用，请选择 JPG、PNG 或 WebP 图片，并确认文件大小不超过 256 KB。";if(error?.code==="avatar_picker_failed")return"头像选择器暂时无法打开；可以改用相册选择，或稍后重试。";if(error?.code==="avatar_picker_unavailable")return"头像选择功能暂时不可用，请重新打开觅音后重试。";if(error?.code==="translation_failed")return"本机翻译没有完成，请检查模型状态后重试。";if(error?.code==="native_unavailable"||error?.code==="translation_unavailable")return"本机翻译功能暂时不可用，请重新打开觅音后重试。";if(error?.code==="request_timeout")return"操作等待超时，请重新检查模型状态后重试。";return"操作失败，请检查状态后重试。"}
+      function updateNativeModelStatus(status,label){nativeModelStatus=status;const button=$(".offline-model-status"),copy=$("[data-offline-model-label]");if(!button||!copy)return;button.dataset.status=status;copy.textContent=label||({checking:"检查中英离线模型…",downloaded:"中英离线包已就绪",notDownloaded:"中英离线包未下载",downloading:"正在下载中英离线包…",deleting:"正在删除中英离线包…",unsupported:"当前语言组合暂不支持",failed:"离线模型状态暂不可用 · 点按重试"}[status]||"离线翻译模型");button.setAttribute("aria-label",copy.textContent);button.title=copy.textContent}
+      async function refreshOfflineModelStatus(){if(!isNativeHost())return;const requestId=++nativeModelRequest;if(!nativeModelBusy){updateNativeModelStatus("checking");if(nativeModelManagerOpen)renderNativeModelManager()}try{const info=await MiyinNativeBridge.request("translation.modelInfo",translationPairParams());if(requestId!==nativeModelRequest)return;nativeModelError="";updateNativeModelStatus(info.status);if(nativeModelManagerOpen)renderNativeModelManager()}catch(error){if(requestId!==nativeModelRequest)return;nativeModelError=nativeErrorMessage(error);updateNativeModelStatus("failed");if(nativeModelManagerOpen)renderNativeModelManager()}}
+      function renderNativeModelManager(){if(!nativeModelManagerOpen)return;const copy=$("#modal-copy"),options=$("#modal-options"),footer=$("#modal-footer");if(!copy||!options||!footer)return;const statusText=nativeModelBusy?(nativeModelOperation==="deleting"?"正在删除离线模型。":"正在下载模型；关闭此窗口不会取消下载，模型完成后会刷新状态。下载过程中不显示虚构的百分比。"):nativeModelStatus==="downloaded"?"模型已就绪。下载后翻译在设备本机运行，翻译文字不会发送到觅音服务器。":nativeModelStatus==="unsupported"?"当前只提供简体中文与 English。":nativeModelStatus==="failed"?nativeModelError||"模型状态暂时不可用，请重试。":nativeModelStatus==="checking"?"正在检查这台设备上的离线模型状态…":"下载模型后即可离线翻译。模型由 Google ML Kit / Google Play 服务管理；首次下载需要网络。";copy.textContent=statusText;options.innerHTML='<div class="native-history-entry"><small>语言组合</small><p>'+escapeHtml(languageName(languageTag(sourceLanguage)))+' ↔ '+escapeHtml(languageName(languageTag(targetLanguage)))+'</p><small>模型状态</small><p>'+escapeHtml(nativeModelBusy?(nativeModelOperation==="deleting"?"删除中":"下载中"):nativeModelStatus==="downloaded"?"已就绪":nativeModelStatus==="notDownloaded"?"尚未下载":nativeModelStatus==="unsupported"?"暂不支持":nativeModelStatus==="checking"?"检查中":"检查失败")+'</p>'+(!nativeModelBusy&&nativeModelError?'<small>'+escapeHtml(nativeModelError)+'</small>':"")+'</div>';const buttons=nativeModelBusy?[{label:nativeModelOperation==="deleting"?"正在删除…":"正在下载…",action:"offline-model-operation-pending",className:"confirm",disabled:true},{label:nativeModelOperation==="downloading"?"关闭（继续下载）":"关闭",action:"close"}]:nativeModelStatus==="downloaded"?[{label:"删除离线模型",action:"offline-model-delete-confirm",className:"destructive"},{label:"关闭",action:"close"}]:nativeModelStatus==="unsupported"?[{label:"关闭",action:"close"}]:nativeModelStatus==="failed"?[{label:"重试检查",action:"offline-model-check",className:"confirm"},{label:"关闭",action:"close"}]:nativeModelStatus==="checking"?[{label:"正在检查…",action:"offline-model-check-pending",disabled:true},{label:"关闭",action:"close"}]:[{label:"仅 Wi-Fi 下载",action:"offline-model-download-wifi",className:"confirm"},{label:"允许移动网络下载",action:"offline-model-download-cellular"},{label:"关闭",action:"close"}];footer.innerHTML="";buttons.forEach(item=>{const button=document.createElement("button");button.type="button";button.className=item.className||"";button.dataset.modalAction=item.action;button.textContent=item.label;button.disabled=!!item.disabled;footer.appendChild(button)})}
+      function openNativeModelManager(){if(!isNativeHost()){openModal("离线翻译模型","网页预览无法读取或管理手机上的模型；请在觅音 App 中查看本机资源。",[],[{label:"关闭",action:"close"}]);return}nativeModelManagerOpen=true;nativeModelError="";openModal("离线翻译模型","检查本机模型状态…",[],[{label:"关闭",action:"close"}]);renderNativeModelManager();refreshOfflineModelStatus()}
+      async function downloadNativeModel(wifiOnly){if(!isNativeHost()||nativeModelBusy)return;nativeModelBusy=true;nativeModelOperation="downloading";nativeModelError="";updateNativeModelStatus("downloading");renderNativeModelManager();try{await MiyinNativeBridge.request("translation.downloadModel",{...translationPairParams(),wifiOnly});nativeModelBusy=false;nativeModelOperation="idle";updateNativeModelStatus("downloaded");announce("离线翻译模型已下载");await refreshOfflineModelStatus();await refreshNativeSupportedPairs()}catch(error){nativeModelBusy=false;nativeModelOperation="idle";nativeModelError=nativeErrorMessage(error);updateNativeModelStatus("failed");announce(nativeModelError);renderNativeModelManager()}}
+      async function deleteNativeModel(){if(!isNativeHost()||nativeModelBusy)return;nativeModelBusy=true;nativeModelOperation="deleting";nativeModelError="";updateNativeModelStatus("deleting");renderNativeModelManager();try{await MiyinNativeBridge.request("translation.deleteModel",translationPairParams());nativeModelBusy=false;nativeModelOperation="idle";updateNativeModelStatus("notDownloaded");announce("离线模型已从本机删除");await refreshOfflineModelStatus();await refreshNativeSupportedPairs()}catch(error){nativeModelBusy=false;nativeModelOperation="idle";nativeModelError=nativeErrorMessage(error);updateNativeModelStatus("failed");renderNativeModelManager()}}
+      async function refreshNativeTranslationHistoryCount(){if(!isNativeHost())return;const requestId=++nativeHistoryCountRequest;try{const result=await MiyinNativeBridge.request("history.count");if(requestId!==nativeHistoryCountRequest)return;nativeTranslationHistoryCount=Number(result.count)||0;if(currentScreen==="history"&&!activeHistoryDetail)renderHistory()}catch(error){console.warn("Could not read local translation history count",error)}}
+      function historySelectionId(row){
+        const item=row.querySelector("[data-native-history-open],[data-conversation-open],[data-record-open]");
+        if(!item)return null;
+        return String(item.dataset.nativeHistoryOpen??item.dataset.conversationOpen??item.dataset.recordOpen??"")||null;
+      }
+      function buildHistoryToolbar(box){
+        if(!historyCategory||activeHistoryDetail)return null;
+        let toolbar=box.querySelector(".history-unified-toolbar");
+        if(toolbar)return toolbar;
+        const back=box.querySelector("[data-history-back]");
+        if(!back)return null;
+        const sourceParent=back.parentElement;
+        const oldStatus=sourceParent?.querySelector(":scope > span");
+        const oldClear=box.querySelector("[data-native-clear-history]");
+        const newChat=box.querySelector("[data-new-chat]");
+        toolbar=document.createElement("div");toolbar.className="history-unified-toolbar";
+        back.removeAttribute("style");back.setAttribute("aria-label","返回全部历史");back.textContent="‹　全部历史";toolbar.appendChild(back);
+        const count=document.createElement("span");count.className="history-count";count.setAttribute("aria-live","polite");
+        if(oldStatus)oldStatus.remove();
+        toolbar.appendChild(count);
+        const actions=document.createElement("div");actions.className="history-tool-actions";
+        const choose=document.createElement("button");choose.type="button";choose.dataset.historyBulkToggle="";choose.textContent="选择";actions.appendChild(choose);
+        const selectAll=document.createElement("button");selectAll.type="button";selectAll.dataset.historySelectAll="";selectAll.textContent=historyCategory==="translation"&&isNativeHost()?"全选已加载":"全选";if(historyCategory==="translation"&&isNativeHost())selectAll.title="只选择当前已加载的记录；加载更早记录后可继续选择";selectAll.hidden=true;actions.appendChild(selectAll);
+        const remove=document.createElement("button");remove.type="button";remove.dataset.historyBulkDelete="";remove.textContent="删除";remove.hidden=true;remove.disabled=true;actions.appendChild(remove);
+        if(oldClear){oldClear.textContent="清空";actions.appendChild(oldClear)}
+        else if(historyCategory==="translation"&&isNativeHost()){
+          const clear=document.createElement("button");clear.type="button";clear.dataset.nativeClearHistory="";clear.textContent="清空";actions.appendChild(clear);
+        }else{
+          const clear=document.createElement("button");clear.type="button";clear.dataset.historyClearCategory=historyCategory;clear.textContent="清空";actions.appendChild(clear);
+        }
+        if(newChat){newChat.textContent="＋ 新对话";actions.appendChild(newChat)}
+        toolbar.appendChild(actions);
+        if(sourceParent&&sourceParent!==box)sourceParent.remove();
+        box.prepend(toolbar);
+        return toolbar;
+      }
+      function historyCategoryCount(){
+        if(historyCategory==="chat")return loadConversations().length;
+        if(historyCategory==="translation"&&isNativeHost())return nativeTranslationHistoryCount;
+        return records.filter(record=>record.category===historyCategory).length;
+      }
+      function syncHistorySelectionUi(){
+        const box=$("#history-content");if(!box)return;
+        const toolbar=buildHistoryToolbar(box);
+        box.classList.toggle("is-selection-mode",historySelectionMode);
+        const rows=Array.from(box.querySelectorAll(".record-list .record-row"));
+        rows.forEach(row=>{
+          const id=historySelectionId(row);if(!id)return;
+          row.dataset.historySelectionId=id;
+          let control=row.querySelector(".history-selection-control");
+          if(!control){
+            control=document.createElement("label");control.className="history-selection-control";
+            const checkbox=document.createElement("input");checkbox.type="checkbox";checkbox.dataset.historySelect="";
+            checkbox.setAttribute("aria-label","选择历史记录");control.appendChild(checkbox);row.prepend(control);
+          }
+          const checkbox=control.querySelector("input");checkbox.value=id;checkbox.checked=historySelectedIds.has(id);row.classList.toggle("is-selected",checkbox.checked);
+        });
+        if(!toolbar)return;
+        const count=toolbar.querySelector(".history-count");
+        if(count)count.textContent=historyCategoryCount()+" 条记录";
+        const choose=toolbar.querySelector("[data-history-bulk-toggle]"),selectAll=toolbar.querySelector("[data-history-select-all]"),remove=toolbar.querySelector("[data-history-bulk-delete]"),clear=toolbar.querySelector("[data-history-clear-category],[data-native-clear-history]");
+        if(choose)choose.textContent=historySelectionMode?"取消":"选择";
+        if(selectAll)selectAll.hidden=!historySelectionMode;
+        if(remove){remove.hidden=!historySelectionMode;remove.disabled=historySelectedIds.size===0;remove.textContent=historySelectedIds.size?"删除 "+historySelectedIds.size:"删除";}
+        if(clear)clear.disabled=historySelectionMode||historyCategoryCount()===0;
+      }
+      const historyContentObserver=new MutationObserver(()=>syncHistorySelectionUi());
+      historyContentObserver.observe($("#history-content"),{childList:true,subtree:true});
+      function resetHistorySelection(){historySelectionMode=false;historySelectedIds.clear();$("#history-content")?.classList.remove("is-selection-mode")}
       function renderHistory(){
         const box=$("#history-content"),title=$("#history-title");
-        if(activeHistoryDetail){renderHistoryDetail(box,title);return}
-        if(!historyCategory){title.textContent="历史记录";box.innerHTML='<div class="history-cats">'+Object.entries(categoryInfo).map(([id,c])=>'<button class="history-cat" type="button" data-history-category="'+id+'"><span><strong>'+c.title+'</strong><small>'+(id==="chat"?loadConversations().length:records.filter(r=>r.category===id).length)+' 条 · '+c.sub+'</small></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 6 6 6-6 6"/></svg></button>').join("")+'</div>';return}
+        if(activeHistoryDetail){if(activeHistoryDetail.native){renderNativeHistoryDetail(box,title);return}renderHistoryDetail(box,title);return}
+        if(!historyCategory){title.textContent="历史记录";box.innerHTML='<div class="history-cats">'+Object.entries(categoryInfo).map(([id,c])=>'<button class="history-cat" type="button" data-history-category="'+id+'"><span><strong>'+c.title+'</strong><small>'+((id==="chat"?loadConversations().length:id==="translation"&&isNativeHost()?nativeTranslationHistoryCount:records.filter(r=>r.category===id).length))+' 条 · '+c.sub+'</small></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m9 6 6 6-6 6"/></svg></button>').join("")+'</div>';return}
         const cat=categoryInfo[historyCategory];title.textContent=cat.title;
+        if(historyCategory==="translation"&&isNativeHost()){renderNativeTranslationHistory(box,title);return}
         if(historyCategory==="chat"){
           const list=MiyinV5Core.searchConversations(loadConversations().sort((a,b)=>b.updatedAt-a.updatedAt),historyQuery);
           const rows=list.map(item=>'<div class="record-row"><button class="record-open" type="button" data-conversation-open="'+escapeHtml(item.id)+'"><b>'+escapeHtml(item.title)+'</b><small>'+item.messages.length+' 条消息　·　'+historyTime(item.updatedAt)+'</small></button><div class="record-actions"><button type="button" data-thread-action="rename" data-conversation-id="'+escapeHtml(item.id)+'" aria-label="重命名 '+escapeHtml(item.title)+'" title="重命名">✎</button><button type="button" data-thread-action="share" data-conversation-id="'+escapeHtml(item.id)+'" aria-label="分享 '+escapeHtml(item.title)+'" title="分享整段对话">↗</button><button class="delete-record" type="button" data-delete-conversation="'+escapeHtml(item.id)+'" aria-label="删除 '+escapeHtml(item.title)+'" title="删除"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div></div>').join("");
@@ -1104,7 +1381,82 @@
         box.innerHTML='<button class="back-button" type="button" data-history-back style="margin:0 0 12px -6px;color:var(--muted);font-size:11px">‹　全部历史</button>'+(list.length?'<div class="record-list">'+list.map(r=>'<div class="record-row"><button class="record-open" type="button" data-record-open="'+r.id+'"><b>'+escapeHtml(r.title)+'</b><small>'+escapeHtml(r.detail)+'　·　'+escapeHtml(r.time)+'</small></button><button class="delete-record" type="button" data-delete-record="'+r.id+'" aria-label="删除 '+escapeHtml(r.title)+'"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>').join("")+'</div>':'<div style="padding:56px 10px;text-align:center;color:var(--muted);font-size:12px">'+cat.empty+'</div>');
       }
       function openHistoryDetail(category,recordId){activeHistoryDetail={category,id:recordId};renderHistory()}
+      async function renderNativeTranslationHistory(box,title){
+        const requestId=++nativeHistoryRequest,countRequestId=++nativeHistoryCountRequest,requestedOffset=nativeTranslationOffset;
+        title.textContent="翻译历史";
+        box.innerHTML='<div class="native-history-summary"><button class="back-button" type="button" data-history-back>‹　全部历史</button><span>仅显示 V1.2 起真实完成的翻译</span><button type="button" data-native-clear-history>清空</button></div><div class="history-empty">正在读取本机历史…</div>';
+        try{
+          const [page,countResult]=await Promise.all([
+            MiyinNativeBridge.request("history.list",{limit:30,offset:requestedOffset}),
+            MiyinNativeBridge.request("history.count")
+          ]);
+          if(requestId!==nativeHistoryRequest||currentScreen!=="history"||historyCategory!=="translation"||activeHistoryDetail)return;
+          if(!Array.isArray(page))throw new Error("invalid_history_response");
+          if(countRequestId===nativeHistoryCountRequest)nativeTranslationHistoryCount=Number(countResult?.count)||0;
+          if(requestedOffset===0){nativeTranslationRows=page}
+          else{
+            const knownIds=new Set(nativeTranslationRows.map(entry=>entry.id));
+            nativeTranslationRows.push(...page.filter(entry=>!knownIds.has(entry.id)));
+          }
+          nativeTranslationOffset=nativeTranslationRows.length;
+          const rows=nativeTranslationRows.map(entry=>'<div class="record-row"><button class="record-open" type="button" data-native-history-open="'+entry.id+'"><b>'+escapeHtml((entry.sourceText||"").slice(0,52)||"翻译记录")+'</b><small>'+escapeHtml(languageName(entry.sourceTag)+" → "+languageName(entry.targetTag)+" · "+historyTime(entry.createdAt))+'</small></button><button class="delete-record" type="button" data-native-delete-history="'+entry.id+'" aria-label="删除这条翻译记录"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 7h16M10 11v6m4-6v6M6 7l1 14h10l1-14M9 7V4h6v3"/></svg></button></div>').join("");
+          const more=nativeTranslationRows.length<nativeTranslationHistoryCount?'<button class="new-chat-button" type="button" data-native-history-more>加载更早的记录</button>':"";
+          box.innerHTML='<div class="native-history-summary"><button class="back-button" type="button" data-history-back>‹　全部历史</button><span>'+nativeTranslationHistoryCount+' 条本机记录</span><button type="button" data-native-clear-history'+(nativeTranslationHistoryCount?'':' disabled')+'>清空</button></div>'+(rows?'<div class="record-list">'+rows+'</div>'+more:'<div class="history-empty">还没有本机翻译记录。完成翻译后，记录会保存在这台设备。</div>');
+        }catch(error){
+          if(requestId!==nativeHistoryRequest)return;
+          box.innerHTML='<button class="back-button" type="button" data-history-back>‹　全部历史</button><div class="history-empty">无法读取本机翻译历史。请返回后重试。<br>'+escapeHtml(nativeErrorMessage(error))+'</div>';
+        }
+      }
+      async function renderNativeHistoryDetail(box,title){const detail=activeHistoryDetail;if(!detail)return;title.textContent="翻译记录详情";box.innerHTML='<div class="history-empty">正在读取翻译记录…</div>';try{const entry=await MiyinNativeBridge.request("history.get",{id:Number(detail.id)});if(!entry||activeHistoryDetail!==detail)return;title.textContent="翻译记录详情";box.innerHTML='<div class="history-detail-toolbar"><button class="back-button" type="button" data-history-detail-back aria-label="返回翻译历史">‹</button><h2>文字翻译</h2></div><p class="history-detail-meta">'+escapeHtml(languageName(entry.sourceTag)+" → "+languageName(entry.targetTag)+" · "+historyTime(entry.createdAt))+'<br>'+escapeHtml(entry.engineId==="google-mlkit-translation"?"Google ML Kit":"本机离线模型")+(entry.modelVersion?" · "+escapeHtml(entry.modelVersion):"")+'　·　本机保存</p><div class="history-detail-actions"><button class="destructive" type="button" data-native-delete-history="'+entry.id+'">删除记录</button></div><article class="native-history-entry"><small>原文 · '+escapeHtml(languageName(entry.sourceTag))+'</small><p>'+escapeHtml(entry.sourceText)+'</p><small>译文 · '+escapeHtml(languageName(entry.targetTag))+'</small><p>'+escapeHtml(entry.translatedText)+'</p><span class="translation-attribution">Google ML Kit · 本机离线</span></article>'}catch(error){if(activeHistoryDetail!==detail)return;box.innerHTML='<button class="back-button" type="button" data-history-detail-back>‹　返回</button><div class="history-empty">无法读取这条本机记录。'+escapeHtml(nativeErrorMessage(error))+'</div>'}}
+      async function deleteNativeTranslationHistory(){const id=activeNativeHistoryId;if(!id)return;activeNativeHistoryId=null;closeModal();try{const result=await MiyinNativeBridge.request("history.delete",{id});nativeHistoryCountRequest++;if(result.deleted){removeHistoryTranscriptEntries("translation","native",[id]);nativeTranslationRows=nativeTranslationRows.filter(entry=>entry.id!==id);nativeTranslationOffset=nativeTranslationRows.length;nativeTranslationHistoryCount=Math.max(0,nativeTranslationHistoryCount-1);if(activeHistoryDetail?.native&&Number(activeHistoryDetail.id)===id)activeHistoryDetail=null;announce("翻译记录已删除")}else announce("这条记录已不存在");await refreshNativeTranslationHistoryCount();if(currentScreen==="history")renderHistory()}catch(error){announce(nativeErrorMessage(error))}}
+      async function clearNativeTranslationHistory(){if(nativeHistoryClearPending){announce("正在清空翻译历史，请稍后");return}nativeHistoryClearPending=true;closeModal();try{if(translationPending){announce("当前翻译完成后将清空历史");await translationPendingSettled}const result=await MiyinNativeBridge.request("history.clear");nativeHistoryCountRequest++;nativeHistoryRequest++;nativeTranslationRows=[];nativeTranslationOffset=0;nativeTranslationHistoryCount=0;resetHistorySelection();if(activeHistoryDetail?.native)activeHistoryDetail=null;clearHistoryTranscript("translation");announce("已清空 "+(Number(result.deletedCount)||0)+" 条本机翻译记录；离线模型未删除");if(currentScreen==="history")renderHistory()}catch(error){announce(nativeErrorMessage(error))}finally{nativeHistoryClearPending=false}}
+      document.addEventListener("click",event=>{const modalAction=event.target.closest("[data-modal-action]")?.dataset.modalAction;if(modalAction&&["offline-model-check","offline-model-download-wifi","offline-model-download-cellular","offline-model-delete-confirm","offline-model-delete","native-history-delete","native-history-clear"].includes(modalAction)){event.preventDefault();event.stopImmediatePropagation();if(modalAction==="offline-model-check"){nativeModelError="";updateNativeModelStatus("checking");renderNativeModelManager();void refreshOfflineModelStatus();return}if(modalAction==="offline-model-download-wifi"){void downloadNativeModel(true);return}if(modalAction==="offline-model-download-cellular"){void downloadNativeModel(false);return}if(modalAction==="offline-model-delete-confirm"){openModal("删除中英离线模型？","删除后离线翻译将暂停；本机历史记录会保留。",[],[{label:"取消",action:"close"},{label:"删除模型",action:"offline-model-delete",className:"destructive"}]);return}if(modalAction==="offline-model-delete"){nativeModelManagerOpen=false;closeModal();void deleteNativeModel();return}if(modalAction==="native-history-delete"){void deleteNativeTranslationHistory();return}if(modalAction==="native-history-clear"){void clearNativeTranslationHistory();return}}const open=event.target.closest("[data-native-history-open]");if(open){event.preventDefault();event.stopImmediatePropagation();activeHistoryDetail={category:"translation",id:Number(open.dataset.nativeHistoryOpen),native:true};renderHistory();return}const remove=event.target.closest("[data-native-delete-history]");if(remove){event.preventDefault();event.stopImmediatePropagation();activeNativeHistoryId=Number(remove.dataset.nativeDeleteHistory);openModal("删除这条翻译记录？","只删除本机保存的这条译文，不会删除离线模型。",[],[{label:"取消",action:"close"},{label:"删除记录",action:"native-history-delete",className:"destructive"}]);return}if(event.target.closest("[data-native-clear-history]")){event.preventDefault();event.stopImmediatePropagation();openModal("清空翻译历史？","将永久删除本机保存的全部翻译记录，已下载的离线模型和其他历史不会受到影响。",[],[{label:"取消",action:"close"},{label:"清空历史",action:"native-history-clear",className:"destructive"}]);return}if(event.target.closest("[data-native-history-more]")){event.preventDefault();event.stopImmediatePropagation();nativeTranslationOffset=nativeTranslationRows.length;renderHistory();return}const action=event.target.closest("[data-action]")?.dataset.action;if(action==="offline-model-manager"){event.preventDefault();event.stopImmediatePropagation();openNativeModelManager();return}if(action==="retry-translation"){event.preventDefault();event.stopImmediatePropagation();void translateText()}},true);
       function historyEntryMarkup(record,entry){const speaker=entry.speaker?escapeHtml(entry.speaker)+" · ":"",at=entry.at?escapeHtml(entry.at)+" · ":"";return'<article class="history-entry"><small>'+at+speaker+escapeHtml(entry.sourceLanguage||"原文")+' → '+escapeHtml(entry.targetLanguage||"译文")+'</small><div class="history-entry-pair"><div><b>原文</b>'+escapeHtml(entry.source||"")+'</div><div><b>译文</b>'+escapeHtml(entry.translation||"")+'</div></div></article>'}
+      async function deleteSelectedHistory(){
+        const pending=pendingHistoryDelete;pendingHistoryDelete=null;closeModal();if(!pending||!pending.ids.length)return;
+        const {category,ids}=pending;
+        try{
+          if(category==="translation"&&isNativeHost()){
+            const result=await MiyinNativeBridge.request("history.deleteMany",{ids:ids.map(Number)});
+            const deletedCount=Number(result?.deletedCount)||0;removeHistoryTranscriptEntries("translation","native",ids);nativeTranslationRows=[];nativeTranslationOffset=0;nativeHistoryRequest++;nativeHistoryCountRequest++;nativeTranslationHistoryCount=Math.max(0,nativeTranslationHistoryCount-deletedCount);resetHistorySelection();announce("已删除 "+deletedCount+" 条翻译记录");if(currentScreen==="history")renderHistory();await refreshNativeTranslationHistoryCount();return;
+          }
+          let deletedCount=0;
+          if(category==="chat"){
+            const idSet=new Set(ids);const all=loadConversations();const kept=all.filter(item=>!idSet.has(String(item.id)));deletedCount=all.length-kept.length;saveConversations(kept,true);transientConversations=transientConversations.filter(item=>!idSet.has(String(item.id)));
+            if(activeConversationId&&idSet.has(String(activeConversationId))){activeConversationId=null;renderChatConversation(null)}
+          }else{
+            const idSet=new Set(ids),before=records.length;records=records.filter(item=>item.category!==category||!idSet.has(String(item.id)));deletedCount=before-records.length;save("records",records);removeHistoryTranscriptEntries(category,"local",ids);
+          }
+          resetHistorySelection();renderHistory();announce("已删除 "+deletedCount+" 条历史记录");
+        }catch(error){announce(nativeErrorMessage(error));}
+      }
+      function clearSelectedHistoryCategory(){
+        const category=pendingHistoryClearCategory;pendingHistoryClearCategory=null;closeModal();if(!category)return;
+        if(category==="translation"&&isNativeHost()){openModal("清空翻译历史？","将永久删除本机保存的全部翻译记录，已下载模型不受影响。",[],[{label:"取消",action:"close"},{label:"清空历史",action:"native-history-clear",className:"destructive"}]);return}
+        if(category==="chat"){
+          conversations=[];transientConversations=[];saveConversations([],true);activeConversationId=null;renderChatConversation(null);
+        }else{records=records.filter(item=>item.category!==category);save("records",records);if(category==="translation"||category==="face")clearHistoryTranscript(category)}
+        resetHistorySelection();renderHistory();announce("已清空该类历史记录");
+      }
+      document.addEventListener("change",event=>{
+        const checkbox=event.target.closest("[data-history-select]");if(!checkbox)return;
+        const id=checkbox.value;if(checkbox.checked)historySelectedIds.add(id);else historySelectedIds.delete(id);syncHistorySelectionUi();
+      });
+      document.addEventListener("click",event=>{
+        const rowButton=event.target.closest(".history-content.is-selection-mode .record-open");
+        if(rowButton){event.preventDefault();event.stopImmediatePropagation();const checkbox=rowButton.closest(".record-row")?.querySelector("[data-history-select]");if(checkbox){checkbox.checked=!checkbox.checked;checkbox.dispatchEvent(new Event("change",{bubbles:true}))}return}
+        const toggle=event.target.closest("[data-history-bulk-toggle]");
+        if(toggle){event.preventDefault();event.stopImmediatePropagation();historySelectionMode=!historySelectionMode;if(!historySelectionMode)historySelectedIds.clear();syncHistorySelectionUi();return}
+        const selectAll=event.target.closest("[data-history-select-all]");
+        if(selectAll){event.preventDefault();event.stopImmediatePropagation();const checkboxes=Array.from($("#history-content").querySelectorAll("[data-history-select]")),allSelected=checkboxes.length>0&&checkboxes.every(item=>item.checked);checkboxes.forEach(item=>{item.checked=!allSelected;if(item.checked)historySelectedIds.add(item.value);else historySelectedIds.delete(item.value)});syncHistorySelectionUi();return}
+        const remove=event.target.closest("[data-history-bulk-delete]");
+        if(remove){event.preventDefault();event.stopImmediatePropagation();if(!historySelectedIds.size)return;pendingHistoryDelete={category:historyCategory,ids:Array.from(historySelectedIds)};openModal("批量删除历史记录？","将从「"+(categoryInfo[historyCategory]?.title||"历史")+"」中删除已选择的 "+pendingHistoryDelete.ids.length+" 条记录。",[],[{label:"取消",action:"close"},{label:"删除记录",action:"history-delete-selected",className:"destructive"}]);return}
+        const clear=event.target.closest("[data-history-clear-category]");
+        if(clear){event.preventDefault();event.stopImmediatePropagation();pendingHistoryClearCategory=clear.dataset.historyClearCategory;openModal("清空「"+(categoryInfo[pendingHistoryClearCategory]?.title||"历史")+"」？","此操作会删除这一类保存在本机的全部历史记录。",[],[{label:"取消",action:"close"},{label:"清空记录",action:"history-clear-category-confirm",className:"destructive"}]);return}
+        const modal=event.target.closest("[data-modal-action]");
+        if(modal?.dataset.modalAction==="history-delete-selected"){event.preventDefault();event.stopImmediatePropagation();void deleteSelectedHistory();return}
+        if(modal?.dataset.modalAction==="history-clear-category-confirm"){event.preventDefault();event.stopImmediatePropagation();clearSelectedHistoryCategory()}
+      },true);
       function renderHistoryDetail(box,title){
         const detail=activeHistoryDetail;
         if(detail.category==="chat"){
@@ -1153,19 +1505,52 @@
       function handleHistoryAction(action,category,recordId){if(action!=="attach")return;startNewConversation();prepareContextAttachment(category,recordId)}
       function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c]))}
       function showRecord(record){if(!record)return;activeRecord=record;openModal(record.title,record.time+"　·　"+categoryInfo[record.category].sub,[{label:record.detail,hint:"本地保存的会话条目"},{label:"查看原文与译文",hint:"此预览使用示例内容"}], [{label:"关闭",action:"close"},{label:"删除记录",action:"delete-active",className:"destructive"}])}
-      function languagePicker(which){const current=which==="source"?sourceLanguage:targetLanguage;const choices=["中文","English","日本語","한국어","Français","Español"];openModal(which==="source"?"选择原文语言":"选择译文语言","当前："+current,choices.filter(v=>v!==current).map(v=>({label:v,action:"language",value:which+"|"+v})),[{label:"取消",action:"close"}])}
-      function updateLanguages(){const homeSource=$("#screen-home [data-action='source-language']"),homeTarget=$("#screen-home [data-action='target-language']"),faceSource=$("#screen-face [data-action='source-language']"),faceTarget=$("#screen-face [data-action='target-language']");homeSource.textContent=sourceLanguage;homeTarget.textContent=targetLanguage;faceSource.textContent=sourceLanguage==="中文"?"中":sourceLanguage.slice(0,2);faceTarget.textContent=targetLanguage==="English"?"英":targetLanguage.slice(0,2);$$("[data-source-label]").forEach(n=>n.textContent=sourceLanguage+" · 你说");$$("[data-target-label]").forEach(n=>n.textContent=targetLanguage+" · 译文")}
-      function swapLanguages(){[sourceLanguage,targetLanguage]=[targetLanguage,sourceLanguage];updateLanguages();announce("语言方向已交换")}
+      async function languagePicker(which){
+        const title=which==="source"?"选择原文语言":"选择译文语言";
+        if(!isNativeHost()){
+          openModal(title,"网页预览无法读取手机上已下载的模型。请在觅音设置中查看本机离线资源。",[],[{label:"到设置查看离线资源",action:"language-settings"},{label:"关闭",action:"close"}]);
+          return;
+        }
+        const pickerRequest=++nativeLanguagePickerRequest;
+        openModal(title,"正在检查本机已下载的语言模型…",[],[{label:"取消",action:"close"}]);
+        await refreshNativeSupportedPairs();
+        if(pickerRequest!==nativeLanguagePickerRequest||!$("#modal-scrim").classList.contains("open"))return;
+        const currentTag=languageTag(which==="source"?sourceLanguage:targetLanguage);
+        const otherTag=languageTag(which==="source"?targetLanguage:sourceLanguage);
+        const matchesOtherLanguage=pair=>which==="source"?pair.targetTag===otherTag:pair.sourceTag===otherTag;
+        const supportedCandidates=nativeSupportedPairs.filter(matchesOtherLanguage);
+        const candidates=nativeInstalledPairs.filter(matchesOtherLanguage);
+        const available=Array.from(new Map(candidates.map(pair=>{
+          const tag=which==="source"?pair.sourceTag:pair.targetTag;
+          return[tag,languageName(tag)];
+        })),([tag,name])=>({tag,name}));
+        const hasUnresolved=supportedCandidates.some(pair=>["unknown","failed"].includes(nativePairStatuses[`${pair.sourceTag}->${pair.targetTag}`]));
+        const hasUnsupported=supportedCandidates.some(pair=>nativePairStatuses[`${pair.sourceTag}->${pair.targetTag}`]==="unsupported");
+        const copy=nativePairAvailability==="failed"
+          ?"暂时无法读取本机语言模型状态，请稍后重试；设置中可以查看当前提供的离线资源。"
+          :available.length
+            ?hasUnresolved?"这里只列出已确认下载并可用的语言；其他模型状态暂时无法确认。":hasUnsupported?"这里只列出本机已下载且支持的语言；部分方向在当前设备上不可用。":"这里只列出当前方向已下载并可用的语言。"
+            :supportedCandidates.length
+              ?hasUnresolved?"暂时无法确认这个方向的模型状态，请稍后重试。":hasUnsupported?"当前设备上的翻译服务暂不支持这个语言方向。":"当前引擎支持这个方向，但模型尚未下载。设置只显示当前可管理的资源；其他语言包目录尚未开放。"
+              :"当前翻译引擎暂不支持这个语言组合。设置可查看当前可管理的离线资源；其他语言包目录尚未开放。";
+        const settingsLabel=nativePairAvailability==="failed"||supportedCandidates.length?"到设置查看离线资源":"查看当前可用语言";
+        openModal(title,copy,available.map(item=>({label:item.name,hint:item.tag===currentTag?"已下载 · 当前选择":"已下载",action:"language",value:which+"|"+item.name})),[{label:settingsLabel,action:"language-settings"},{label:"关闭",action:"close"}]);
+      }
+      function updateLanguages(){const homeSource=$("#screen-home [data-action='source-language']"),homeTarget=$("#screen-home [data-action='target-language']"),faceSource=$("#screen-face [data-action='source-language']"),faceTarget=$("#screen-face [data-action='target-language']");homeSource.textContent=sourceLanguage;homeTarget.textContent=targetLanguage;faceSource.textContent=sourceLanguage==="中文"?"中":sourceLanguage.slice(0,2);faceTarget.textContent=targetLanguage==="English"?"英":targetLanguage.slice(0,2);$$("[data-source-label]").forEach(n=>n.textContent=sourceLanguage+" · 你说");$$("[data-target-label]").forEach(n=>n.textContent=targetLanguage+" · 译文");if(isNativeHost())refreshOfflineModelStatus()}
+      function swapLanguages(){const next={sourceTag:languageTag(targetLanguage),targetTag:languageTag(sourceLanguage)};if(isNativeHost()){if(nativePairAvailability==="checking"){announce("正在检查语言包状态，请稍候");return}if(nativePairAvailability==="failed"){announce("暂时无法读取本机语言模型状态，请稍后重试");return}const supported=nativeSupportedPairs.some(pair=>pair.sourceTag===next.sourceTag&&pair.targetTag===next.targetTag),key=`${next.sourceTag}->${next.targetTag}`,decision=MiyinV5Core.translationDirectionDecision(nativePairAvailability,nativePairStatuses[key],supported);if(decision==="checking"){announce("正在检查语言包状态，请稍候");return}if(decision==="unknown"||decision==="failed"){announce("暂时无法确认反向翻译模型状态，请稍后重试");return}if(decision==="unsupported"){announce(supported?"本机翻译服务暂不支持这个反向语言模型":"当前翻译引擎暂不支持该反向语言组合");return}if(decision==="notDownloaded"){announce("反向翻译模型尚未下载，请到设置管理离线资源");return}if(decision!=="ready")return}[sourceLanguage,targetLanguage]=[targetLanguage,sourceLanguage];updateLanguages();announce("语言方向已交换")}
+      window.addEventListener("miyin:request-app-exit",()=>{if($("#modal-scrim").classList.contains("open")){closeModal();return}openModal("退出觅音？","确认退出当前应用吗？",[],[{label:"继续使用",action:"close"},{label:"退出应用",action:"exit-app",className:"confirm"}])});
+      $("#modal-footer").addEventListener("click",e=>{const exit=e.target.closest('[data-modal-action="exit-app"]');if(!exit)return;e.preventDefault();e.stopImmediatePropagation();closeModal();if(window.MiyinNavigation?.postMessage)window.MiyinNavigation.postMessage("exit");else announce("浏览器预览不会退出宿主应用")},true);
+      $("#modal-options").addEventListener("click",e=>{const remove=e.target.closest('[data-modal-action="avatar-remove"]');if(!remove)return;e.preventDefault();e.stopImmediatePropagation();closeModal();try{localStorage.removeItem("miyin.full.preview.v5.profile-avatar")}catch{}syncAvatar();announce("头像已恢复默认")},true);
       function setWheelByScroll(e){if(Math.abs(e.deltaY)<4)return;e.preventDefault();setMode(currentMode+(e.deltaY<0?1:-1))}
       $$("[data-wheel]").forEach(el=>{let startY=null;el.addEventListener("wheel",setWheelByScroll,{passive:false});el.addEventListener("pointerdown",e=>{startY=e.clientY});document.addEventListener("pointerup",e=>{if(startY!==null&&Math.abs(e.clientY-startY)>18){setMode(currentMode+(e.clientY<startY?1:-1));suppressWheelClickUntil=performance.now()+380}startY=null});document.addEventListener("pointercancel",()=>{startY=null})});
       document.addEventListener("click",e=>{
-        const screenBtn=e.target.closest("[data-screen]");if(screenBtn){if(screenBtn.dataset.screen!=="history"){historyCategory=null;activeHistoryDetail=null}showScreen(screenBtn.dataset.screen);return}
+        const screenBtn=e.target.closest("[data-screen]");if(screenBtn){if(screenBtn.dataset.screen!=="history"&&screenBtn.dataset.screen!=="settings"){resetHistorySelection();historyCategory=null;activeHistoryDetail=null}showScreen(screenBtn.dataset.screen);return}
         const modeBtn=e.target.closest("[data-mode-index]");if(modeBtn){if(performance.now()<suppressWheelClickUntil)return;setMode(Number(modeBtn.dataset.modeIndex));return}
         const step=e.target.closest("[data-wheel-step]");if(step){if(performance.now()<suppressWheelClickUntil)return;setMode(currentMode+Number(step.dataset.wheelStep));return}
         if(e.target.closest(".modal-close")||e.target=== $("#modal-scrim")){closeModal();return}
-        const modalAction=e.target.closest("[data-modal-action]");if(modalAction){const act=modalAction.dataset.modalAction,val=modalAction.dataset.value;if(act==="close"){closeModal();return}if(act==="context-history-picker"){openContextCategoryPicker();return}if(act==="select-context-category"){openContextRecordPicker(val);return}if(act==="select-history-context"){const [category,recordId]=val.split("|");prepareContextAttachment(category,recordId);closeModal();return}if(act==="rename-conversation-save"){const id=activeConversationForRenameId,titleValue=$("#conversation-title-input")?.value;activeConversationForRenameId=null;closeModal();if(id)updateConversationTitle(id,titleValue);return}if(act==="language"){const [which,lang]=val.split("|");if(which==="source")sourceLanguage=lang;else targetLanguage=lang;updateLanguages();closeModal();announce("语言已更新");return}if(act==="delete-active"&&activeRecord){records=records.filter(r=>r.id!==activeRecord.id);save("records",records);activeRecord=null;activeHistoryDetail=null;closeModal();renderHistory();announce("记录已删除");return}if(act==="exit-face"){facePaused=false;closeModal();showScreen("home");addRecord("face","面对面对话",""+sourceLanguage+" ⇄ "+targetLanguage+" · 本地预览");return}if(act==="leave-discard"){facePaused=false;closeModal();showScreen("home");return}if(act==="leave-save"){closeModal();showScreen("home");addRecord("face","面对面对话",""+sourceLanguage+" ⇄ "+targetLanguage+" · 本地预览");announce("会话已保留到历史记录");return}if(act==="provider"){const v=modalAction.dataset.value;save("provider",v);$("#model-summary").textContent=v+" · 待配置 API";closeModal();announce(v+" 已选择；需配置 API 后才能调用");return}if(act==="model"){const v=modalAction.dataset.value;save("model",v);$("#model-summary").textContent=v;closeModal();announce("已选择模型（预览）");return}if(act==="set-choice"){const target=modalAction.dataset.value;if(target){const out=$("[data-action='"+target.split("|")[0]+"']");if(out)out.textContent=target.split("|")[1]}closeModal();announce("偏好已更新（预览）");return}}
-        const category=e.target.closest("[data-history-category]");if(category){historyCategory=category.dataset.historyCategory;historyQuery="";activeHistoryDetail=null;renderHistory();return}
-        if(e.target.closest("[data-history-detail-back]")){activeHistoryDetail=null;renderHistory();return}if(e.target.closest("[data-history-back]")){activeHistoryDetail=null;historyCategory=null;historyQuery="";renderHistory();return}
+        const modalAction=e.target.closest("[data-modal-action]");if(modalAction){const act=modalAction.dataset.modalAction,val=modalAction.dataset.value;if(act==="close"){closeModal();return}if(act==="avatar-camera"||act==="avatar-gallery"){closeModal();void pickAvatar(act==="avatar-camera"?"camera":"gallery");return}if(act==="use-sentence-translation"){closeModal();showScreen("home");setTranslationMode("sentence");return}if(act==="context-history-picker"){openContextCategoryPicker();return}if(act==="select-context-category"){openContextRecordPicker(val);return}if(act==="select-history-context"){const [category,recordId]=val.split("|");prepareContextAttachment(category,recordId);closeModal();return}if(act==="rename-conversation-save"){const id=activeConversationForRenameId,titleValue=$("#conversation-title-input")?.value;activeConversationForRenameId=null;closeModal();if(id)updateConversationTitle(id,titleValue);return}if(act==="language"){const [which,lang]=val.split("|");if(which==="source")sourceLanguage=lang;else targetLanguage=lang;updateLanguages();closeModal();announce("语言已更新");return}if(act==="delete-active"&&activeRecord){records=records.filter(r=>r.id!==activeRecord.id);save("records",records);activeRecord=null;activeHistoryDetail=null;closeModal();renderHistory();announce("记录已删除");return}if(act==="exit-face"){closeModal();showScreen("home");addRecord("face","面对面对话",""+sourceLanguage+" ⇄ "+targetLanguage+" · 本地预览");return}if(act==="leave-discard"){closeModal();showScreen("home");return}if(act==="leave-save"){const hasConversation=!!$("#face-transcript")?.children.length;closeModal();showScreen("home");addRecord("face","面对面对话",""+sourceLanguage+" ⇄ "+targetLanguage+" · 本地预览");announce(hasConversation?"会话已保留到历史记录":"当前没有可保存的对话内容");return}if(act==="provider"){const v=modalAction.dataset.value;save("provider",v);$("#model-summary").textContent=v+" · 待配置 API";closeModal();announce(v+" 已选择；需配置 API 后才能调用");return}if(act==="model"){const v=modalAction.dataset.value;save("model",v);$("#model-summary").textContent=v;closeModal();announce("已选择模型（预览）");return}if(act==="set-choice"){const target=modalAction.dataset.value;if(target){const out=$("[data-action='"+target.split("|")[0]+"']");if(out)out.textContent=target.split("|")[1]}closeModal();announce("偏好已更新（预览）");return}}
+        const category=e.target.closest("[data-history-category]");if(category){resetHistorySelection();historyCategory=category.dataset.historyCategory;historyQuery="";activeHistoryDetail=null;if(historyCategory==="translation"&&isNativeHost()){nativeTranslationOffset=0;nativeTranslationRows=[];nativeTranslationHistoryCount=0;nativeHistoryRequest++}renderHistory();return}
+        if(e.target.closest("[data-history-detail-back]")){resetHistorySelection();activeHistoryDetail=null;renderHistory();return}if(e.target.closest("[data-history-back]")){resetHistorySelection();if(historyCategory==="translation"&&isNativeHost()){nativeTranslationOffset=0;nativeTranslationRows=[];nativeHistoryRequest++}activeHistoryDetail=null;historyCategory=null;historyQuery="";renderHistory();return}
         const recordOpen=e.target.closest("[data-record-open]");if(recordOpen){const record=records.find(r=>r.id===recordOpen.dataset.recordOpen);if(record)openHistoryDetail(record.category,record.id);return}
         const deleteRecord=e.target.closest("[data-delete-record]");if(deleteRecord){activeRecord=records.find(r=>r.id===deleteRecord.dataset.deleteRecord);if(activeRecord)openModal("删除这条历史记录？","删除后将从本地历史中移除。",[],[{label:"取消",action:"close"},{label:"删除",action:"delete-active",className:"destructive"}]);return}
         const themeChoice=e.target.closest("[data-theme-choice]");if(themeChoice){setTheme(themeChoice.dataset.themeChoice);return}
@@ -1177,13 +1562,18 @@
           case "swap-language":swapLanguages();break;
           case "source-language":languagePicker("source");break;
           case "target-language":languagePicker("target");break;
-          case "open-input-tools":$("#entry-tools").classList.toggle("open");$("#translation-input").focus();break;
-          case "camera":$("#file-photo").click();break;
-          case "photo":$("#file-image").click();break;
-          case "document":$("#file-document").click();break;
+          case "open-input-tools":openTranslationAttachmentMenu();break;
+          case "open-dictionary-page":window.dispatchEvent(new CustomEvent("miyin:open-dictionary-page"));break;
+          case "settings-back":backFromSettings();break;
+          case "change-avatar":openAvatarMenu();break;
+          case "camera":openLocalFileInput("#file-photo","相机拍照");break;
+          case "photo":openLocalFileInput("#file-image","图片选择");break;
+          case "document":openLocalFileInput("#file-document","文件选择");break;
           case "translate-text":translateText();break;
+          case "offline-model-manager":openNativeModelManager();break;
+          case "dictionary-info":openModal("离线词典","目前没有已发布或可下载的离线词典包。翻译模型可以把单词作为普通文本翻译，但不提供词性、多条义项和例句。查词模式不会联网，也不会自动切换成句子翻译。",[],[{label:"切换到句子翻译",action:"use-sentence-translation",className:"confirm"},{label:"关闭",action:"close"}]);break;
+          case "use-sentence-translation":if($("#modal-scrim").classList.contains("open"))closeModal();showScreen("home");setTranslationMode("sentence");break;
           case "leave-face":leaveFace();break;
-          case "toggle-pause":facePaused=!facePaused;$("#session-state-label").textContent=facePaused?"已暂停 · 点按继续":"对话中 · 点按暂停";$("[data-action='toggle-pause']").setAttribute("aria-pressed",String(facePaused));$("#face-status").textContent=facePaused?"已暂停 · 点按上方状态继续":"按住说话 · 松开显示译文";announce(facePaused?"对话已暂停；再次点按可继续":"对话已继续");break;
           case "read-translation":announce("朗读译文（预览状态）");break;
           case "rename":openModal("设置用户名","名称只保存在本机预览。",[],[{label:"取消",action:"close"},{label:"保存",action:"rename-save",className:"confirm"}]);$("#modal-options").innerHTML='<input id="rename-input" class="value-control" style="width:100%;max-width:none;height:40px" maxlength="24" value="'+escapeHtml(load("username","本地用户"))+'" aria-label="用户名">';setTimeout(()=>$("#rename-input").focus(),20);break;
           case "model-picker":modelPickerContext=currentScreen==="chat"?"conversation":"default";openModal(modelPickerContext==="conversation"?"选择本次对话模型":"选择默认模型","供应商和模型展示为界面占位。配置 API 后才具备真实调用能力；预览不会发送模型请求。",[{label:"OpenAI · GPT",hint:"需配置 API" ,action:"model",value:"OpenAI · GPT（预览）"},{label:"Anthropic · Claude",hint:"需配置 API",action:"model",value:"Anthropic · Claude（预览）"},{label:"Google · Gemini",hint:"需配置 API",action:"model",value:"Google · Gemini（预览）"},{label:"兼容 OpenAI API",hint:"自定义服务地址",action:"model",value:"兼容 API · 自定义模型（预览）"}],[{label:"管理服务商",action:"provider-picker"},{label:"模拟模型不可用",action:"simulate-model-unavailable"},{label:"关闭",action:"close"}]);break;
@@ -1196,7 +1586,7 @@
           case "about":openModal("关于觅音","觅音 · 面对面交流、翻译与 AI 助手。当前为交互框架预览。",[],[{label:"关闭",action:"close"}]);break;
           case "theme-preview":announce("薄荷全息主题预览 · 白底、薄荷渐变与轻柔光泽");break;
           case "feedback":openModal("反馈入口","预览版还没有连接反馈服务。",[],[{label:"关闭",action:"close"}]);break;
-          case "chat-attach":openModal("添加到对话","选择本地内容会仅在当前浏览器显示，不会上传。",[{label:"选择图片",action:"pick-image"},{label:"选择文档",action:"pick-document"},{label:"从历史记录添加到 AI 上下文",hint:"你选择并发送后才会附加",action:"context-history-picker"}], [{label:"关闭",action:"close"}]);break;
+          case "chat-attach":openChatAttachmentMenu();break;
           case "send-chat":sendChat();break;
           case "chat-voice":window.dispatchEvent(new CustomEvent("miyin-v5:start-voice-session"));break;
           case "video-start":toggleVideo();break;
@@ -1215,65 +1605,119 @@
         const confirmDelete=e.target.closest("[data-modal-action='delete-conversation']");if(confirmDelete&&activeConversationForDelete){const id=activeConversationForDelete.id;conversations=conversations.filter(item=>item.id!==id);transientConversations=transientConversations.filter(item=>item.id!==id);save("conversations",conversations);if(activeConversationId===id){activeConversationId=null;renderChatConversation(null)}if(activeHistoryDetail?.id===id)activeHistoryDetail=null;activeConversationForDelete=null;closeModal();renderHistory();announce("AI 对话已删除")}
         const modelOption=e.target.closest("[data-modal-action='model']");if(modelOption&&modelPickerContext==="conversation"){const conversation=getConversation(activeConversationId);if(!conversation)return;const updated={...conversation,modelId:modelOption.dataset.value,updatedAt:Date.now()};if(historySavingEnabled){saveConversations(MiyinV5Core.upsertConversation(conversations,updated));transientConversations=transientConversations.filter(item=>item.id!==updated.id)}else transientConversations=MiyinV5Core.upsertConversation(transientConversations,updated);updateChatModelLabel(updated)}
       });
-      document.addEventListener("input",e=>{if(e.target.id!=="history-search")return;const caret=e.target.selectionStart;historyQuery=e.target.value;renderHistory();const refreshed=$("#history-search");if(refreshed){refreshed.focus();refreshed.setSelectionRange(caret,caret)}});
+      document.addEventListener("input",e=>{if(e.target.id!=="history-search")return;const caret=e.target.selectionStart;resetHistorySelection();historyQuery=e.target.value;renderHistory();const refreshed=$("#history-search");if(refreshed){refreshed.focus();refreshed.setSelectionRange(caret,caret)}});
+      document.addEventListener("click",event=>{if(!event.target.closest('[data-modal-action="delete-active"]')||!activeRecord)return;removeHistoryTranscriptEntries(activeRecord.category,"local",[activeRecord.id])},true);
       function choiceModal(title,choices,target){openModal(title,"此选项仅演示界面状态。",choices.map(v=>({label:v,action:"set-choice",value:(target||"speech-mode")+"|"+v})),[{label:"取消",action:"close"}])}
-      function translateText(){const input=$("#translation-input"),text=input.value.trim();if(!text){input.focus();announce("先输入要翻译的文字");return}const translationText="译文会在连接翻译服务后显示",holder=$("#home-transcript"),source=document.createElement("div"),translation=document.createElement("div");source.className="bubble source";source.innerHTML='<span class="lang-tag">'+escapeHtml(sourceLanguage)+' · 你输入</span>'+escapeHtml(text);translation.className="bubble translation";translation.innerHTML='<span class="lang-tag">'+escapeHtml(targetLanguage)+' · 预览译文</span>'+escapeHtml(translationText);holder.append(source,translation);holder.scrollTop=holder.scrollHeight;input.value="";addRecord("translation","文字翻译",sourceLanguage+" ⇄ "+targetLanguage+" · 1 组",[{source:text,translation:translationText,sourceLanguage,targetLanguage}]);announce("文字已加入预览对话")}
-      function leaveFace(){if(facePaused){openModal("退出本次交谈？","这次对话尚未结束。可以保留为一条完整历史记录。",[],[{label:"继续对话",action:"close"},{label:"退出并删除",action:"leave-discard"},{label:"退出并保留",action:"leave-save",className:"confirm"}]);return}openModal("结束本次交谈？","本次对话会作为一条完整会话保存在历史记录中。",[],[{label:"继续交谈",action:"close"},{label:"结束并保留",action:"leave-save",className:"confirm"}])}
+      function revealDictionaryUnavailable(){
+        const holder=$("#home-transcript"),feedback=$("#dictionary-mode-feedback");
+        if(!holder||!feedback||translationMode!=="dictionary")return;
+        holder.scrollTop=holder.scrollHeight;
+        feedback.scrollIntoView({block:"end",inline:"nearest",behavior:"auto"});
+      }
+      function clearTranslationDraftIfUnchanged(input,draftSnapshot,draftRevision){if(input.value!==draftSnapshot||translationInputRevision!==draftRevision)return false;input.value="";input.dispatchEvent(new Event("input",{bubbles:true}));return true}
+      function markTranslationDraftSubmitted(draftSnapshot,submittedAt){window.MiyinV6HomeDraft?.markSubmitted(draftSnapshot,submittedAt)}
+      function settleTranslationDraftSubmitted(draftSnapshot,submittedAt){window.MiyinV6HomeDraft?.settleSubmitted(draftSnapshot,submittedAt)}
+      function showDictionaryUnavailable(input,afterSubmit=true){
+        const holder=$("#home-transcript");
+        let feedback=$("#dictionary-mode-feedback");
+        if(!feedback){feedback=document.createElement("div");feedback.id="dictionary-mode-feedback";feedback.className="translation-feedback";feedback.setAttribute("role","status");holder.appendChild(feedback)}
+        const message=afterSubmit?"目前没有可用离线词典。翻译模型能把单词作为普通文本翻译，但不会提供词性、多条释义或例句。查词不会自动改为句子翻译；你的输入已保留。":"目前没有可用离线词典。查词模式暂不可用；翻译模型只提供普通文本翻译，不会给出词性和多条释义。切换到句子翻译可使用当前已提供的翻译模型。";
+        feedback.replaceChildren(document.createTextNode(message));
+        const resources=document.createElement("button");resources.type="button";resources.dataset.action="dictionary-info";resources.textContent="查看查词限制";
+        const sentence=document.createElement("button");sentence.type="button";sentence.dataset.action="use-sentence-translation";sentence.textContent="切换为句子翻译";
+         feedback.append(resources,sentence);const revealFeedback=()=>{if(feedback.isConnected&&$("#dictionary-mode-feedback")===feedback){holder.scrollTop=holder.scrollHeight;feedback.scrollIntoView({block:"end",inline:"nearest",behavior:"auto"})}};revealFeedback();requestAnimationFrame(()=>requestAnimationFrame(revealFeedback));if(afterSubmit)announce("没有可用词典包，输入内容已保留");
+      }
+      async function translateText(){
+        const input=$("#translation-input"),text=input.value.trim(),draftSnapshot=input.value,draftRevision=translationInputRevision;
+        if(nativeHistoryClearPending){announce("正在清空翻译历史，请稍后再试");return}
+        if(!text){input.focus();announce(translationMode==="dictionary"?"先输入要查的单词或短语":"先输入要翻译的文字");return}
+        if(translationPending)return;
+        if(!MiyinV5Core.canRunTranslationMode(translationMode,dictionaryPackageInstalled)){showDictionaryUnavailable(input);return}
+        if(isNativeHost()){await translateNativeText(input,text,draftSnapshot,draftRevision);return}
+        const submittedAt=Date.now(),translationText="译文会在连接翻译服务后显示",holder=$("#home-transcript"),source=document.createElement("div"),translation=document.createElement("div");markTranslationDraftSubmitted(draftSnapshot,submittedAt);source.className="bubble source";source.innerHTML='<span class="lang-tag">'+escapeHtml(sourceLanguage)+' · 你输入</span>'+escapeHtml(text);translation.className="bubble translation";translation.innerHTML='<span class="lang-tag">'+escapeHtml(targetLanguage)+' · 预览译文</span>'+escapeHtml(translationText);holder.append(source,translation);holder.scrollTop=holder.scrollHeight;const recordId=addRecord("translation","文字翻译",sourceLanguage+" ⇄ "+targetLanguage+" · 1 组",[{source:text,translation:translationText,sourceLanguage,targetLanguage}]);tagTranslationHistoryNodes(source,translation,"local",recordId,text);clearTranslationDraftIfUnchanged(input,draftSnapshot,draftRevision);settleTranslationDraftSubmitted(draftSnapshot,submittedAt);announce("文字已加入预览对话")
+      }
+      async function translateNativeText(input,text,draftSnapshot=input.value,draftRevision=translationInputRevision){
+        const submittedAt=Date.now(),pair=translationPairParams(),sourceName=languageName(pair.sourceTag),targetName=languageName(pair.targetTag),holder=$("#home-transcript"),button=$("[data-action='translate-text']"),source=document.createElement("div"),translation=document.createElement("div"),sourceLabel=document.createElement("span");
+        markTranslationDraftSubmitted(draftSnapshot,submittedAt);
+        translationPending=true;
+        translationPendingSettled=new Promise(resolve=>{resolveTranslationPending=resolve});
+        if(button){button.disabled=true;button.setAttribute("aria-busy","true")}
+        source.className="bubble source";
+        sourceLabel.className="lang-tag";
+        sourceLabel.textContent=sourceName+" · 你输入";
+        source.append(sourceLabel,document.createTextNode(text));
+        translation.className="bubble translation";
+        translation.setAttribute("role","status");
+        translation.innerHTML='<span class="lang-tag">'+escapeHtml(targetName)+' · 正在翻译</span><span class="inline-progress"><span class="dots"><i></i><i></i><i></i></span> 使用本机离线模型</span>';
+        holder.append(source,translation);
+        holder.scrollTop=holder.scrollHeight;
+        try{
+          const result=await MiyinNativeBridge.request("translation.translate",{...pair,text});
+          translation.className="bubble translation";
+          translation.removeAttribute("role");
+          translation.replaceChildren();
+          const label=document.createElement("span"),content=document.createElement("span"),attribution=document.createElement("span");
+          label.className="lang-tag";
+          label.textContent=targetName+" · 译文";
+          content.textContent=result.translatedText;
+          attribution.className="translation-attribution";
+          attribution.textContent="Google ML Kit · 本机离线";
+          translation.append(label,content,attribution);
+          if(result.historySaved!==true){const warning=document.createElement("span");warning.className="translation-attribution";warning.textContent="译文已生成，但未能保存到本机历史。";translation.appendChild(warning)}
+          tagTranslationHistoryNodes(source,translation,"native",result.historyEntryId,text);
+          clearTranslationDraftIfUnchanged(input,draftSnapshot,draftRevision);
+          settleTranslationDraftSubmitted(draftSnapshot,submittedAt);
+          announce(result.historySaved===true?"翻译完成并已保存到本机历史":"翻译完成，但历史记录未能保存");
+          void refreshNativeTranslationHistoryCount();
+        }catch(error){
+          settleTranslationDraftSubmitted(draftSnapshot,submittedAt);
+          source.remove();
+          translation.className="translation-feedback is-error";
+          translation.removeAttribute("role");
+          translation.replaceChildren(document.createTextNode(nativeErrorMessage(error)));
+          const action=document.createElement("button");
+          action.type="button";
+          if(error?.code==="model_missing"){
+            action.dataset.action="offline-model-manager";
+            action.textContent="下载离线模型";
+          }else if(error?.code==="unsupported_language_pair"){
+            action.dataset.action="source-language";
+            action.textContent="更换支持的语言";
+          }else{
+            action.dataset.action="retry-translation";
+            action.textContent="重试";
+          }
+          translation.appendChild(action);
+          announce(nativeErrorMessage(error));
+        }finally{
+          translationPending=false;
+          const resolve=resolveTranslationPending;resolveTranslationPending=null;resolve?.();
+          if(button){button.disabled=false;button.removeAttribute("aria-busy")}
+          holder.scrollTop=holder.scrollHeight;
+        }
+      }
+      function leaveFace(){openModal("结束本次交谈？","本次对话会作为一条完整会话保存在历史记录中。",[],[{label:"继续交谈",action:"close"},{label:"结束并保留",action:"leave-save",className:"confirm"}])}
       function finishVoice(kind){
         const button=$("[data-voice='"+kind+"']");
         if(!button||activeVoice!==kind)return;
         button.classList.remove("is-listening");
         activeVoice=null;
-        const started=voiceStartedAt;
-        const sourceText=sourceLanguage==="中文"?"你好，很高兴认识你。":"Hello, it’s nice to meet you.";
-        const translatedText=targetLanguage==="English"?"Hello, it’s nice to meet you.":"你好，很高兴认识你。";
-        const sourceId=kind+"-source-"+started;
-        const translationId=kind+"-translation-"+started;
-        let sourceLabel=null,pendingBubble=null;
-        const sourcePartial=sourceText.slice(0,Math.max(3,Math.floor(sourceText.length*.45)))+"…";
-        const translationPartial=translatedText.slice(0,Math.max(3,Math.floor(translatedText.length*.42)))+"…";
-        if(kind==="home"){
-          const holder=$("#home-transcript");
-          const source=document.createElement("div"),translation=document.createElement("div");
-          source.className="bubble source";source.innerHTML='<span class="lang-tag">'+escapeHtml(sourceLanguage)+' · 正在识别</span><span class="live-text" id="'+sourceId+'">正在识别语音…</span>';
-          translation.className="bubble translation";translation.innerHTML='<span class="lang-tag">'+escapeHtml(targetLanguage)+' · 译文</span><span class="live-text" id="'+translationId+'">等待原文识别…</span>';
-          holder.append(source,translation);holder.scrollTop=holder.scrollHeight;
-        }else{
-          const transcript=$("#face-transcript"),left=transcript.querySelectorAll(".face-turn").length%2===0;
-          pendingBubble=document.createElement("div");pendingBubble.className="face-turn pending"+(left?" left":"");
-          pendingBubble.innerHTML='<small id="'+sourceId+'-label">'+(left?"对方":"你")+' · '+escapeHtml(sourceLanguage)+' · 正在识别</small><span id="'+sourceId+'">正在识别语音…</span><span class="translated" data-action="read-translation" id="'+translationId+'"><span class="dots"><i></i><i></i><i></i></span> 等待译文…</span>';
-          transcript.appendChild(pendingBubble);transcript.scrollTop=transcript.scrollHeight;
-        }
-        const status=kind==="face"?$("#face-status"):null;
-        if(status)status.textContent="正在识别语音…";
-        setTimeout(()=>{const line=$("#"+sourceId);if(!line)return;line.textContent=sourcePartial},360);
-        setTimeout(()=>{
-          const line=$("#"+sourceId),translation=$("#"+translationId);if(!line||!translation)return;
-          line.textContent=sourceText;
-          if(kind==="face"){$("#"+sourceId+"-label").textContent=(pendingBubble.classList.contains("left")?"对方":"你")+" · "+sourceLanguage+" · 原文已识别";translation.innerHTML='<span class="dots"><i></i><i></i><i></i></span> 正在翻译…'}
-          else{line.parentElement.querySelector(".lang-tag").textContent=sourceLanguage+" · 原文已识别";translation.textContent="正在翻译…"}
-          if(status)status.textContent="正在翻译…";
-        },720);
-        setTimeout(()=>{const translation=$("#"+translationId);if(!translation)return;if(kind==="face")translation.textContent=translationPartial;else translation.textContent=translationPartial;if(status)status.textContent="正在显示译文…"},1120);
-        setTimeout(()=>{
-          const translation=$("#"+translationId);if(!translation)return;translation.textContent=translatedText;
-          if(kind==="home"){const holder=$("#home-transcript");holder.scrollTop=holder.scrollHeight;addRecord("translation","语音翻译",sourceLanguage+" ⇄ "+targetLanguage+" · 1 句",[{source:sourceText,translation:translatedText,sourceLanguage,targetLanguage}])}
-          else{pendingBubble.classList.remove("pending");if(status)status.textContent=facePaused?"已暂停 · 点按上方状态继续":"按住说话 · 松开显示译文";$("#face-transcript").scrollTop=$("#face-transcript").scrollHeight}
-          announce("原文已识别，译文已显示（预览）");
-        },1660);
+        if(kind==="face")setFaceStatus("语音识别尚未接入",true,1200);
+        else announce("语音识别尚未接入");
       }
-      document.addEventListener("pointerdown",e=>{const button=e.target.closest("[data-voice]");if(!button||!button.isConnected)return;e.preventDefault();activeVoice=button.dataset.voice;if(activeVoice==="face"&&facePaused){activeVoice=null;announce("对话已暂停，点按顶部状态可继续");return}voiceStartedAt=Date.now();button.classList.add("is-listening");try{button.setPointerCapture(e.pointerId)}catch{}if(activeVoice==="face")$("#face-status").textContent="正在聆听…";else announce("正在聆听…松开结束")});
+      function setFaceStatus(text,visible,hideAfter=0){const row=$("#face-status")?.closest(".face-status-row");if(!row)return;const status=$("#face-status");status.textContent=text;row.classList.toggle("is-visible",visible);clearTimeout(faceStatusTimer);if(hideAfter)faceStatusTimer=setTimeout(()=>row.classList.remove("is-visible"),hideAfter)}
+      document.addEventListener("pointerdown",e=>{const button=e.target.closest("[data-voice]");if(!button||!button.isConnected)return;e.preventDefault();activeVoice=button.dataset.voice;button.classList.add("is-listening");try{button.setPointerCapture(e.pointerId)}catch{}});
       document.addEventListener("pointerup",e=>{const button=e.target.closest("[data-voice]");if(button&&activeVoice===button.dataset.voice)finishVoice(activeVoice)});
       document.addEventListener("pointercancel",e=>{const button=e.target.closest("[data-voice]");if(button&&activeVoice===button.dataset.voice)finishVoice(activeVoice)});
       document.addEventListener("keydown",e=>{if(e.key==="Escape"&&$("#modal-scrim").classList.contains("open")){closeModal();e.preventDefault();}if(e.key==="Enter"&&e.target===$("#translation-input")){e.preventDefault();translateText()}if(e.key==="Enter"&&e.target===$("#chat-input")&&!e.shiftKey){e.preventDefault();sendChat()}});
       function findMessage(conversationId,messageId){const conversation=getConversation(conversationId);return conversation?conversation.messages.find(message=>message.id===messageId)||null:null}
       function mockReply(prompt,regenerated=false){const subject=String(prompt).slice(0,44)+(String(prompt).length>44?"…":"");return(regenerated?"我换一种方式整理：":"收到，我会围绕「"+subject+"」继续和你讨论。")+"\n\n这是本地模拟回复，用来预览对话交互；没有调用模型 API。"}
-      function restoreGenerationDraft(generation){const input=$("#chat-input");if(input&&!input.value.trim()&&generation&&generation.draftSnapshot)input.value=generation.draftSnapshot}
-      function startMockGeneration(conversationId,messageId,generation,regenerated=false){const oldTimer=generationTimers.get(messageId);if(oldTimer)clearTimeout(oldTimer);const timer=setTimeout(()=>{generationTimers.delete(messageId);const message=findMessage(conversationId,messageId);if(!message||message.status!=="pending")return;const completed=MiyinV5Core.transitionGeneration(generation,"complete",Date.now());updateMessage(conversationId,messageId,{status:"complete",text:mockReply(generation.prompt,regenerated),generation:completed,createdAt:Date.now()});const input=$("#chat-input");if(generation.clearDraftOnSuccess&&input&&input.value===generation.draftSnapshot)input.value=""},780);generationTimers.set(messageId,timer)}
+      function restoreGenerationDraft(generation){const input=$("#chat-input");if(input&&generation&&MiyinV5Core.shouldRestoreChatDraft({draftSnapshot:generation.draftSnapshot,inputValue:input.value,inputRevisionAtSend:generation.inputRevisionAtSend,inputRevision:chatDraftRevision})){input.value=generation.draftSnapshot;resizeChatInput()}}
+      function startMockGeneration(conversationId,messageId,generation,regenerated=false){const oldTimer=generationTimers.get(messageId);if(oldTimer)clearTimeout(oldTimer);const timer=setTimeout(()=>{generationTimers.delete(messageId);const message=findMessage(conversationId,messageId);if(!message||message.status!=="pending")return;const completed=MiyinV5Core.transitionGeneration(generation,"complete",Date.now());updateMessage(conversationId,messageId,{status:"complete",text:mockReply(generation.prompt,regenerated),generation:completed,createdAt:Date.now()})},780);generationTimers.set(messageId,timer)}
       function stopGeneration(conversationId,messageId){const message=findMessage(conversationId,messageId);if(!message||message.status!=="pending")return;const timer=generationTimers.get(messageId);if(timer)clearTimeout(timer);generationTimers.delete(messageId);const generation=MiyinV5Core.transitionGeneration(message.generation,"stop",Date.now());updateMessage(conversationId,messageId,{status:"stopped",text:"已停止生成。输入内容已保留，你可以重试或继续编辑。",generation});restoreGenerationDraft(generation);announce("已停止生成；输入内容和模型选择已保留")}
       function failGeneration(conversationId,messageId){const message=findMessage(conversationId,messageId);if(!message||message.status!=="pending")return;const timer=generationTimers.get(messageId);if(timer)clearTimeout(timer);generationTimers.delete(messageId);const generation=MiyinV5Core.transitionGeneration(message.generation,"fail",Date.now());updateMessage(conversationId,messageId,{status:"failed",text:"暂时无法生成回答。输入内容和模型选择已保留，可以重试。",generation});restoreGenerationDraft(generation);announce("演示了生成失败状态；当前输入仍可编辑")}
-      function retryGeneration(conversationId,messageId){const message=findMessage(conversationId,messageId);if(!message||!(["failed","stopped"].includes(message.status)))return;const generation={...MiyinV5Core.transitionGeneration(message.generation,"retry",Date.now()),clearDraftOnSuccess:true};updateMessage(conversationId,messageId,{status:"pending",text:"正在重新生成回答…",generation});startMockGeneration(conversationId,messageId,generation,false);announce("正在重试本地模拟回复")}
-      function regenerateAnswer(conversationId,messageId){const conversation=getConversation(conversationId);if(!conversation)return;const index=conversation.messages.findIndex(message=>message.id===messageId);if(index<0)return;const userMessage=conversation.messages.slice(0,index).reverse().find(message=>message.role==="user");if(!userMessage)return;const now=Date.now(),generation={...MiyinV5Core.createGeneration({id:nextId("generation"),conversationId,prompt:userMessage.text,draftSnapshot:$("#chat-input").value,modelId:conversation.modelId,contextAttachments:userMessage.contextAttachments||[],now}),clearDraftOnSuccess:false};updateMessage(conversationId,messageId,{status:"pending",text:"正在重新生成回答…",generation,createdAt:now});startMockGeneration(conversationId,messageId,generation,true);announce("正在重新生成这条回答")}
+      function retryGeneration(conversationId,messageId){const message=findMessage(conversationId,messageId);if(!message||!(["failed","stopped"].includes(message.status)))return;const generation=MiyinV5Core.transitionGeneration(message.generation,"retry",Date.now()),input=$("#chat-input");if(input&&MiyinV5Core.shouldConsumeRetriedChatDraft({draftSnapshot:generation.draftSnapshot,inputValue:input.value,inputRevisionAtSend:generation.inputRevisionAtSend,inputRevision:chatDraftRevision})){input.value="";resizeChatInput()}updateMessage(conversationId,messageId,{status:"pending",text:"正在重新生成回答…",generation});startMockGeneration(conversationId,messageId,generation,false);announce("正在重试本地模拟回复")}
+      function regenerateAnswer(conversationId,messageId){const conversation=getConversation(conversationId);if(!conversation)return;const index=conversation.messages.findIndex(message=>message.id===messageId);if(index<0)return;const userMessage=conversation.messages.slice(0,index).reverse().find(message=>message.role==="user");if(!userMessage)return;const now=Date.now(),generation={...MiyinV5Core.createGeneration({id:nextId("generation"),conversationId,prompt:userMessage.text,draftSnapshot:$("#chat-input").value,modelId:conversation.modelId,contextAttachments:userMessage.contextAttachments||[],now}),inputRevisionAtSend:chatDraftRevision};updateMessage(conversationId,messageId,{status:"pending",text:"正在重新生成回答…",generation,createdAt:now});startMockGeneration(conversationId,messageId,generation,true);announce("正在重新生成这条回答")}
       function stopAnswerReading(){if(readingTimer)clearTimeout(readingTimer);readingTimer=0;readingMessageId=null;renderChatConversation(getConversation(activeConversationId))}
       function speakAnswer(messageId){if(readingMessageId===messageId){stopAnswerReading();announce("已停止朗读");return}if(readingTimer)clearTimeout(readingTimer);readingMessageId=messageId;renderChatConversation(getConversation(activeConversationId));announce("正在朗读这条回答 · 预览模拟");readingTimer=setTimeout(()=>{readingTimer=0;readingMessageId=null;renderChatConversation(getConversation(activeConversationId))},2600)}
       async function copyAnswer(text){if(!navigator.clipboard||typeof navigator.clipboard.writeText!=="function"){announce("当前浏览器没有可用的剪贴板接口");return false}try{await navigator.clipboard.writeText(text);announce("回答已复制到剪贴板");return true}catch{announce("浏览器未允许访问剪贴板，请检查剪贴板权限");return false}}
@@ -1282,11 +1726,11 @@
         const input=$("#chat-input"),text=input.value.trim();if(!text){input.focus();return}
         if(simulatedModelUnavailable){openModal("所选模型暂不可用","本次消息尚未发送。草稿、当前模型和待附加历史内容都已保留；觅音不会自动切换到其他服务。",[],[{label:"重试此模型",action:"retry-unavailable-model",className:"confirm"},{label:"更换模型",action:"change-chat-model"},{label:"关闭",action:"close"}]);return}
         const conversation=ensureConversationForFirstMessage(text);if(conversation.messages.some(message=>message.status==="pending")){announce("请先等待或停止当前回答");return}
-        const createdAt=Date.now(),userMessage=MiyinV5Core.attachContextToMessage({id:nextId("msg"),role:"user",text,createdAt,status:"complete"},pendingContextAttachments);
+        const createdAt=Date.now(),userDraft={id:nextId("msg"),role:"user",text,createdAt,status:"complete",attachments:pendingChatAttachments.map(file=>({name:file.name,type:file.type,size:file.size}))},userMessage=MiyinV5Core.attachContextToMessage(userDraft,pendingContextAttachments);
         appendMessage(conversation.id,userMessage);
-        const generation={...MiyinV5Core.createGeneration({id:nextId("generation"),conversationId:conversation.id,prompt:text,draftSnapshot:text,modelId:conversation.modelId,contextAttachments:userMessage.contextAttachments,now:createdAt+1}),clearDraftOnSuccess:true};
+        const generation={...MiyinV5Core.createGeneration({id:nextId("generation"),conversationId:conversation.id,prompt:text,draftSnapshot:text,modelId:conversation.modelId,contextAttachments:userMessage.contextAttachments,now:createdAt+1}),inputRevisionAtSend:chatDraftRevision};
         const assistantMessage={id:nextId("msg"),role:"assistant",text:"正在生成回答…",createdAt:createdAt+1,status:"pending",contextAttachments:[],generation};
-        appendMessage(conversation.id,assistantMessage);pendingContextAttachments=[];renderPendingContextAttachments();input.value="";renderChatConversation(getConversation(conversation.id));startMockGeneration(conversation.id,assistantMessage.id,generation);announce(historySavingEnabled?"消息已发送，正在生成本地模拟回复":"本次对话仅保留在当前页面")
+        appendMessage(conversation.id,assistantMessage);pendingContextAttachments=[];pendingChatAttachments=[];renderPendingContextAttachments();renderPendingChatAttachments();input.value="";resizeChatInput();renderChatConversation(getConversation(conversation.id));startMockGeneration(conversation.id,assistantMessage.id,generation);announce(historySavingEnabled?"消息已发送，正在生成本地模拟回复":"本次对话仅保留在当前页面")
       }
       document.addEventListener("click",e=>{
         const action=e.target.closest("[data-modal-action]");if(!action)return;
@@ -1297,8 +1741,8 @@
       });
       window.MiyinV5Chat={getActiveMessages(){const conversation=activeConversationId?getConversation(activeConversationId):null;return conversation?conversation.messages.slice():[]},appendVoiceUser(userText,attachments=[]){const conversation=ensureConversationForFirstMessage(userText),message={id:nextId("voice-user"),role:"user",text:userText,createdAt:Date.now(),status:"complete",contextAttachments:[],attachments:attachments.map(file=>({name:file.name,type:file.type}))},updated=appendMessage(conversation.id,message);renderChatConversation(updated);return updated},appendVoiceAssistant(assistantText){const conversation=ensureConversationForFirstMessage(assistantText),message={id:nextId("voice-assistant"),role:"assistant",text:assistantText,createdAt:Date.now(),status:"complete",contextAttachments:[]},updated=appendMessage(conversation.id,message);renderChatConversation(updated);return updated},appendVoiceTurn(userText,assistantText){const conversation=ensureConversationForFirstMessage(userText),createdAt=Date.now();appendMessage(conversation.id,{id:nextId("voice-user"),role:"user",text:userText,createdAt,status:"complete",contextAttachments:[]});appendMessage(conversation.id,{id:nextId("voice-assistant"),role:"assistant",text:assistantText,createdAt:createdAt+1,status:"complete",contextAttachments:[]});const updated=getConversation(conversation.id);renderChatConversation(updated);return updated}};
       function toggleVideo(){videoActive=!videoActive;const button=$("#video-start"),status=$("#video-status");button.classList.toggle("active",videoActive);button.textContent=videoActive?"暂停识别":"开始识别";status.textContent=videoActive?(sourceKind==="system"?"正在读取其他 App 音频 · 演示":"正在使用麦克风音源 · 演示"):"已暂停 · 演示字幕保留";if(videoActive)announce("视频字幕识别为预览状态，未访问系统音频");else addRecord("video","字幕翻译示例",sourceKind==="system"?"其他 App 音频 · 预览":"麦克风 / 会议 · 预览")}
-      $$("input[type=file]").forEach(file=>file.addEventListener("change",()=>{if(file.files&&file.files[0]){const f=file.files[0];announce("已选择「"+f.name+"」· 仅本地预览");$("#translation-input").value="已添加文件："+f.name;$("#entry-tools").classList.add("open");file.value=""}}));
-      $("#modal-options").addEventListener("click",e=>{if(e.target.closest("[data-modal-action='pick-image']")){closeModal();$("#file-image").click()}if(e.target.closest("[data-modal-action='pick-document']")){closeModal();$("#file-document").click()}});
+      $$("input[type=file]").forEach(file=>file.addEventListener("change",()=>{if(file.files&&file.files[0]){const f=file.files[0],target=file.dataset.selectionTarget;if(target==="chat"){pendingChatAttachments=[...pendingChatAttachments,{name:f.name,type:f.type,size:f.size}];renderPendingChatAttachments();announce("已添加「"+f.name+"」· 仅本地预览，不会上传")}else{announce("已选择「"+f.name+"」· 当前只演示文件选择，不会读取内容")}file.value=""}}));
+      $("#modal-options").addEventListener("click",e=>{const translationOption=e.target.closest("[data-translation-attachment]");if(translationOption){const kind=translationOption.dataset.translationAttachment;closeModal();openLocalFileInput(kind==="camera"?"#file-photo":kind==="photo"?"#file-image":"#file-document",kind==="camera"?"相机拍照":kind==="photo"?"选择图片":"选择文档");return}const chatOption=e.target.closest("[data-chat-attachment]");if(chatOption){const kind=chatOption.dataset.chatAttachment;if(kind==="screen"){closeModal();openModal("投屏暂不可用","系统投屏能力尚未接入；当前不会申请权限、采集屏幕或上传内容。",[],[{label:"知道了",action:"close",className:"confirm"}]);return}if(kind==="history"){openContextCategoryPicker();return}openLocalFileInput(kind==="camera"?"#chat-file-camera":kind==="image"?"#chat-file-image":"#chat-file-document",kind==="camera"?"相机拍照":kind==="image"?"图片选择":"文件选择");return}if(e.target.closest("[data-modal-action='pick-image']")){const target=currentScreen==="chat"?"#chat-file-image":"#file-image";openLocalFileInput(target,"图片选择")}if(e.target.closest("[data-modal-action='pick-document']")){const target=currentScreen==="chat"?"#chat-file-document":"#file-document";openLocalFileInput(target,"文件选择")}});
       $("#modal-footer").addEventListener("click",e=>{const b=e.target.closest("[data-modal-action='rename-save']");if(!b)return;const v=$("#rename-input").value.trim()||"本地用户";save("username",v);$("#profile-name").textContent=v;closeModal();announce("用户名已保存到本机预览")});
       $("#modal-footer").addEventListener("click",e=>{const b=e.target.closest("[data-modal-action='provider-picker']");if(!b)return;closeModal();setTimeout(()=>{$("[data-action='provider-picker']")?.click()},20)});
       $("#face-status").addEventListener("click",()=>{});
@@ -1383,12 +1827,13 @@
         });
         if(!rendered)window.__miyinShaderStatus="loading";
       }
-      window.addEventListener("miyin:v5-renderers-ready",initAuroraButtons,{once:true});syncOrbStyle();const savedTheme=load("theme","mint-holographic");setTheme(themeNames[savedTheme]?savedTheme:"mint-holographic",true);updateLanguages();renderChatConversation(getConversation(activeConversationId));const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled));renderWheel();renderHistory();initWheelGlass();
+      window.addEventListener("miyin:v5-renderers-ready",initAuroraButtons,{once:true});window.addEventListener("miyin:native-host-ready",()=>{if(translationMode==="dictionary"&&!dictionaryPackageInstalled)requestAnimationFrame(()=>requestAnimationFrame(revealDictionaryUnavailable));void refreshNativeSupportedPairs().finally(()=>updateLanguages());void refreshNativeTranslationHistoryCount()});syncOrbStyle();syncTranslationMode();if(translationMode==="dictionary"&&!dictionaryPackageInstalled)showDictionaryUnavailable(null,false);const savedTheme=load("theme","mint-holographic");setTheme(themeNames[savedTheme]?savedTheme:"mint-holographic",true);updateLanguages();syncAvatar();renderChatConversation(getConversation(activeConversationId));const saveSwitch=$(".switch[aria-label='保存会话历史']");if(saveSwitch)saveSwitch.setAttribute("aria-pressed",String(historySavingEnabled));renderWheel();renderHistory();initWheelGlass();
       $$(".screen-nav [data-screen]").forEach(b=>{if(b.dataset.screen==="home")b.setAttribute("aria-current","page");else b.removeAttribute("aria-current")});
     })();
   </script>
   <script src="./miyin-v5.js"></script>
   <script src="./miyin-orb-appearance.js?v=5-orb-settings-r2"></script>
+  <script src="./miyin-v6-app.js?v=6"></script>
   <script>window.dispatchEvent(new Event("miyin:v5-renderers-ready"));</script>
 </body>
 </html>

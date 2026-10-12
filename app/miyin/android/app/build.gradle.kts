@@ -4,6 +4,10 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+dependencies {
+    implementation("com.google.mlkit:translate:17.0.3")
+}
+
 android {
     namespace = "com.miyin.app"
     compileSdk = flutter.compileSdkVersion
@@ -34,6 +38,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Isolate a Release-only ML Kit model-status failure. Keep shrinking
+            // disabled for this build until the device comparison identifies it.
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }

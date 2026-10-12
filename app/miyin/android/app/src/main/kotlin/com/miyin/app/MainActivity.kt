@@ -9,6 +9,8 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val performanceChannelName = "com.miyin.app/performance"
+    private val translationChannelName = "com.miyin.app/translation"
+    private var translationChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -24,6 +26,12 @@ class MainActivity : FlutterActivity() {
 
                 else -> result.notImplemented()
             }
+        }
+        translationChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            translationChannelName,
+        ).also { channel ->
+            channel.setMethodCallHandler(MiyinTranslationMethodHandler())
         }
     }
 
@@ -42,6 +50,8 @@ class MainActivity : FlutterActivity() {
             flutterEngine.dartExecutor.binaryMessenger,
             performanceChannelName,
         ).setMethodCallHandler(null)
+        translationChannel?.setMethodCallHandler(null)
+        translationChannel = null
         super.cleanUpFlutterEngine(flutterEngine)
     }
 

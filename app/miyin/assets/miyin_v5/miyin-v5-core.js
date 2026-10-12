@@ -130,6 +130,36 @@
     return status ? { ...generation, status, updatedAt } : generation;
   }
 
+  function isSamePendingHomeTranslation(started, current) {
+    if (started == null || current == null) return started == null && current == null;
+    return started.text === current.text
+      && Number(started.submittedAt) === Number(current.submittedAt)
+      && Number(started.draftRevision) === Number(current.draftRevision)
+      && (Number(started.submissionRevision) || 0) === (Number(current.submissionRevision) || 0);
+  }
+
+  function shouldRestoreChatDraft({ draftSnapshot, inputValue, inputRevisionAtSend, inputRevision }) {
+    const snapshot = String(draftSnapshot ?? "");
+    const sentRevision = Number(inputRevisionAtSend);
+    const currentRevision = Number(inputRevision);
+    return Boolean(snapshot.trim())
+      && !String(inputValue ?? "").trim()
+      && Number.isFinite(sentRevision)
+      && Number.isFinite(currentRevision)
+      && sentRevision === currentRevision;
+  }
+
+  function shouldConsumeRetriedChatDraft({ draftSnapshot, inputValue, inputRevisionAtSend, inputRevision }) {
+    const snapshot = String(draftSnapshot ?? "");
+    const sentRevision = Number(inputRevisionAtSend);
+    const currentRevision = Number(inputRevision);
+    return Boolean(snapshot.trim())
+      && String(inputValue ?? "") === snapshot
+      && Number.isFinite(sentRevision)
+      && Number.isFinite(currentRevision)
+      && sentRevision === currentRevision;
+  }
+
   function cloneSnapshot(value) {
     if (Array.isArray(value)) return value.map(cloneSnapshot);
     if (value && typeof value === "object") {
@@ -198,14 +228,93 @@
     });
   }
 
+  function filterInstalledTranslationPairs(supportedPairs, modelStatusByPair) {
+    if (!Array.isArray(supportedPairs) || !modelStatusByPair || typeof modelStatusByPair !== "object") {
+      return [];
+    }
+
+    const seen = new Set();
+    return supportedPairs.filter((pair) => {
+      if (!pair || typeof pair.sourceTag !== "string" || typeof pair.targetTag !== "string") return false;
+      if (!pair.sourceTag || !pair.targetTag || pair.sourceTag === pair.targetTag) return false;
+      const key = `${pair.sourceTag}->${pair.targetTag}`;
+      if (seen.has(key) || modelStatusByPair[key] !== "downloaded") return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  function canRunTranslationMode(mode, dictionaryPackageInstalled) {
+    if (mode === "sentence") return true;
+    if (mode === "dictionary") return dictionaryPackageInstalled === true;
+    return false;
+  }
+
+  function translationDirectionDecision(checkState, modelStatus, directionSupported = true) {
+    if (checkState === "checking") return "checking";
+    if (checkState === "failed" || checkState === "unavailable") return "unknown";
+    if (directionSupported === false) return "unsupported";
+    if (modelStatus === "downloaded") return "ready";
+    if (modelStatus === "notDownloaded") return "notDownloaded";
+    if (modelStatus === "unsupported") return "unsupported";
+    if (modelStatus === "failed") return "failed";
+    return "unknown";
+  }
+
+  function createScreenReturnStack(fallbacks = { dictionary: "home", resources: "settings" }) {
+    const stack = [];
+    const returnableScreens = new Set(["dictionary", "resources"]);
+    const maxDepth = 32;
+
+    return {
+      push(from, to) {
+        if (typeof from !== "string" || !from || !returnableScreens.has(to) || from === to) return false;
+        if (returnableScreens.has(from)) {
+          const existingTargetIndex = stack.findIndex(entry => entry.to === to);
+          if (existingTargetIndex >= 0) {
+            stack.length = existingTargetIndex + 1;
+            return true;
+          }
+          if (stack.length && stack[stack.length - 1].to !== from) stack.length = 0;
+        } else {
+          stack.length = 0;
+        }
+        stack.push({ from, to });
+        if (stack.length > maxDepth) stack.shift();
+        return true;
+      },
+      pop(current) {
+        if (returnableScreens.has(current) && stack.length && stack[stack.length - 1].to === current) return stack.pop().from;
+        return fallbacks[current] || "home";
+      },
+      peek(current) {
+        if (!returnableScreens.has(current) || !stack.length || stack[stack.length - 1].to !== current) return null;
+        return stack[stack.length - 1].from;
+      },
+      clear() {
+        stack.length = 0;
+      },
+      get depth() {
+        return stack.length;
+      },
+    };
+  }
+
   return {
     attachContextToMessage,
     appendConversationMessage,
+    canRunTranslationMode,
     createConversation,
     createContextAttachment,
     createGeneration,
+    createScreenReturnStack,
+    filterInstalledTranslationPairs,
+    isSamePendingHomeTranslation,
     removeContextAttachment,
     searchConversations,
+    shouldConsumeRetriedChatDraft,
+    shouldRestoreChatDraft,
+    translationDirectionDecision,
     transitionVoiceSession,
     transitionGeneration,
     updateConversationMessage,
