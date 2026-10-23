@@ -185,6 +185,12 @@ abstract interface class TranslationEngine {
   Future<TranslationResult> translate(TranslationRequest request);
 }
 
+/// Optional catalog for engines where supported languages are larger than a
+/// small fixed list of language pairs (for example, ML Kit's on-device set).
+abstract interface class TranslationLanguageCatalog {
+  Future<Set<TranslationLanguage>> getSupportedLanguages();
+}
+
 final class TranslationFailure implements Exception {
   const TranslationFailure(this.code, this.message, {this.cause});
 

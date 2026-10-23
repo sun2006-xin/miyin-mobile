@@ -1,0 +1,446 @@
+/* Keep settings fixed and scroll only recent subtitles. */
+html:not([data-theme^="palette-"]) #screen-video {
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 95% 10%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 31%),
+    radial-gradient(circle at 4% 91%, color-mix(in srgb, var(--accent) 9%, transparent), transparent 36%),
+    var(--page);
+}
+html[data-theme="mint-holographic"] #screen-home,
+html[data-theme="mint-holographic"] #screen-face,
+html[data-theme="mint-holographic"] #screen-chat {
+  background:
+    radial-gradient(circle at 88% 9%, rgba(116, 225, 206, .20), transparent 28%),
+    radial-gradient(circle at 6% 87%, rgba(98, 192, 218, .12), transparent 34%),
+    var(--page);
+}
+#screen-video .topbar { flex: 0 0 auto; z-index: 8; }
+#screen-video .video-controls {
+  flex: 0 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+  padding: 8px 13px 4px;
+}
+#screen-video .video-setting {
+  min-width: 0;
+  min-height: 50px;
+  padding: 6px 8px;
+  border-color: color-mix(in srgb, var(--accent) 23%, var(--line));
+  background: linear-gradient(155deg, color-mix(in srgb, var(--surface) 91%, var(--accent) 9%), var(--surface) 75%);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--accent) 9%, transparent),
+    0 5px 14px color-mix(in srgb, var(--accent) 7%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 58%, white 42%);
+}
+#screen-video .video-setting b { color: var(--title); font-size: 11px; font-weight: 670; }
+#screen-video .video-setting small { font-size: 8px; line-height: 1.2; }
+#screen-video .video-setting .switch { flex: 0 0 auto; }
+#screen-video .v4-audio-sources { flex: 0 0 auto; padding: 4px 13px 5px; }
+#screen-video .v4-audio-heading { min-height: 18px; }
+#screen-video .v4-audio-heading strong { color: var(--title); font-weight: 680; }
+#screen-video .v4-audio-choice {
+  min-height: 50px;
+  border-color: color-mix(in srgb, var(--accent) 14%, var(--line));
+  background: color-mix(in srgb, var(--surface) 95%, var(--accent) 5%);
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 7%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 67%, white 33%);
+}
+#screen-video .v4-audio-choice[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  background: color-mix(in srgb, var(--selected) 82%, var(--surface));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--accent) 13%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 67%, white 33%);
+}
+#screen-video .v4-audio-choice[aria-pressed="true"] .v4-audio-copy strong { color: var(--title); }
+#screen-video .v4-audio-status { min-height: 16px; }
+#screen-video .subtitle-preview {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin: 2px 13px calc(8px + var(--safe-bottom));
+  padding: 10px 10px 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 26%, var(--line));
+  border-radius: 18px;
+  background: linear-gradient(164deg,
+    color-mix(in srgb, var(--surface) 93%, var(--accent) 7%),
+    color-mix(in srgb, var(--surface) 95%, transparent) 45%,
+    var(--surface));
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 8%, transparent),
+    0 11px 24px color-mix(in srgb, var(--accent) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 66%, white 34%);
+  backdrop-filter: blur(12px);
+  overflow: hidden;
+}
+#screen-video .subtitle-head { flex: 0 0 auto; min-width: 0; gap: 5px; }
+#screen-video .subtitle-language-pair {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 1 1 auto;
+  min-height: 42px;
+  padding: 2px;
+  border: 1px solid color-mix(in srgb, var(--accent) 21%, var(--line));
+  border-radius: 13px;
+  background: color-mix(in srgb, var(--surface) 95%, var(--selected));
+  box-shadow: inset 0 1px 3px color-mix(in srgb, var(--accent) 8%, transparent);
+}
+#screen-video .subtitle-language-pair button {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--title);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#screen-video .subtitle-language-pair button:nth-child(2) { flex: 0 0 35px; color: var(--accent); font-size: 19px; }
+#screen-video .subtitle-head-actions { display: flex; flex: 0 0 auto; gap: 5px; }
+#screen-video .subtitle-style {
+  min-height: 42px;
+  padding: 0 8px;
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--line));
+  background: color-mix(in srgb, var(--surface) 92%, var(--selected));
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--accent) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 67%, white 33%);
+  color: var(--title);
+  font-size: 11px;
+  font-weight: 650;
+}
+#screen-video .demo-status {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 3px 1px;
+  color: var(--muted);
+  font-size: 9px;
+  line-height: 1.35;
+}
+#screen-video .demo-status::before {
+  content: "";
+  width: 6px;
+  height: 6px;
+  flex: 0 0 6px;
+  border-radius: 50%;
+  background: var(--muted);
+  opacity: .7;
+}
+#screen-video .subtitle-preview:has(.video-start.active) .demo-status { color: var(--title); }
+#screen-video .subtitle-preview:has(.video-start.active) .demo-status::before {
+  background: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 13%, transparent);
+  opacity: 1;
+}
+#screen-video .subtitle-live-feed {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+  margin-top: 5px;
+  padding: 4px 2px 5px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+#screen-video .subtitle-live-feed:empty::before {
+  content: "字幕会在这里逐句出现 · 上滑查看最近片段";
+  align-self: center;
+  margin: auto 24px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  text-align: center;
+}
+#screen-video .subtitle-live-feed article {
+  border-bottom-color: color-mix(in srgb, var(--accent) 14%, var(--line));
+}
+#screen-video .subtitle-live-feed article:last-child {
+  border-bottom-color: transparent;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--selected) 46%, transparent);
+  box-shadow: inset 2px 0 0 color-mix(in srgb, var(--accent) 64%, transparent);
+}
+#screen-video .subtitle-live-feed p { color: var(--muted); }
+#screen-video .subtitle-live-feed strong { color: var(--title); font-weight: 650; }
+#screen-video .subtitle-current { flex: 0 0 auto; max-height: 22dvh; overflow-y: auto; margin-right: 55px; }
+#screen-video .subtitle-current { border-left-color: var(--accent); }
+#screen-video .subtitle-current .caption-card.translation { color: var(--title); font-weight: 650; }
+#screen-video .subtitle-record-toggle {
+  flex: 0 0 auto;
+  margin-top: 5px;
+  margin-bottom: 5px;
+  border-color: color-mix(in srgb, var(--accent) 25%, var(--line));
+  background: color-mix(in srgb, var(--surface) 95%, var(--selected));
+  box-shadow: 0 2px 6px color-mix(in srgb, var(--accent) 8%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 67%, white 33%);
+  color: var(--title);
+  font-weight: 650;
+}
+#screen-video .subtitle-record-toggle[aria-expanded="true"] {
+  border-color: var(--accent);
+  background: var(--selected);
+}
+#screen-video .video-start {
+  flex: 0 0 auto;
+  min-height: 42px;
+  padding: 0 10px;
+  border-color: var(--accent);
+  border-radius: 13px;
+  background: #dcf5ee;
+  color: #07564f;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 3px 9px color-mix(in srgb, var(--accent) 27%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--accent) 65%, white 35%);
+  touch-action: manipulation;
+}
+html[data-theme="mint-holographic"] #screen-video .video-setting,
+html[data-theme="mint-holographic"] #screen-video .v4-audio-choice,
+html[data-theme="mint-holographic"] #screen-video .subtitle-style,
+html[data-theme="mint-holographic"] #screen-video .subtitle-record-toggle,
+html[data-theme="mint-holographic"] #screen-video .subtitle-record-files {
+  border-color: rgba(12, 122, 112, .27);
+}
+#screen-video .video-start.active {
+  border-color: color-mix(in srgb, var(--accent) 64%, var(--line-strong));
+  background: color-mix(in srgb, var(--selected) 78%, var(--surface));
+  color: var(--title);
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--accent) 11%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--surface) 67%, white 33%);
+}
+#screen-video .video-start:disabled { box-shadow: none; }
+#screen-video .video-setting,
+#screen-video .v4-audio-choice,
+#screen-video .subtitle-head button,
+#screen-video .subtitle-record-toggle,
+#screen-video .topbar button {
+  transition: transform .16s cubic-bezier(.2, .8, .25, 1),
+    box-shadow .16s ease-out, background-color .16s ease-out, border-color .16s ease-out;
+}
+.setting-trigger,
+.language-pill,
+.compose-tools button,
+.source-pills button {
+  transition: transform .18s cubic-bezier(.2, 1.45, .35, 1), box-shadow .18s ease;
+}
+.setting-trigger:active,
+.language-pill:active,
+.compose-tools button:active,
+.source-pills button:active { transform: scale(.97); box-shadow: 0 2px 8px rgba(12, 56, 57, .08); }
+#screen-video .video-setting:active,
+#screen-video .v4-audio-choice:active,
+#screen-video .subtitle-head button:active,
+#screen-video .subtitle-record-toggle:active,
+#screen-video .topbar button:active {
+  transform: scale(.975);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--accent) 15%, transparent),
+    inset 0 2px 4px color-mix(in srgb, var(--accent) 13%, transparent);
+}
+#screen-video .video-setting .switch:active { transform: scale(.93); }
+#screen-video .source-pills button {
+  border-color: color-mix(in srgb, var(--accent) 19%, var(--line));
+  background: color-mix(in srgb, var(--surface) 95%, var(--selected));
+  box-shadow: 0 2px 5px color-mix(in srgb, var(--accent) 7%, transparent);
+  transition: transform .16s ease-out, background-color .16s ease-out,
+    border-color .16s ease-out, box-shadow .16s ease-out;
+}
+#screen-video .source-pills button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--line-strong));
+  background: var(--selected);
+  color: var(--selected-ink);
+  box-shadow: 0 2px 7px color-mix(in srgb, var(--accent) 12%, transparent);
+}
+#screen-video .source-pills button:active { transform: scale(.975); }
+#screen-video .subtitle-head button:focus-visible,
+#screen-video .subtitle-record-toggle:focus-visible,
+#screen-video .source-pills button:focus-visible,
+#screen-video .v4-audio-choice:focus-visible,
+#screen-video .video-setting .switch:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (hover: hover) {
+  #screen-video .video-start:not(:disabled):hover {
+    transform: translateY(-1px);
+    box-shadow: 0 5px 12px color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  #screen-video .subtitle-style:hover,
+  #screen-video .subtitle-record-toggle:hover,
+  #screen-video .source-pills button:hover {
+    border-color: color-mix(in srgb, var(--accent) 48%, var(--line));
+  }
+}
+@media (prefers-contrast: more) {
+  #screen-video .video-setting,
+  #screen-video .v4-audio-choice,
+  #screen-video .subtitle-preview,
+  #screen-video .subtitle-language-pair,
+  #screen-video .subtitle-style,
+  #screen-video .subtitle-record-toggle {
+    border-color: var(--accent);
+    box-shadow: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  #screen-video .video-setting, #screen-video .v4-audio-choice, #screen-video .subtitle-head button, #screen-video .subtitle-record-toggle, #screen-video .source-pills button, #screen-video .video-setting .switch, #screen-video .topbar button { transition: none; }
+  #screen-video .video-setting:active, #screen-video .v4-audio-choice:active, #screen-video .subtitle-head button:active, #screen-video .subtitle-record-toggle:active, #screen-video .source-pills button:active, #screen-video .video-setting .switch:active, #screen-video .topbar button:active { transform: none; }
+  .setting-trigger, .language-pill, .compose-tools button, .source-pills button { transition: none; }
+}
+html[data-theme^="palette-material-"] #screen-video .video-setting,
+html[data-theme^="palette-material-"] #screen-video .v4-audio-choice,
+html[data-theme^="palette-material-"] #screen-video .subtitle-style,
+html[data-theme^="palette-material-"] #screen-video .subtitle-record-toggle {
+  border-color: var(--material-edge);
+  background: var(--material-panel);
+  box-shadow: var(--material-card-shadow);
+  backdrop-filter: var(--material-backdrop);
+  -webkit-backdrop-filter: var(--material-backdrop);
+}
+html[data-theme^="palette-material-"] #screen-video .subtitle-preview {
+  border-color: var(--material-edge);
+  background: var(--material-raised);
+  box-shadow: var(--material-card-shadow);
+  backdrop-filter: var(--material-backdrop);
+  -webkit-backdrop-filter: var(--material-backdrop);
+}
+html[data-theme^="palette-material-"] #screen-video .v4-audio-choice[aria-pressed="true"],
+html[data-theme^="palette-material-"] #screen-video .subtitle-record-toggle[aria-expanded="true"] {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--material-edge));
+  background: var(--selected);
+}
+html[data-theme="night"] #screen-video .video-setting,
+html[data-theme="night"] #screen-video .subtitle-preview,
+html[data-theme="palette-midnight-orange"] #screen-video .video-setting,
+html[data-theme="palette-midnight-orange"] #screen-video .subtitle-preview,
+html[data-theme="palette-black-gold"] #screen-video .video-setting,
+html[data-theme="palette-black-gold"] #screen-video .subtitle-preview,
+html[data-theme="palette-material-obsidian-gold"] #screen-video .video-setting,
+html[data-theme="palette-material-obsidian-gold"] #screen-video .subtitle-preview {
+  box-shadow: 0 4px 14px color-mix(in srgb, black 30%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--line-strong) 45%, transparent);
+}
+@media (max-width: 370px) {
+  #screen-video .subtitle-head { flex-wrap: wrap; }
+  #screen-video .subtitle-language-pair { flex-basis: 100%; }
+  #screen-video .subtitle-head-actions { width: 100%; justify-content: flex-end; }
+  #screen-video .video-controls { gap: 5px; padding-inline: 9px; }
+  #screen-video .video-setting { padding-inline: 6px; }
+}
+.v4-subtitle-window[data-size="small"],
+.v4-subtitle-window[data-size="standard"],
+.v4-subtitle-window[data-size="large"] {
+  width: calc(100% - 40px);
+}
+
+/* One microphone scale on translation and face-to-face screens. */
+#screen-home .mic-button,
+#screen-face .face-mic {
+  width: 84px;
+  height: 84px;
+  min-width: 84px;
+  min-height: 84px;
+  border-radius: 50%;
+}
+#screen-home .mic-button svg,
+#screen-face .face-mic svg {
+  width: 24px;
+  height: 24px;
+  stroke-width: 1.8;
+}
+#screen-face .face-bottom {
+  row-gap: 14px;
+  padding-top: 9px;
+  padding-bottom: calc(18px + var(--safe-bottom));
+}
+#screen-face .face-language {
+  margin-bottom: 0;
+}
+#screen-face .face-mic-wrap {
+  height: 84px;
+}
+@media (max-width: 370px) {
+  #screen-home .mic-button,
+  #screen-face .face-mic {
+    width: 76px;
+    height: 76px;
+    min-width: 76px;
+    min-height: 76px;
+  }
+  #screen-face .face-mic-wrap { height: 76px; }
+  #screen-video .subtitle-actions { padding-right: 12px; }
+}
+
+/* Keep the active text field next to the IME; voice controls return when it closes. */
+html[data-native-host="true"][data-keyboard-open="true"] #screen-home .language-row,
+html[data-native-host="true"][data-keyboard-open="true"] #screen-home .home-controls,
+html[data-native-host="true"][data-keyboard-open="true"] #screen-home .mode-wheel {
+  display: none;
+}
+html[data-native-host="true"][data-keyboard-open="true"] #screen-home .translate-panel {
+  padding-bottom: 9px;
+}
+
+/* Raised controls borrow the selected theme's colors, with a short press response. */
+#screen-home .text-entry {
+  border-color: color-mix(in srgb, var(--accent) 24%, var(--line));
+  background: linear-gradient(165deg, color-mix(in srgb, var(--surface) 96%, white), var(--surface) 72%);
+  box-shadow: 0 2px 4px rgba(19, 64, 66, .05), 0 10px 24px rgba(19, 64, 66, .08), inset 0 1px 0 rgba(255, 255, 255, .72);
+  transition: border-color .16s ease, box-shadow .16s ease;
+}
+#screen-home .text-entry:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 2px 4px rgba(19, 64, 66, .05), 0 10px 25px rgba(19, 64, 66, .10), 0 0 0 2px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+#screen-home .round-tool,
+#screen-home .language-pill,
+#screen-home .face-entry .face-icon,
+#screen-home .top-icon,
+#screen-home .avatar-button {
+  box-shadow: 0 2px 5px rgba(21, 68, 70, .06), inset 0 1px 0 rgba(255, 255, 255, .76);
+  transition: transform .17s cubic-bezier(.2, .8, .25, 1), box-shadow .17s ease, background-color .17s ease;
+}
+#screen-home .round-tool:active,
+#screen-home .language-pill:active,
+#screen-home .face-entry:active .face-icon,
+#screen-home .top-icon:active,
+#screen-home .avatar-button:active {
+  transform: scale(.95);
+  box-shadow: 0 1px 2px rgba(21, 68, 70, .07), inset 0 2px 4px rgba(21, 68, 70, .12);
+}
+#screen-home .round-tool:focus-visible,
+#screen-home .language-pill:focus-visible,
+#screen-home .top-icon:focus-visible,
+#screen-home .avatar-button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  #screen-home .text-entry,
+  #screen-home .round-tool,
+  #screen-home .language-pill,
+  #screen-home .face-entry .face-icon,
+  #screen-home .top-icon,
+  #screen-home .avatar-button { transition: none; }
+}
+/* Full-session files keep the existing subtitle history hierarchy intact. */
+.history-recording-files{margin:0 0 16px;padding:13px;border:1px solid color-mix(in srgb,var(--accent,#14b8a6) 25%,var(--line));border-radius:17px;background:color-mix(in srgb,var(--surface) 88%,transparent);box-shadow:0 7px 22px rgba(19,80,79,.06)}
+.history-recording-files h3{margin:0 0 5px;font-size:14px;color:var(--ink)}
+.history-recording-files h3 small{margin-left:6px;font-size:11px;font-weight:500;color:var(--muted)}
+.history-recording-files p{margin:0 0 10px;color:var(--muted);font-size:11px;line-height:1.5}
+.history-recording-actions{display:grid;gap:7px}
+.history-recording-actions button{min-height:45px;padding:7px 11px;text-align:left;border:1px solid var(--line);border-radius:12px;background:var(--surface);color:var(--ink);font-size:12px;font-weight:650;cursor:pointer;transition:transform .14s ease,border-color .14s ease,box-shadow .14s ease}
+.history-recording-actions button small{display:block;margin-top:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--muted);font-size:10px;font-weight:450}
+.history-recording-actions button:active{transform:scale(.98)}
+.history-recording-actions button:focus-visible{outline:2px solid var(--accent,#14b8a6);outline-offset:2px}
+.subtitle-record-actions{display:flex;align-items:stretch;gap:7px}
+.subtitle-record-actions .subtitle-record-toggle{flex:1;min-width:0}
+.subtitle-record-files{flex:0 0 auto;min-height:40px;padding:0 11px;border:1px solid color-mix(in srgb,var(--accent,#14b8a6) 36%,var(--line));border-radius:12px;background:color-mix(in srgb,var(--surface) 84%,transparent);color:var(--ink);font-size:11px;font-weight:650;box-shadow:0 3px 12px rgba(14,105,95,.07);transition:transform .14s ease,box-shadow .14s ease}
+.subtitle-record-files:active{transform:scale(.975);box-shadow:0 1px 4px rgba(14,105,95,.08)}
+.subtitle-record-files:focus-visible{outline:2px solid var(--accent,#14b8a6);outline-offset:2px}
+@media(prefers-reduced-motion:reduce){.history-recording-actions button{transition:none}}
+@media(prefers-reduced-motion:reduce){.subtitle-record-files{transition:none}}

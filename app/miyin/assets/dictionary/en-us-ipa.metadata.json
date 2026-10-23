@@ -1,0 +1,33 @@
+{
+  "language": "English (General American)",
+  "languageCode": "en_US",
+  "sourceProject": "open-dict-data/ipa-dict",
+  "sourceCommit": "43c3570eb3553bdd19fccd2bd0091534889af023",
+  "sourceFile": "data/en_US.txt",
+  "sourceUrl": "https://github.com/open-dict-data/ipa-dict/blob/43c3570eb3553bdd19fccd2bd0091534889af023/data/en_US.txt",
+  "sourceSha256": "2AF6F154A5C363275F052D1F85ACEDEF38ED185CA9745AA4314BE77F6B70DE67",
+  "sourceRows": 125927,
+  "dictionaryFile": "assets/dictionary/en-zh-cow-wordnet-3.0.jsonl",
+  "dictionarySha256": "BB00CEBC0C276F8FCBEB742ED709B3675B84FBE8506A7E0ECE00356DC7205944",
+  "dictionaryHeadwords": 61468,
+  "exactNormalizedMatches": 18124,
+  "dictionaryCoveragePercent": 29.49,
+  "unmatchedHeadwords": 43344,
+  "normalizedSourceCollisionRows": 0,
+  "ipaSources": [
+    {
+      "project": "lingz/cmudict-ipa",
+      "url": "https://github.com/lingz/cmudict-ipa",
+      "license": "MIT"
+    },
+    {
+      "project": "kylebgorman/syllabify",
+      "url": "https://github.com/kylebgorman/syllabify",
+      "license": "MIT"
+    }
+  ],
+  "license": "MIT (en_US subset only; see SOURCES.md)",
+  "derivedRows": 18124,
+  "derivedBytes": 822010,
+  "derivedSha256": "33439A1342E071959A68939C3096C22E2C5A70C6813C0AAE5B4AD39C3976B9CE"
+}

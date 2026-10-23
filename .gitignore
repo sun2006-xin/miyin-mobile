@@ -3,6 +3,12 @@
 .flutter-plugins-dependencies
 .pub-cache/
 build/
+app/miyin/output/
+app/miyin/build-ai-tongchuan-final-20261011/
+# Retired local Kokoro assets are not bundled by the app; keep the old large files out of future commits.
+app/miyin/assets/voice/tts-zh-en/
+# Local speech build and source inspection scratch files are not application sources.
+_speech_work/
 .idea/
 .vscode/
 local.properties

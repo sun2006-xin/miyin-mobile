@@ -7,7 +7,8 @@ import 'translation_contracts.dart';
 /// The UI and database keep BCP-47 identifiers. The native adapter maps those
 /// identifiers to the provider's own model codes; for example, `zh-Hans` maps
 /// to ML Kit's `zh` model.
-final class MlKitTranslationEngine implements TranslationEngine {
+final class MlKitTranslationEngine
+    implements TranslationEngine, TranslationLanguageCatalog {
   MlKitTranslationEngine({MethodChannel? channel})
     : _channel = channel ?? const MethodChannel('com.miyin.app/translation');
 
@@ -17,28 +18,35 @@ final class MlKitTranslationEngine implements TranslationEngine {
   String get engineId => 'google-mlkit-translation';
 
   @override
-  Future<Set<TranslationLanguagePair>> getSupportedLanguagePairs() async {
-    final values = await _invoke<List<Object?>>('supportedLanguagePairs');
+  Future<Set<TranslationLanguage>> getSupportedLanguages() async {
+    final values = await _invoke<List<Object?>>('supportedLanguages');
     return values.map((value) {
-      if (value is! Map) {
+      if (value is! Map ||
+          value['tag'] is! String ||
+          value['name'] is! String) {
         throw const TranslationFailure(
           'invalid_engine_response',
-          'The translation engine returned an invalid language list.',
+          'The translation engine returned an invalid language.',
         );
       }
-      final sourceTag = value['sourceTag'];
-      final targetTag = value['targetTag'];
-      if (sourceTag is! String || targetTag is! String) {
-        throw const TranslationFailure(
-          'invalid_engine_response',
-          'The translation engine returned an invalid language pair.',
-        );
-      }
-      return TranslationLanguagePair(
-        sourceLanguage: _language(sourceTag),
-        targetLanguage: _language(targetTag),
-      );
+      final tag = value['tag'] as String;
+      final name = value['name'] as String;
+      return _language(tag, displayName: name);
     }).toSet();
+  }
+
+  @override
+  Future<Set<TranslationLanguagePair>> getSupportedLanguagePairs() async {
+    final languages = await getSupportedLanguages();
+    return {
+      for (final source in languages)
+        for (final target in languages)
+          if (source != target)
+            TranslationLanguagePair(
+              sourceLanguage: source,
+              targetLanguage: target,
+            ),
+    };
   }
 
   @override
@@ -131,13 +139,13 @@ final class MlKitTranslationEngine implements TranslationEngine {
 
   static int? _asInt(Object? value) => value is num ? value.toInt() : null;
 
-  static TranslationLanguage _language(String tag) {
+  static TranslationLanguage _language(String tag, {String? displayName}) {
     if (tag == TranslationLanguage.simplifiedChinese.tag) {
       return TranslationLanguage.simplifiedChinese;
     }
     if (tag == TranslationLanguage.english.tag) {
       return TranslationLanguage.english;
     }
-    return TranslationLanguage.fromTag(tag, displayName: tag);
+    return TranslationLanguage.fromTag(tag, displayName: displayName ?? tag);
   }
 }
