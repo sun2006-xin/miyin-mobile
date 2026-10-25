@@ -39,6 +39,8 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-secrets")
+            .setMethodCallHandler(MiyinChatSecrets(this))
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             performanceChannelName,

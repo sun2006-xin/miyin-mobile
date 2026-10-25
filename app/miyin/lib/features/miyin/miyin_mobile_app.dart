@@ -12,6 +12,9 @@ import '../../core/adaptive_refresh_coordinator.dart';
 import '../../core/storage/translation_history_repository.dart';
 import '../../core/translation/mlkit_translation_engine.dart';
 import '../../core/translation/translation_service.dart';
+import '../chat/chat_host.dart';
+import '../chat/deepseek_client.dart';
+import '../chat/deepseek_settings.dart';
 import 'attachment_source_picker.dart';
 import 'avatar_image_picker.dart';
 import 'live_audio_archive.dart';
@@ -49,6 +52,9 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     'com.miyin.app/attachment-ocr',
   );
   late final WebViewController _controller;
+  late final ChatHost _chat;
+  final _navigatorKey = GlobalKey<NavigatorState>();
+  bool _chatSettingsOpen = false;
   late final AdaptiveRefreshCoordinator _refreshCoordinator;
   late final PlatformAttachmentSourcePicker _attachmentSourcePicker;
   late final PlatformAvatarImagePicker _avatarImagePicker;
@@ -153,6 +159,15 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
           .listen(_forwardVoiceEvent, onError: _logVoiceEventError);
     }
     _controller = WebViewController();
+    _chat = ChatHost(
+      onEvent: (event) async {
+        if (!_nativeHostReady || !mounted) return;
+        final literal = jsonEncode(jsonEncode(event));
+        await _controller.runJavaScript(
+          'window.dispatchEvent(new CustomEvent("miyin:chat-event",{detail:JSON.parse($literal)}));',
+        );
+      },
+    );
     unawaited(_configureWebView());
   }
 
@@ -186,7 +201,16 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     await _controller.setBackgroundColor(const Color(0xFFFFFFFF));
     await _controller.setNavigationDelegate(
       NavigationDelegate(
+        onNavigationRequest: (request) {
+          final uri = Uri.tryParse(request.url);
+          return uri != null &&
+                  uri.scheme == 'file' &&
+                  uri.path.endsWith('/assets/miyin_v5/index.html')
+              ? NavigationDecision.navigate
+              : NavigationDecision.prevent;
+        },
         onPageStarted: (_) {
+          _chat.cancel();
           _nativeHostReady = false;
           if (mounted) {
             setState(() {
@@ -234,6 +258,53 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
       final request = jsonDecode(rawMessage);
       if (request is Map &&
           request['method'] is String &&
+          (request['method'] as String).startsWith('chat.')) {
+        if (request['version'] != 1 ||
+            request['id'] is! String ||
+            rawMessage.length > 9 * 1024 * 1024) {
+          throw const ChatFailure('invalid_request', '聊天请求格式不正确。');
+        }
+        final method = request['method'] as String;
+        Map<String, Object?> result;
+        if (method == 'chat.configure') {
+          if (_chatSettingsOpen || !mounted) {
+            throw const ChatFailure('busy', '模型设置已打开。');
+          }
+          _chatSettingsOpen = true;
+          try {
+            try {
+              await _chat.loadConfiguration();
+            } catch (_) {
+              // A restored backup may lack its original Keystore key.
+              // Let the user replace it instead of silently dropping it.
+            }
+            if (mounted) {
+              await showDialog<void>(
+                context: _navigatorKey.currentContext!,
+                barrierDismissible: false,
+                builder: (_) => DeepSeekSettings(host: _chat),
+              );
+            }
+            result = _chat.status;
+          } finally {
+            _chatSettingsOpen = false;
+          }
+        } else {
+          result = await _chat.handle(
+            method,
+            request['params'] is Map
+                ? Map<String, Object?>.from(request['params'] as Map)
+                : {},
+          );
+        }
+        response = {
+          'version': 1,
+          'id': request['id'],
+          'ok': true,
+          'result': result,
+        };
+      } else if (request is Map &&
+          request['method'] is String &&
           (request['method'] as String).startsWith('live.')) {
         final result = await _handleLiveRequest(
           request['method'] as String,
@@ -250,6 +321,13 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
       } else {
         response = await (await _getRpcRouter()).handle(rawMessage);
       }
+    } on ChatFailure catch (error) {
+      response = {
+        'version': 1,
+        'id': _requestIdFrom(rawMessage),
+        'ok': false,
+        'error': {'code': error.code, 'message': error.message},
+      };
     } catch (error) {
       response = {
         'version': 1,
@@ -257,7 +335,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
         'ok': false,
         'error': {'code': 'native_unavailable', 'message': '本机翻译暂时不可用。'},
       };
-      debugPrint('Miyin native translation request failed: $error');
+      debugPrint('Miyin native request failed (${error.runtimeType}).');
     }
     if (!_nativeHostReady) return;
     try {
@@ -1798,6 +1876,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
 
   @override
   void dispose() {
+    unawaited(_chat.close());
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_stopLiveServices());
     _floatingChannel.setMethodCallHandler(null);
@@ -1845,6 +1924,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
 
   @override
   Widget build(BuildContext context) => MaterialApp(
+    navigatorKey: _navigatorKey,
     title: '觅音',
     debugShowCheckedModeBanner: false,
     theme: ThemeData(
