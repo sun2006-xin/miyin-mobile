@@ -31,6 +31,19 @@ final class TranslationService {
   Future<Set<TranslationLanguagePair>> getSupportedLanguagePairs() =>
       engine.getSupportedLanguagePairs();
 
+  Future<Set<TranslationLanguage>> getSupportedLanguages() async {
+    final currentEngine = engine;
+    if (currentEngine is TranslationLanguageCatalog) {
+      return (currentEngine as TranslationLanguageCatalog)
+          .getSupportedLanguages();
+    }
+    final pairs = await currentEngine.getSupportedLanguagePairs();
+    return {
+      for (final pair in pairs) pair.sourceLanguage,
+      for (final pair in pairs) pair.targetLanguage,
+    };
+  }
+
   Future<TranslationModelInfo> getModelInfo(
     TranslationLanguagePair pair,
   ) async {
@@ -95,6 +108,33 @@ final class TranslationService {
   Future<int> countHistory() =>
       _serializeHistoryMutation(history.countTranslations);
 
+  Future<int> saveAttachmentHistory({
+    required String kind,
+    required String name,
+    required String sourceTag,
+    required String targetTag,
+    required String rowsJson,
+    required String sourceText,
+    required String translatedText,
+    String? originalImageDataUrl,
+    String? translatedImageDataUrl,
+  }) => _serializeHistoryMutation(
+    () => history.saveAttachment(
+      kind: kind,
+      name: name,
+      sourceTag: sourceTag,
+      targetTag: targetTag,
+      rowsJson: rowsJson,
+      sourceText: sourceText,
+      translatedText: translatedText,
+      originalImageDataUrl: originalImageDataUrl,
+      translatedImageDataUrl: translatedImageDataUrl,
+    ),
+  );
+
+  Future<String?> readHistoryImage(String? path) =>
+      _serializeHistoryMutation(() => history.readImage(path));
+
   Future<TranslationHistoryEntry?> getHistoryEntry(int id) =>
       _serializeHistoryMutation(() => history.getTranslation(id));
 
@@ -128,6 +168,19 @@ final class TranslationService {
   }
 
   Future<void> _requireSupportedPair(TranslationLanguagePair pair) async {
+    final currentEngine = engine;
+    if (currentEngine is TranslationLanguageCatalog) {
+      final languages = await (currentEngine as TranslationLanguageCatalog)
+          .getSupportedLanguages();
+      if (languages.contains(pair.sourceLanguage) &&
+          languages.contains(pair.targetLanguage)) {
+        return;
+      }
+      throw const TranslationFailure(
+        'unsupported_language_pair',
+        'This translation engine does not support the selected languages.',
+      );
+    }
     if (!(await engine.getSupportedLanguagePairs()).contains(pair)) {
       throw const TranslationFailure(
         'unsupported_language_pair',

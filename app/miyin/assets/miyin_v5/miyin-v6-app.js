@@ -39,33 +39,34 @@
     <section class="screen v6-app-screen" id="screen-dictionary" aria-label="词典查词">
       ${header("home", "返回翻译")}
       <main class="v6-app-content">
-        <h1 class="v6-page-heading">词典页面</h1>
-        <p class="v6-page-subtitle">选择词典后查词。释义仅在接入并核验真实词典数据后显示。</p>
-        <label class="v6-dictionary-select-label" for="v6-dictionary-select">当前词典</label>
+        <h1 class="v6-page-heading">词典</h1>
+        <p class="v6-page-subtitle">输入中文或英语词条，觅音会自动匹配查询方式。</p>
+        <label class="v6-dictionary-select-label" for="v6-dictionary-package">选择词典</label>
         <div class="v6-dictionary-select-wrap">
-          <select id="v6-dictionary-select" class="v6-dictionary-select" aria-label="选择词典">
-            <option value="en-zh">英汉词典 · 未接入</option>
-            <option value="zh-en">汉英词典 · 未接入</option>
-            <option value="zh-ru">中俄词典 · 未接入</option>
-            <option value="zh-ja">中日词典 · 未接入</option>
-          </select>
-          ${icons.chevron}
+          <select class="v6-dictionary-select" id="v6-dictionary-package" data-v6-dictionary-package aria-label="选择词典">
+            <option value="en-zh">英语—简体中文词典 · 已内置</option>
+            <option value="zh-ja" disabled>简体中文—日语词典 · 尚未接入</option>
+            <option value="zh-ru" disabled>简体中文—俄语词典 · 尚未接入</option>
+          </select>${icons.chevron}
         </div>
+        <div class="v6-dictionary-source-badge" data-v6-dictionary-source-badge>英语—简体中文词典 <span>·</span> 本机离线</div>
         <form class="v6-dictionary-search" role="search" aria-label="词典查询">
-          <input id="v6-dictionary-input" type="search" autocomplete="off" placeholder="输入单词或短语…" aria-label="输入要查的单词或短语">
+          <input id="v6-dictionary-input" type="search" autocomplete="off" placeholder="输入中文或英语词条…" aria-label="输入中文或英语词条">
           <button type="submit" aria-label="查询词典">${icons.search}</button>
         </form>
-        <p class="v6-result-label" id="v6-dictionary-result-label" role="status" aria-live="polite">尚未提交查词</p>
-        <section class="v6-dictionary-browser" aria-label="按字母浏览词条">
-          <div class="v6-dictionary-list" aria-live="polite">
-            <div class="v6-dictionary-columns" aria-hidden="true"><span>词条</span><span>音标</span><span>词义</span></div>
-            <div class="v6-letter-heading"><span data-v6-current-letter>A</span><span class="v6-letter-language">英汉词典</span></div>
-            <p class="v6-dictionary-empty" id="v6-dictionary-empty-copy">该词典尚未接入，无法读取真实词条。当前页面不显示模拟单词、音标或释义。</p>
-            <button class="v6-primary-action" type="button" data-screen="resources">管理词典资源</button>
+        <p class="v6-result-label" id="v6-dictionary-result-label" role="status" aria-live="polite">输入中文或英语词条开始查询</p>
+        <p class="v6-dictionary-empty" id="v6-dictionary-empty-copy">中英词典在本机运行。英语词头支持 A–Z 分页浏览；日语和俄语词典尚未接入。</p>
+        <div class="v6-dictionary-senses" data-v6-dictionary-senses aria-live="polite" hidden></div>
+        <div class="v6-dictionary-browser" aria-label="按首字母浏览词典">
+          <div class="v6-dictionary-list">
+            <div class="v6-dictionary-columns"><span>英语词头</span><span>音标</span></div>
+            <div data-v6-dictionary-browse-items aria-live="polite"><p class="v6-dictionary-empty">正在读取 A 开头词条…</p></div>
+            <button class="v6-dictionary-load-more" type="button" data-v6-dictionary-load-more hidden>加载更多</button>
           </div>
-          <nav class="v6-alphabet-index" aria-label="字母索引" data-v6-alphabet-index></nav>
-        </section>
-        <p class="v6-structure-note"><strong>词条信息</strong>　真实数据接入后显示词性、音标、释义、例句与来源版本。</p>
+          <nav class="v6-alphabet-index" data-v6-alphabet-index aria-label="选择英文字母"></nav>
+        </div>
+        <p class="v6-structure-note"><strong>音标说明</strong>　英语词条显示可匹配的美式 IPA；没有对应数据时标注“音标数据暂缺”。</p>
+        <p class="v6-structure-note"><strong>数据说明</strong>　词条由 Chinese Open Wordnet 与 Princeton WordNet 3.0 对齐生成；中文为同义词对应项，英文定义和例句保留来源原文。</p>
       </main>
     </section>
 
@@ -73,79 +74,91 @@
       ${header("settings", "返回上页")}
       <main class="v6-app-content">
         <h1 class="v6-page-heading">离线资源</h1>
-        <p class="v6-page-subtitle">按资源类型查看状态。未接入的词典和语音资源不会显示可用下载操作。</p>
+        <p class="v6-page-subtitle">查看随安装包提供的语音与词典资源，以及本机翻译语言包状态。</p>
         <aside class="v6-resource-note" aria-label="资源状态说明">
           <span class="v6-empty-icon">${icons.info}</span>
-          <div><strong>资源管理说明</strong><p>翻译模型由 Android ML Kit 管理；词典与独立语音包尚未接入可核验的数据目录。</p></div>
+          <div><strong>觅音内置资源</strong><p>语音识别、语音合成、词典和图片 OCR 随安装包提供；翻译语言包由 Android 本机服务按需管理。</p></div>
         </aside>
         <section class="v6-resource-section" aria-labelledby="v6-runtime-heading" data-v6-resource-section>
           <h2 id="v6-runtime-heading"><button class="v6-resource-heading" type="button" aria-expanded="true" aria-controls="v6-translation-resources">离线翻译${icons.chevron}</button></h2>
-          <div class="v6-resource-list" id="v6-translation-resources" data-v6-translation-resources>
-            <div class="v6-resource-loading" data-v6-translation-loading role="status">正在读取本机支持的翻译模型…</div>
+          <div id="v6-translation-resources">
+            <p class="v6-translation-resource-hint" data-v6-translation-hint>下方列出这台设备已下载的全部语言包。</p>
+            <div class="v6-resource-list v6-installed-model-list" data-v6-installed-translation-models aria-live="polite">
+              <div class="v6-resource-loading" role="status">正在读取本机已下载的语言包…</div>
+            </div>
+            <details class="v6-translation-add-model">
+              <summary>下载新的语言组合</summary>
+              <div class="v6-translation-language-picker" data-v6-translation-picker>
+                <label class="v6-translation-language-field"><span>源语言</span><select data-v6-translation-source aria-label="下载翻译源语言" disabled><option>正在读取…</option></select></label>
+                <button class="v6-translation-swap" type="button" data-v6-translation-swap aria-label="交换源语言和目标语言" title="交换语言">⇄</button>
+                <label class="v6-translation-language-field"><span>目标语言</span><select data-v6-translation-target aria-label="下载翻译目标语言" disabled><option>正在读取…</option></select></label>
+              </div>
+              <p class="v6-translation-resource-hint">所选语言包会加入上方完整列表；同一语言包可供多个翻译方向共用。</p>
+              <div class="v6-resource-list" data-v6-translation-pair-preview>
+                <div class="v6-resource-loading" role="status">正在读取翻译语言…</div>
+              </div>
+            </details>
           </div>
         </section>
         <section class="v6-resource-section" aria-labelledby="v6-dictionary-heading" data-v6-resource-section>
           <h2 id="v6-dictionary-heading"><button class="v6-resource-heading" type="button" aria-expanded="true" aria-controls="v6-dictionary-resources">离线词典${icons.chevron}</button></h2>
           <div class="v6-resource-list" id="v6-dictionary-resources">
-            <article class="v6-resource-card v6-resource-card--unavailable">
-              <div class="v6-resource-copy"><strong>英汉词典</strong><small>英语 → 简体中文 · 词典数据目录未接入</small></div><span class="v6-resource-status" data-status="unavailable">未接入</span>
-              <div class="v6-resource-actions"><button type="button" disabled aria-disabled="true">下载</button><button type="button" disabled aria-disabled="true">删除</button><button type="button" data-v6-open-dictionary="en-zh">查看词典</button></div>
-            </article>
-            <article class="v6-resource-card v6-resource-card--unavailable">
-              <div class="v6-resource-copy"><strong>汉英词典</strong><small>简体中文 → 英语 · 词典数据目录未接入</small></div><span class="v6-resource-status" data-status="unavailable">未接入</span>
-              <div class="v6-resource-actions"><button type="button" disabled aria-disabled="true">下载</button><button type="button" disabled aria-disabled="true">删除</button><button type="button" data-v6-open-dictionary="zh-en">查看词典</button></div>
-            </article>
-            <article class="v6-resource-card v6-resource-card--unavailable">
-              <div class="v6-resource-copy"><strong>中俄词典</strong><small>简体中文 → 俄语 · 词典数据目录未接入</small></div><span class="v6-resource-status" data-status="unavailable">未接入</span>
-              <div class="v6-resource-actions"><button type="button" disabled aria-disabled="true">下载</button><button type="button" disabled aria-disabled="true">删除</button><button type="button" data-v6-open-dictionary="zh-ru">查看词典</button></div>
-            </article>
-            <article class="v6-resource-card v6-resource-card--unavailable">
-              <div class="v6-resource-copy"><strong>中日词典</strong><small>简体中文 → 日语 · 词典数据目录未接入</small></div><span class="v6-resource-status" data-status="unavailable">未接入</span>
-              <div class="v6-resource-actions"><button type="button" disabled aria-disabled="true">下载</button><button type="button" disabled aria-disabled="true">删除</button><button type="button" data-v6-open-dictionary="zh-ja">查看词典</button></div>
+            <article class="v6-resource-card">
+              <div class="v6-resource-copy"><strong>词典 · 已内置</strong><small>中英双向查词 · 61,468 个英语词头 · 本机查询</small></div><span class="v6-resource-status" data-status="downloaded">随 APK 内置</span>
+              <div class="v6-resource-actions"><button type="button" data-v6-open-dictionary="en-zh">打开词典</button></div>
             </article>
           </div>
         </section>
         <section class="v6-resource-section" aria-labelledby="v6-voice-heading" data-v6-resource-section>
           <h2 id="v6-voice-heading"><button class="v6-resource-heading" type="button" aria-expanded="true" aria-controls="v6-voice-resources">语言识别与合成${icons.chevron}</button></h2>
           <div class="v6-resource-list" id="v6-voice-resources">
-            <article class="v6-resource-card v6-resource-card--unavailable">
-              <div class="v6-resource-copy"><strong>语音识别 · ASR</strong><small>离线语音识别模型 · 独立资源目录未接入</small></div><span class="v6-resource-status" data-status="unavailable">未接入</span>
-              <div class="v6-resource-actions"><button type="button" disabled aria-disabled="true">下载</button><button type="button" disabled aria-disabled="true">删除</button></div>
+            <article class="v6-resource-card" data-v6-asr-resource>
+              <div class="v6-resource-copy"><strong>语音识别 · ASR</strong><small data-v6-asr-description>多语种自动识别 57 种可尝试；默认松开麦克风后返回整段结果，准确度因语种而异。Whisper 不可用时，中英使用流式识别兜底。</small></div><span class="v6-resource-status" data-v6-asr-status data-status="checking" role="status" aria-live="polite">检查中</span>
             </article>
-            <article class="v6-resource-card v6-resource-card--unavailable">
-              <div class="v6-resource-copy"><strong>语音合成 · TTS</strong><small>离线语音合成音色包 · 独立资源目录未接入</small></div><span class="v6-resource-status" data-status="unavailable">未接入</span>
-              <div class="v6-resource-actions"><button type="button" disabled aria-disabled="true">下载</button><button type="button" disabled aria-disabled="true">删除</button></div>
+            <article class="v6-resource-card" data-v6-tts-resource>
+              <div class="v6-resource-copy"><strong>语音合成 · TTS</strong><small data-v6-tts-description>中英离线语音随 APK 内置；另外内置 31 种语言和 10 种模型音色。中文使用独立内置女声。</small></div><span class="v6-resource-status" data-v6-tts-status data-status="checking" role="status" aria-live="polite">检查中</span>
             </article>
           </div>
         </section>
-        <p class="v6-resource-declaration">资源状态以本机实际查询为准。词典与语音下载功能将在对应数据源和平台接口接入后开放。</p>
+        <p class="v6-resource-declaration">语音资源首次使用时会在本机自动准备，不要求用户访问 GitHub 或手动找资源。翻译语言包与语音模型分开管理；语音模型支持语言不代表所有语言识别准确率均已完成真机验证。</p>
       </main>
     </section>`);
 
   const translationAction = document.querySelector('#screen-home [data-action="translate-text"]');
   const dictionaryInput = document.querySelector("#v6-dictionary-input");
   const dictionaryForm = document.querySelector(".v6-dictionary-search");
-  const dictionarySelect = document.querySelector("#v6-dictionary-select");
+  const dictionaryPackageSelect = document.querySelector("[data-v6-dictionary-package]");
+  const dictionarySourceBadge = document.querySelector("[data-v6-dictionary-source-badge]");
   const resultLabel = document.querySelector("#v6-dictionary-result-label");
   const emptyCopy = document.querySelector("#v6-dictionary-empty-copy");
+  const dictionarySenses = document.querySelector("[data-v6-dictionary-senses]");
+  const dictionaryBrowseItems = document.querySelector("[data-v6-dictionary-browse-items]");
+  const dictionaryLoadMore = document.querySelector("[data-v6-dictionary-load-more]");
+  const dictionaryAlphabetIndex = document.querySelector("[data-v6-alphabet-index]");
   const dictionaryBackButton = document.querySelector("#screen-dictionary .top-icon");
   const resourceBack = document.querySelector("#screen-resources .top-icon");
   const navigationStack = MiyinV5Core.createScreenReturnStack({ dictionary: "home", resources: "settings" });
   const returnableScreens = new Set(["dictionary", "resources"]);
-  const translationResourceList = document.querySelector("[data-v6-translation-resources]");
-  const alphabetIndex = document.querySelector("[data-v6-alphabet-index]");
+  const installedTranslationResourceList = document.querySelector("[data-v6-installed-translation-models]");
+  const translationResourceList = document.querySelector("[data-v6-translation-pair-preview]");
+  const translationSourceSelect = document.querySelector("[data-v6-translation-source]");
+  const translationTargetSelect = document.querySelector("[data-v6-translation-target]");
+  const translationSwapButton = document.querySelector("[data-v6-translation-swap]");
+  const translationResourceHint = document.querySelector("[data-v6-translation-hint]");
   const toast = document.querySelector("#toast");
   let selectedMode = read("mode", "sentence") === "dictionary" ? "dictionary" : "sentence";
-  let dictionaryChoiceExplicit = Boolean(read("dictionary-choice-explicit", false));
   let toastTimer = 0;
-  const dictionaryCatalog = {
-    "en-zh": { name: "英汉词典", source: "英语" },
-    "zh-en": { name: "汉英词典", source: "简体中文" },
-    "zh-ru": { name: "中俄词典", source: "简体中文" },
-    "zh-ja": { name: "中日词典", source: "简体中文" }
-  };
-  let selectedDictionary = read("selected-dictionary", "en-zh");
-  if (!dictionaryCatalog[selectedDictionary]) selectedDictionary = "en-zh";
+  let translationLanguages = null;
+  let translationLanguagesRequest = null;
+  let translationResourceRevision = 0;
+  let translationPairRevision = 0;
+  let installedTranslationRevision = 0;
+  let dictionaryRequestRevision = 0;
+  let dictionaryBrowseRevision = 0;
+  let dictionaryBrowseLetter = "A";
+  let dictionaryBrowseOffset = 0;
+  const dictionaryPageSize = 24;
+  let dictionaryPackage = "en-zh";
 
   const modeMenuMarkup = '<button class="v6-mode-pill" type="button" data-v6-action="toggle-mode-menu" aria-haspopup="menu" aria-expanded="false">句子⌄</button><div class="v6-mode-menu" role="menu" aria-label="选择翻译方式"><button type="button" role="menuitemradio" aria-checked="true" data-v6-mode-choice="sentence">句子翻译</button><button type="button" role="menuitemradio" aria-checked="false" data-v6-mode-choice="dictionary">单词 / 短语查词</button></div>';
   const homeModeHost = document.createElement("div");
@@ -194,13 +207,6 @@
     oldInputTools.setAttribute("aria-label", "图片、文档或拍照翻译");
     oldInputTools.title = "图片、文档或拍照翻译";
   };
-  if (alphabetIndex) {
-    alphabetIndex.innerHTML = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("").map(letter =>
-      '<button type="button" data-v6-letter="' + letter + '" aria-label="浏览 ' + letter + ' 开头词条">' + letter + '</button>'
-    ).join("");
-    alphabetIndex.querySelector('[data-v6-letter="A"]')?.setAttribute("aria-current", "true");
-  }
-  if (dictionarySelect) dictionarySelect.value = selectedDictionary;
   const modePills = () => document.querySelectorAll(".v6-mode-pill");
   const closeMenus = () => {
     document.querySelectorAll(".v6-mode-menu.is-open").forEach(menu => menu.classList.remove("is-open"));
@@ -245,13 +251,18 @@
       return pending;
     },
     handleSystemBack() {
+      const liveRecordPanel = document.querySelector("#video-record-list:not([hidden])");
+      if (liveRecordPanel) {
+        liveRecordPanel.querySelector("[data-video-record-close]")?.click();
+        return true;
+      }
       const modal = document.querySelector("#modal-scrim.open");
       if (modal) {
         modal.querySelector(".modal-close")?.click();
         return true;
       }
-      if (document.querySelector("#screen-orb-style.active")) {
-        document.querySelector("#screen-orb-style [data-action='orb-style-back']")?.click();
+      if (document.querySelector("#screen-appearance.active")) {
+        document.querySelector("#screen-appearance [data-action='appearance-back']")?.click();
         return true;
       }
       if (document.querySelector("#screen-settings.active")) {
@@ -290,38 +301,26 @@
     target: document.querySelector('#screen-home [data-action="target-language"]')?.textContent.trim() || "English"
   });
   const updateDictionaryPage = () => {
-    if (!dictionaryCatalog[selectedDictionary]) selectedDictionary = "en-zh";
-    if (dictionarySelect) dictionarySelect.value = selectedDictionary;
-    const catalogItem = dictionaryCatalog[selectedDictionary];
-    const letterLanguage = document.querySelector(".v6-letter-language");
-    const currentLetter = document.querySelector("[data-v6-current-letter]");
-    if (letterLanguage) letterLanguage.textContent = catalogItem.name;
-    if (dictionaryInput) dictionaryInput.placeholder = "输入" + catalogItem.source + "单词或短语…";
-    if (currentLetter) currentLetter.textContent = alphabetIndex?.querySelector("[aria-current='true']")?.dataset.v6Letter || "A";
-    if (emptyCopy && !read("dictionary-last-submit", "")) {
-      emptyCopy.textContent = catalogItem.name + "数据尚未接入，无法读取真实词条。当前页面不显示模拟单词、音标或释义。";
-    }
+    if (dictionaryInput) dictionaryInput.placeholder = "输入中文或英语词条…";
   };
-  const dictionaryForCurrentDirection = () => {
-    const { source, target } = languagePair();
-    if (source === "English" && target.includes("中文")) return "en-zh";
-    if (source.includes("中文") && target === "English") return "zh-en";
-    return selectedDictionary;
+  const clearDictionaryResult = (message = "中英词典在本机运行。英语词头支持 A–Z 分页浏览；日语和俄语词典尚未接入。") => {
+    dictionaryRequestRevision += 1;
+    if (resultLabel) resultLabel.textContent = "输入中文或英语词条开始查询";
+    if (emptyCopy) {
+      emptyCopy.hidden = false;
+      emptyCopy.textContent = message;
+    }
+    if (dictionarySenses) {
+      dictionarySenses.replaceChildren();
+      dictionarySenses.hidden = true;
+    }
   };
   const openDictionaryPage = () => {
-    const previousDictionary = selectedDictionary;
-    const nextDictionary = dictionaryChoiceExplicit ? selectedDictionary : dictionaryForCurrentDirection();
     const nextQuery = homeInput.value.trim() ? homeInput.value : read("dictionary-draft", "");
-    if (nextDictionary !== previousDictionary || (homeInput.value.trim() && nextQuery !== read("dictionary-draft", ""))) {
-      write("dictionary-last-submit", "");
-      if (resultLabel) resultLabel.textContent = "尚未查询";
-    }
-    selectedDictionary = nextDictionary;
-    write("selected-dictionary", selectedDictionary);
     dictionaryInput.value = nextQuery;
     write("dictionary-draft", dictionaryInput.value);
     updateDictionaryPage();
-    updateLookupState();
+    clearDictionaryResult();
     closeMenus();
     navigate("dictionary");
   };
@@ -333,28 +332,30 @@
     window.dispatchEvent(new CustomEvent("miyin:translation-mode-change", { detail: { mode: selectedMode } }));
   };
   const dispatchModeState = () => window.dispatchEvent(new CustomEvent("miyin:translation-mode-change", { detail: { mode: selectedMode } }));
-  const updateLookupState = () => {
-    const previous = read("dictionary-last-submit", "");
-    if (!previous) {
-      resultLabel.textContent = "尚未查询";
-      emptyCopy.textContent = dictionaryCatalog[selectedDictionary].name + "数据尚未接入，无法读取真实词条。当前页面不显示模拟单词、音标或释义。";
-      return;
-    }
-    resultLabel.textContent = "尚未执行查询 · 词典数据未接入";
-    emptyCopy.textContent = "已保留「" + previous + "」。" + dictionaryCatalog[selectedDictionary].name + "尚无本机数据，无法判断该词是否存在；没有调用普通翻译或网络。";
-  };
 
   updatePills();
   dispatchModeState();
   updateDictionaryPage();
-  updateLookupState();
+  clearDictionaryResult();
   let homeDraftRevision = Math.max(0, Number(read("home-draft-revision", 0)) || 0);
-  homeInput.addEventListener("input", () => {
-    homeDraftRevision += 1;
+  let homeDraftSaveTimer = 0;
+  const saveHomeDraft = () => {
+    window.clearTimeout(homeDraftSaveTimer);
+    homeDraftSaveTimer = 0;
     write("home-draft-revision", homeDraftRevision);
     write("home-draft", homeInput.value);
+  };
+  homeInput.addEventListener("input", () => {
+    homeDraftRevision += 1;
+    window.clearTimeout(homeDraftSaveTimer);
+    homeDraftSaveTimer = window.setTimeout(saveHomeDraft, 180);
   });
-  dictionaryInput?.addEventListener("input", () => write("dictionary-draft", dictionaryInput.value));
+  homeInput.addEventListener("blur", saveHomeDraft);
+  window.addEventListener("pagehide", saveHomeDraft);
+  dictionaryInput?.addEventListener("input", () => {
+    write("dictionary-draft", dictionaryInput.value);
+    clearDictionaryResult();
+  });
   const clearRestoredDraftWhenAlreadyTranslated = async () => {
     const candidate = homeInput.value.trim();
     const migrationKey = "legacy-sent-draft-migration-v1.2";
@@ -411,7 +412,7 @@
   if (settingsList) {
     settingsList.insertAdjacentHTML("beforeend", `
       <article class="setting-card v6-resource-entry">
-        <button class="setting-trigger v6-resource-trigger" type="button" data-screen="resources" aria-label="打开离线资源管理">
+        <button class="setting-trigger v6-resource-trigger appearance-surface" type="button" data-screen="resources" aria-label="打开离线资源管理">
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5m-3 6v-3"/><circle cx="17" cy="16" r="2.2"/></svg>离线资源</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </button>
@@ -421,6 +422,47 @@
   const isNativeHost = () => document.documentElement.dataset.nativeHost === "true" && !!window.MiyinNativeBridge?.request;
   const languageNames = { "zh-Hans": "简体中文", en: "English", ru: "俄语", ja: "日语" };
   const escapeHtml = value => String(value ?? "").replace(/[&<>"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
+  const loadTranslationLanguages = () => {
+    if (translationLanguages) return Promise.resolve(translationLanguages);
+    if (!translationLanguagesRequest) {
+      translationLanguagesRequest = window.MiyinNativeBridge.request("translation.supportedLanguages").then(languages => {
+        if (!Array.isArray(languages)) throw new Error("invalid_supported_languages");
+        const supported = languages.filter(language => language && typeof language.tag === "string" && typeof language.name === "string");
+        if (supported.length < 2) throw new Error("not_enough_supported_languages");
+        translationLanguages = supported;
+        return translationLanguages;
+      }).catch(error => {
+        translationLanguagesRequest = null;
+        throw error;
+      });
+    }
+    return translationLanguagesRequest;
+  };
+  const languageTagForLabel = (label, languages) => {
+    const aliases = { "中": "zh-Hans", "中文": "zh-Hans", "简体中文": "zh-Hans", "英": "en", "英语": "en", "英文": "en", "English": "en" };
+    const normalized = aliases[String(label || "").trim()] || String(label || "").trim();
+    return languages.find(language => language.tag === normalized || language.name === normalized)?.tag || null;
+  };
+  const setTranslationLanguageOptions = languages => {
+    if (!translationSourceSelect || !translationTargetSelect) return;
+    const supported = tag => languages.some(language => language.tag === tag);
+    const current = languagePair();
+    let sourceTag = supported(translationSourceSelect.value) ? translationSourceSelect.value : read("resource-source-tag", null);
+    let targetTag = supported(translationTargetSelect.value) ? translationTargetSelect.value : read("resource-target-tag", null);
+    if (!supported(sourceTag)) sourceTag = languageTagForLabel(current.source, languages) || "zh-Hans";
+    if (!supported(targetTag)) targetTag = languageTagForLabel(current.target, languages) || "en";
+    if (!supported(sourceTag)) sourceTag = languages[0].tag;
+    if (!supported(targetTag)) targetTag = languages.find(language => language.tag !== sourceTag)?.tag || languages[1].tag;
+    if (sourceTag === targetTag) targetTag = languages.find(language => language.tag !== sourceTag)?.tag || languages[1].tag;
+
+    const options = languages.map(language => '<option value="' + escapeHtml(language.tag) + '">' + escapeHtml(language.name) + '</option>').join("");
+    translationSourceSelect.innerHTML = options;
+    translationTargetSelect.innerHTML = options;
+    translationSourceSelect.value = sourceTag;
+    translationTargetSelect.value = targetTag;
+    translationSourceSelect.disabled = false;
+    translationTargetSelect.disabled = false;
+  };
   const prettyModelStatus = status => ({
     downloaded: "已下载",
     notDownloaded: "未下载",
@@ -430,13 +472,7 @@
   }[status] || "状态未知");
   const setModelButtons = (row, status) => {
     const download = row.querySelector('[data-v6-model-action="download"]');
-    const remove = row.querySelector('[data-v6-model-action="delete"]');
     if (download) { download.disabled = !isNativeHost() || status !== "notDownloaded"; download.setAttribute("aria-disabled", String(download.disabled)); }
-    if (remove) {
-      remove.disabled = !isNativeHost() || status !== "downloaded";
-      remove.setAttribute("aria-disabled", String(remove.disabled));
-      if (row.dataset.sharedModels === "true") remove.title = "删除此双向语言组合；Android 会保留其他组合仍在使用的模型";
-    }
   };
   const translationRowMarkup = (pair, status) => {
     const sourceName = pair.sourceName || languageNames[pair.sourceTag] || pair.sourceTag;
@@ -445,7 +481,7 @@
     return '<article class="v6-resource-card v6-translation-resource" data-v6-translation-row data-source-tag="' + escapeHtml(pair.sourceTag) + '" data-target-tag="' + escapeHtml(pair.targetTag) + '" data-shared-models="' + String(pair.reverseAvailable) + '" data-model-status="' + escapeHtml(status) + '">' +
       '<div class="v6-resource-copy"><strong>' + escapeHtml(pairName) + '</strong><small>Google ML Kit · Android 平台管理' + (pair.reverseAvailable ? '；双向共用模型' : '') + '</small></div>' +
       '<span class="v6-resource-status" data-v6-row-status data-status="' + escapeHtml(status) + '" role="status" aria-live="polite">' + prettyModelStatus(status) + '</span>' +
-      '<div class="v6-resource-actions"><button type="button" data-v6-model-action="download" disabled aria-disabled="true">下载</button><button type="button" data-v6-model-action="delete" disabled aria-disabled="true">删除</button><button type="button" data-v6-model-action="refresh">刷新</button></div></article>';
+      '<div class="v6-resource-actions"><button type="button" data-v6-model-action="download" disabled aria-disabled="true">下载所需语言包</button><button type="button" data-v6-model-action="refresh">刷新状态</button></div></article>';
   };
   const updateTranslationRow = async (row, pair) => {
     const statusNode = row.querySelector("[data-v6-row-status]");
@@ -476,39 +512,158 @@
     }
   };
   const refreshTranslationResources = async () => {
-    if (!translationResourceList) return;
+    if (!installedTranslationResourceList && !translationResourceList) return;
+    const revision = ++translationResourceRevision;
     if (!isNativeHost()) {
-      translationResourceList.innerHTML = '<article class="v6-resource-card v6-resource-card--unavailable"><div class="v6-resource-copy"><strong>简体中文 ↔ English</strong><small>Google ML Kit · 由 Android 平台管理</small></div><span class="v6-resource-status">请在觅音 App 中读取</span><div class="v6-resource-actions"><button type="button" disabled aria-disabled="true">下载</button><button type="button" disabled aria-disabled="true">删除</button></div></article>';
+      if (translationSourceSelect) translationSourceSelect.disabled = true;
+      if (translationTargetSelect) translationTargetSelect.disabled = true;
+      if (installedTranslationResourceList) installedTranslationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">请在觅音 App 中读取已下载的语言包。</div>';
+      if (translationResourceList) translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">请在觅音 App 中读取可用语言与离线模型状态。</div>';
       return;
     }
-    translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">正在读取本机支持的翻译模型…</div>';
+    if (installedTranslationResourceList) installedTranslationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">正在读取本机已下载的语言包…</div>';
+    if (translationResourceList) translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">正在读取可用翻译语言…</div>';
     try {
-      const pairs = await window.MiyinNativeBridge.request("translation.supportedPairs");
-      if (!Array.isArray(pairs) || pairs.length === 0) {
-        translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">此设备没有报告可管理的离线翻译语言组合。</div>';
+      const languages = await loadTranslationLanguages();
+      if (revision !== translationResourceRevision) return;
+      if (!languages.length) {
+        if (translationResourceList) translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">此设备没有报告可管理的离线翻译语言。</div>';
         return;
       }
-      const uniquePairs = new Map();
-      pairs.forEach(pair => {
-        const key = [pair.sourceTag, pair.targetTag].sort().join("::");
-        const reverseAvailable = pairs.some(other => other.sourceTag === pair.targetTag && other.targetTag === pair.sourceTag);
-        const current = uniquePairs.get(key);
-        const preferThisDirection = pair.sourceTag === "zh-Hans" || pair.sourceTag === "zh";
-        if (!current || (preferThisDirection && !current.preferred)) {
-          uniquePairs.set(key, { ...pair, reverseAvailable, preferred: preferThisDirection });
-        }
-      });
-      const packagePairs = [...uniquePairs.values()];
-      translationResourceList.innerHTML = packagePairs.map(pair => translationRowMarkup(pair, "checking")).join("");
-      await Promise.all([...translationResourceList.querySelectorAll("[data-v6-translation-row]")].map(row =>
-        updateTranslationRow(row, { sourceTag: row.dataset.sourceTag, targetTag: row.dataset.targetTag })
-      ));
+      setTranslationLanguageOptions(languages);
+      if (translationResourceHint) translationResourceHint.textContent = "已下载的语言包会完整列在上方，不随翻译方向变化。ML Kit 的同一语言包可供多个方向共用。";
+      await Promise.all([refreshInstalledTranslationModels(), refreshSelectedTranslationModel()]);
     } catch {
-      translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">无法读取本机模型目录，请稍后重试。</div><button type="button" class="v6-resource-retry" data-v6-model-action="reload-list">重试读取</button>';
+      if (revision !== translationResourceRevision) return;
+      if (translationSourceSelect) translationSourceSelect.disabled = true;
+      if (translationTargetSelect) translationTargetSelect.disabled = true;
+      if (installedTranslationResourceList) installedTranslationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">无法读取本机语言包目录，请稍后重试。</div><button type="button" class="v6-resource-retry" data-v6-model-action="reload-list">重试读取</button>';
+      if (translationResourceList) translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">无法读取本机模型目录，请稍后重试。</div><button type="button" class="v6-resource-retry" data-v6-model-action="reload-list">重试读取</button>';
     }
   };
+  const refreshInstalledTranslationModels = async () => {
+    if (!installedTranslationResourceList) return;
+    const revision = ++installedTranslationRevision;
+    try {
+      const models = await window.MiyinNativeBridge.request("translation.installedModels");
+      if (revision !== installedTranslationRevision) return;
+      if (!Array.isArray(models)) throw new Error("invalid_installed_models");
+      const rows = [
+        '<article class="v6-resource-card v6-installed-translation-model" data-language-tag="en"><div class="v6-resource-copy"><strong>英语</strong><small>ML Kit 内置语言 · 无需下载</small></div><span class="v6-resource-status" data-status="downloaded">内置</span></article>',
+        ...models.map(model => {
+          const tag = String(model?.tag || "");
+          const name = String(model?.name || tag);
+          return '<article class="v6-resource-card v6-installed-translation-model" data-language-tag="' + escapeHtml(tag) + '"><div class="v6-resource-copy"><strong>' + escapeHtml(name) + '</strong><small>Google ML Kit · ' + escapeHtml(tag) + ' · 供包含该语言的翻译方向共用</small></div><span class="v6-resource-status" data-status="downloaded">已下载</span><div class="v6-resource-actions"><button type="button" data-v6-language-model-action="delete" data-language-tag="' + escapeHtml(tag) + '" aria-label="删除' + escapeHtml(name) + '语言包">删除语言包</button></div></article>';
+        })
+      ];
+      installedTranslationResourceList.innerHTML = rows.join("");
+      if (models.length === 0) {
+        installedTranslationResourceList.insertAdjacentHTML("beforeend", '<p class="v6-resource-empty">目前只含英语内置能力；下载其它语言后会显示在这里。</p>');
+      }
+    } catch (error) {
+      if (revision !== installedTranslationRevision) return;
+      installedTranslationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">无法读取已下载语言包：' + escapeHtml(error?.message || "请稍后重试") + '</div><button type="button" class="v6-resource-retry" data-v6-model-action="reload-list">重试读取</button>';
+    }
+  };
+  const refreshSelectedTranslationModel = async () => {
+    if (!translationResourceList || !translationSourceSelect || !translationTargetSelect) return;
+    const revision = ++translationPairRevision;
+    const sourceTag = translationSourceSelect.value;
+    const targetTag = translationTargetSelect.value;
+    const source = translationLanguages?.find(language => language.tag === sourceTag);
+    const target = translationLanguages?.find(language => language.tag === targetTag);
+    if (!source || !target) {
+      translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">请选择翻译语言组合。</div>';
+      return;
+    }
+    if (sourceTag === targetTag) {
+      translationResourceList.innerHTML = '<div class="v6-resource-loading" role="status">源语言和目标语言不能相同，请重新选择。</div>';
+      return;
+    }
+    const pair = { sourceTag, targetTag, sourceName: source.name, targetName: target.name, reverseAvailable: true };
+    translationResourceList.innerHTML = translationRowMarkup(pair, "checking");
+    const row = translationResourceList.querySelector("[data-v6-translation-row]");
+    await updateTranslationRow(row, pair);
+    if (revision !== translationPairRevision) return;
+  };
+  const handleTranslationLanguageChange = () => {
+    if (!translationSourceSelect || !translationTargetSelect) return;
+    write("resource-source-tag", translationSourceSelect.value);
+    write("resource-target-tag", translationTargetSelect.value);
+    void refreshSelectedTranslationModel();
+  };
+  translationSourceSelect?.addEventListener("change", handleTranslationLanguageChange);
+  translationTargetSelect?.addEventListener("change", handleTranslationLanguageChange);
+  translationSwapButton?.addEventListener("click", () => {
+    if (!translationSourceSelect || !translationTargetSelect || translationSourceSelect.disabled || translationTargetSelect.disabled) return;
+    const sourceTag = translationSourceSelect.value;
+    translationSourceSelect.value = translationTargetSelect.value;
+    translationTargetSelect.value = sourceTag;
+    handleTranslationLanguageChange();
+  });
   refreshTranslationResources();
   window.addEventListener("miyin:native-host-ready", refreshTranslationResources);
+
+  const setResourceState = (statusNode, description, state, title, copy) => {
+    if (statusNode) {
+      statusNode.dataset.status = state;
+      statusNode.textContent = title;
+    }
+    if (description) description.textContent = copy;
+  };
+  const refreshVoiceResources = async () => {
+    const asrRow = document.querySelector("[data-v6-asr-resource]");
+    const asrStatus = asrRow?.querySelector("[data-v6-asr-status]");
+    const asrDescription = asrRow?.querySelector("[data-v6-asr-description]");
+    const ttsRow = document.querySelector("[data-v6-tts-resource]");
+    const ttsStatus = ttsRow?.querySelector("[data-v6-tts-status]");
+    const ttsDescription = ttsRow?.querySelector("[data-v6-tts-description]");
+    if (!isNativeHost() || !window.MiyinNativeBridge) {
+      setResourceState(asrStatus, asrDescription, "unavailable", "仅 App 可读取", "网页预览不包含模型状态；Android APK 内置多语种识别模型，中英另有流式兜底。");
+      setResourceState(ttsStatus, ttsDescription, "unavailable", "仅 App 可读取", "中英离线语音及多语言多音色模型随 Android APK 内置；中文使用独立内置女声。");
+      return;
+    }
+    setResourceState(asrStatus, asrDescription, "checking", "准备中", "正在校验并准备 APK 内置的本地识别模型…");
+    setResourceState(ttsStatus, ttsDescription, "checking", "准备中", "正在校验并准备 APK 内置的本地合成模型…");
+    try {
+      const bilingualTts = await window.MiyinNativeBridge.request("voice.offlineTtsStatus");
+      const multilingualTts = await window.MiyinNativeBridge.request("voice.multilingualTtsStatus");
+      const ttsReady = bilingualTts?.bundled === true && bilingualTts?.chineseReady === true && bilingualTts?.englishReady === true && multilingualTts?.bundled === true && multilingualTts?.installed === true;
+      if (ttsReady) {
+        setResourceState(ttsStatus, ttsDescription, "downloaded", "随 APK 内置", "中文和英语使用觅音离线语音；另支持 " + (multilingualTts.languageTags?.length || 31) + " 种语言、" + (multilingualTts.speakerCount || 10) + " 种模型音色。中文使用独立内置女声。");
+      } else {
+        setResourceState(ttsStatus, ttsDescription, "failed", "准备失败", "内置合成资源尚未就绪。检查设备存储空间后重新打开觅音；不需要另找或下载语音包。");
+      }
+    } catch (error) {
+      setResourceState(ttsStatus, ttsDescription, "failed", "准备失败", error?.message || "无法准备 APK 内置语音合成资源。请检查设备存储空间并重新打开觅音。");
+      console.warn("Could not prepare bundled TTS resources", error);
+    }
+    try {
+      const asr = await window.MiyinNativeBridge.request("voice.multilingualAsrStatus");
+      const tags = Array.isArray(asr?.languageTags) ? asr.languageTags : [];
+      if (asr?.bundled === true && asr?.installed === true) {
+        const languageCount = tags.length;
+        const languageSummary = languageCount > 0
+          ? `多语种自动识别 ${languageCount} 种可尝试（含中文、英语、日语、法语、俄语等）`
+          : "多语种自动识别可尝试";
+        setResourceState(asrStatus, asrDescription, "downloaded", "随 APK 内置", `${languageSummary}；默认由 Whisper 在松开麦克风后返回整段结果，准确度因语种而异。Whisper 不可用时，中英使用流式识别兜底。`);
+      } else {
+        setResourceState(asrStatus, asrDescription, "failed", "准备失败", "内置识别资源尚未就绪。检查设备存储空间后重新打开觅音；不需要另找或下载识别包。");
+      }
+    } catch (error) {
+      setResourceState(asrStatus, asrDescription, "failed", "准备失败", error?.message || "无法准备 APK 内置语音识别资源。请检查设备存储空间并重新打开觅音。");
+      console.warn("Could not prepare bundled ASR resources", error);
+    }
+  };
+  void refreshVoiceResources();
+  window.addEventListener("miyin:native-host-ready", refreshVoiceResources);
+  window.addEventListener("miyin:app-resumed", refreshVoiceResources);
+  window.addEventListener("miyin:surface-visibility-change", () => {
+    if (document.getElementById("screen-resources")?.classList.contains("active")) void refreshVoiceResources();
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (!document.hidden && document.getElementById("screen-resources")?.classList.contains("active")) void refreshVoiceResources();
+  });
 
   const performTranslationModelAction = async actionButton => {
     const action = actionButton.dataset.v6ModelAction;
@@ -517,25 +672,43 @@
     if (!row) return;
     const pair = { sourceTag: row.dataset.sourceTag, targetTag: row.dataset.targetTag };
     if (action === "refresh") { updateTranslationRow(row, pair); return; }
+    if (action !== "download") return;
     if (!isNativeHost()) return;
-    if (action === "delete" && !window.confirm("删除此翻译模型？Android 会保留其他语言组合仍在使用的共享模型。")) return;
     const statusNode = row.querySelector("[data-v6-row-status]");
     row.querySelectorAll("button").forEach(button => { button.disabled = true; button.setAttribute("aria-disabled", "true"); });
     if (statusNode) {
-      statusNode.dataset.status = action === "download" ? "downloading" : "deleting";
-      statusNode.textContent = action === "download" ? "正在下载…" : "正在删除…";
+      statusNode.dataset.status = "downloading";
+      statusNode.textContent = "正在下载…";
     }
-    row.dataset.modelStatus = action === "download" ? "downloading" : "deleting";
+    row.dataset.modelStatus = "downloading";
     try {
-      await window.MiyinNativeBridge.request(
-        action === "download" ? "translation.downloadModel" : "translation.deleteModel",
-        { ...pair, ...(action === "download" ? { wifiOnly: true } : {}) }
-      );
-      showToast(action === "download" ? "已请求 Android 下载翻译模型" : "已请求 Android 删除翻译模型");
+      await window.MiyinNativeBridge.request("translation.downloadModel", { ...pair, wifiOnly: true });
+      showToast("已请求下载所需语言包");
     } catch (error) {
       showToast(error?.message || "模型操作未完成");
     }
-    await updateTranslationRow(row, pair);
+    await Promise.all([updateTranslationRow(row, pair), refreshInstalledTranslationModels()]);
+  };
+
+  const performTranslationLanguageModelDelete = async actionButton => {
+    const languageTag = actionButton.dataset.languageTag;
+    const language = translationLanguages?.find(value => value.tag === languageTag);
+    const languageName = language?.name || languageTag;
+    if (!languageTag || !isNativeHost()) return;
+    if (!window.confirm("删除「" + languageName + "」语言包后，所有涉及该语言的翻译方向都需要重新下载模型才能离线使用。其它语言包会保留。确定删除吗？")) return;
+    actionButton.disabled = true;
+    actionButton.setAttribute("aria-disabled", "true");
+    actionButton.textContent = "正在删除…";
+    try {
+      await window.MiyinNativeBridge.request("translation.deleteLanguageModel", { languageTag });
+      showToast("已删除「" + languageName + "」语言包");
+      await Promise.all([refreshInstalledTranslationModels(), refreshSelectedTranslationModel()]);
+    } catch (error) {
+      actionButton.disabled = false;
+      actionButton.setAttribute("aria-disabled", "false");
+      actionButton.textContent = "删除语言包";
+      showToast(error?.message || "语言包删除失败");
+    }
   };
 
   document.addEventListener("click", event => {
@@ -559,33 +732,13 @@
       chooseMode(choice.dataset.v6ModeChoice);
       return;
     }
-    const alphabetButton = event.target.closest("[data-v6-letter]");
-    if (alphabetButton) {
-      event.preventDefault();
-      alphabetIndex?.querySelector("[aria-current='true']")?.removeAttribute("aria-current");
-      alphabetButton.setAttribute("aria-current", "true");
-      const letter = alphabetButton.dataset.v6Letter;
-      const currentLetter = document.querySelector("[data-v6-current-letter]");
-      if (currentLetter) currentLetter.textContent = letter;
-      if (resultLabel) resultLabel.textContent = letter + " · 词典数据未接入";
-      if (emptyCopy) emptyCopy.textContent = dictionaryCatalog[selectedDictionary].name + "尚未接入词条数据，无法显示 " + letter + " 开头的真实词条。";
-      return;
-    }
     const dictionaryOption = event.target.closest("[data-v6-open-dictionary]");
     if (dictionaryOption) {
       event.preventDefault();
       event.stopImmediatePropagation();
-      const nextDictionary = dictionaryOption.dataset.v6OpenDictionary;
-      if (nextDictionary !== selectedDictionary) {
-        write("dictionary-last-submit", "");
-        if (resultLabel) resultLabel.textContent = "尚未查询";
-      }
-      selectedDictionary = nextDictionary;
-      dictionaryChoiceExplicit = true;
-      write("dictionary-choice-explicit", true);
-      write("selected-dictionary", selectedDictionary);
+      if (dictionaryOption.dataset.v6OpenDictionary !== "en-zh") return;
       updateDictionaryPage();
-      updateLookupState();
+      clearDictionaryResult();
       navigate("dictionary");
       return;
     }
@@ -595,6 +748,12 @@
       const expanded = resourceHeading.getAttribute("aria-expanded") === "true";
       resourceHeading.setAttribute("aria-expanded", String(!expanded));
       if (panel) panel.hidden = expanded;
+      return;
+    }
+    const languageModelAction = event.target.closest('[data-v6-language-model-action="delete"]');
+    if (languageModelAction) {
+      event.preventDefault();
+      performTranslationLanguageModelDelete(languageModelAction);
       return;
     }
     const modelAction = event.target.closest("[data-v6-model-action]");
@@ -639,7 +798,223 @@
     }
   }, true);
 
-  dictionaryForm?.addEventListener("submit", event => {
+  const dictionaryPosLabels = {
+    noun: "名词",
+    verb: "动词",
+    adjective: "形容词",
+    adverb: "副词",
+  };
+  const refreshDictionaryPackagePresentation = () => {
+    if (dictionarySourceBadge) {
+      dictionarySourceBadge.innerHTML = "英语—简体中文词典 <span>·</span> 本机离线";
+    }
+    if (dictionaryInput) {
+      dictionaryInput.placeholder = "输入中文或英语词条…";
+      dictionaryInput.setAttribute("aria-label", "输入中文或英语词条");
+    }
+  };
+  const makeDictionaryEntryCard = entry => {
+    const card = document.createElement("article");
+    card.className = "v6-dictionary-entry-result";
+    const header = document.createElement("div");
+    header.className = "v6-dictionary-entry-heading";
+    const heading = document.createElement("h2");
+    heading.textContent = entry.word;
+    const phonetic = document.createElement("span");
+    phonetic.className = "v6-dictionary-phonetic";
+    phonetic.dataset.v6DictionaryPhonetic = "";
+    phonetic.textContent = typeof entry.ipa === "string" && entry.ipa.trim()
+      ? "美式 IPA · " + entry.ipa
+      : "音标数据暂缺";
+    header.append(heading, phonetic);
+    card.append(header);
+    const meanings = document.createElement("div");
+    meanings.className = "v6-dictionary-meanings";
+    const exampleGroups = [];
+    for (const sense of Array.isArray(entry.senses) ? entry.senses : []) {
+      const row = document.createElement("section");
+      row.className = "v6-dictionary-sense-row";
+      const title = document.createElement("h3");
+      const part = dictionaryPosLabels[sense.partOfSpeech] || "词义";
+      const translations = Array.isArray(sense.translations) ? sense.translations : [];
+      const senseLabel = part + (translations.length ? " · " + translations.join("、") : "");
+      title.textContent = part;
+      row.append(title);
+      if (translations.length) {
+        const translatedMeaning = document.createElement("p");
+        translatedMeaning.className = "v6-dictionary-sense-translations";
+        translatedMeaning.textContent = translations.join("、");
+        row.append(translatedMeaning);
+      }
+      if (sense.definition) {
+        const definition = document.createElement("p");
+        definition.className = "v6-dictionary-sense-definition";
+        definition.textContent = "英文释义：" + sense.definition;
+        row.append(definition);
+      }
+      if (Array.isArray(sense.examples) && sense.examples.length) {
+        exampleGroups.push({ label: senseLabel, examples: sense.examples });
+      }
+      meanings.append(row);
+    }
+    if (meanings.childElementCount) card.append(meanings);
+    if (exampleGroups.length) {
+      const exampleSection = document.createElement("section");
+      exampleSection.className = "v6-dictionary-example-section";
+      const examplesHeading = document.createElement("h3");
+      examplesHeading.className = "v6-dictionary-examples-heading";
+      examplesHeading.textContent = "例句";
+      exampleSection.append(examplesHeading);
+      for (const group of exampleGroups) {
+        const groupList = document.createElement("ul");
+        groupList.className = "v6-dictionary-sense-examples";
+        if (exampleGroups.length > 1 && group.label) {
+          const groupLabel = document.createElement("li");
+          groupLabel.className = "v6-dictionary-example-label";
+          groupLabel.textContent = group.label;
+          groupList.append(groupLabel);
+        }
+        for (const example of group.examples) {
+          const item = document.createElement("li");
+          item.textContent = example;
+          groupList.append(item);
+        }
+        exampleSection.append(groupList);
+      }
+      card.append(exampleSection);
+    }
+    const source = document.createElement("p");
+    source.className = "v6-dictionary-sense-source";
+    source.textContent = "Chinese Open Wordnet · Princeton WordNet 3.0";
+    card.append(source);
+    return card;
+  };
+  const renderDictionaryLookup = result => {
+    const entries = Array.isArray(result?.entries)
+      ? result.entries
+      : result?.entry ? [result.entry] : [];
+    if (!result?.found || entries.length === 0) {
+      if (resultLabel) resultLabel.textContent = "没有找到精确词头";
+      if (emptyCopy) {
+        emptyCopy.hidden = false;
+      emptyCopy.textContent = "本机中英词典没有收录“" + dictionaryInput.value.trim() + "”。请检查拼写或尝试词条原形；不会用普通翻译补造词义。";
+      }
+      dictionarySenses?.replaceChildren();
+      if (dictionarySenses) dictionarySenses.hidden = true;
+      return;
+    }
+    if (resultLabel) {
+      const normalized = result.matchedByNormalization ? " · 已忽略大小写或空格差异" : "";
+      resultLabel.textContent = entries.length === 1
+        ? entries[0].word + " · " + (entries[0].senses?.length || 0) + " 条词义" + normalized
+        : "找到 " + entries.length + " 个英语词头" + normalized;
+    }
+    if (emptyCopy) emptyCopy.hidden = true;
+    if (!dictionarySenses) return;
+    dictionarySenses.replaceChildren();
+    for (const entry of entries) dictionarySenses.append(makeDictionaryEntryCard(entry));
+    dictionarySenses.hidden = false;
+  };
+  const renderDictionaryAlphabetIndex = () => {
+    if (!dictionaryAlphabetIndex) return;
+    dictionaryAlphabetIndex.innerHTML = Array.from("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+      .map(letter => '<button type="button" data-v6-dictionary-letter="' + letter + '" aria-label="浏览 ' + letter + ' 开头词条" aria-current="' + String(letter === dictionaryBrowseLetter) + '">' + letter + '</button>')
+      .join("");
+  };
+  const loadDictionaryBrowsePage = async (letter = dictionaryBrowseLetter, reset = true) => {
+    if (!dictionaryBrowseItems) return;
+    if (reset) {
+      dictionaryBrowseLetter = letter;
+      dictionaryBrowseOffset = 0;
+      dictionaryBrowseItems.replaceChildren();
+      renderDictionaryAlphabetIndex();
+    }
+    const revision = ++dictionaryBrowseRevision;
+    if (!isNativeHost() || !window.MiyinNativeBridge) {
+      dictionaryBrowseItems.innerHTML = '<p class="v6-dictionary-empty">请在觅音 App 中浏览本机词典。</p>';
+      if (dictionaryLoadMore) dictionaryLoadMore.hidden = true;
+      return;
+    }
+    if (reset) dictionaryBrowseItems.innerHTML = '<p class="v6-dictionary-empty">正在读取 ' + escapeHtml(dictionaryBrowseLetter) + ' 开头词条…</p>';
+    try {
+      const page = await window.MiyinNativeBridge.request("dictionary.browse", {
+        letter: dictionaryBrowseLetter,
+        offset: dictionaryBrowseOffset,
+        limit: dictionaryPageSize,
+      });
+      if (revision !== dictionaryBrowseRevision) return;
+      const words = Array.isArray(page?.words) ? page.words : [];
+      const ipaByWord = page?.ipaByWord && typeof page.ipaByWord === "object" ? page.ipaByWord : {};
+      if (reset) dictionaryBrowseItems.replaceChildren();
+      if (!words.length && reset) {
+        dictionaryBrowseItems.innerHTML = '<p class="v6-dictionary-empty">' + escapeHtml(dictionaryBrowseLetter) + ' 开头暂无词条。</p>';
+      }
+      for (const word of words) {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "v6-dictionary-word";
+        button.dataset.v6DictionaryWord = word;
+        const name = document.createElement("span");
+        name.textContent = word;
+        const phonetic = document.createElement("span");
+        const ipa = ipaByWord[word];
+        phonetic.textContent = typeof ipa === "string" && ipa.trim()
+          ? "美式 IPA · " + ipa
+          : "音标数据暂缺";
+        button.append(name, phonetic);
+        dictionaryBrowseItems.append(button);
+      }
+      dictionaryBrowseOffset = Number(page?.offset || 0) + words.length;
+      if (dictionaryLoadMore) dictionaryLoadMore.hidden = page?.hasMore !== true;
+      if (dictionaryAlphabetIndex) {
+        dictionaryAlphabetIndex.querySelectorAll("button").forEach(button => {
+          button.setAttribute("aria-current", String(button.dataset.v6DictionaryLetter === dictionaryBrowseLetter));
+        });
+      }
+    } catch (error) {
+      if (revision !== dictionaryBrowseRevision) return;
+      dictionaryBrowseItems.innerHTML = '<p class="v6-dictionary-empty">词条列表暂时无法读取：' + escapeHtml(error?.message || "请稍后重试") + '</p>';
+      if (dictionaryLoadMore) dictionaryLoadMore.hidden = true;
+    }
+  };
+  const retryDictionaryBrowseWhenNativeHostReady = () => {
+    if (!isNativeHost()) return;
+    void loadDictionaryBrowsePage("A", true);
+  };
+  window.addEventListener("miyin:native-host-ready", retryDictionaryBrowseWhenNativeHostReady);
+  const reloadDictionaryBrowseWhenScreenOpens = () => {
+    if (!isNativeHost() || activeScreenName() !== "dictionary") return;
+    void loadDictionaryBrowsePage(dictionaryBrowseLetter, true);
+  };
+  window.addEventListener("miyin:surface-visibility-change", reloadDictionaryBrowseWhenScreenOpens);
+  if (dictionaryPackageSelect) dictionaryPackageSelect.value = dictionaryPackage;
+  refreshDictionaryPackagePresentation();
+  dictionaryPackageSelect?.addEventListener("change", () => {
+    if (dictionaryPackageSelect.value !== "en-zh") {
+      dictionaryPackageSelect.value = dictionaryPackage;
+      showToast("该词典包尚未接入");
+      return;
+    }
+    dictionaryPackage = dictionaryPackageSelect.value;
+    write("dictionary-package", dictionaryPackage);
+    if (resultLabel) resultLabel.textContent = "输入中文或英语词条开始查询";
+    dictionarySenses?.replaceChildren();
+    if (dictionarySenses) dictionarySenses.hidden = true;
+  });
+  dictionaryAlphabetIndex?.addEventListener("click", event => {
+    const button = event.target.closest("[data-v6-dictionary-letter]");
+    if (button) void loadDictionaryBrowsePage(button.dataset.v6DictionaryLetter, true);
+  });
+  dictionaryBrowseItems?.addEventListener("click", event => {
+    const wordButton = event.target.closest("[data-v6-dictionary-word]");
+    if (!wordButton) return;
+    dictionaryInput.value = wordButton.dataset.v6DictionaryWord;
+    dictionaryForm?.requestSubmit();
+  });
+  dictionaryLoadMore?.addEventListener("click", () => void loadDictionaryBrowsePage(dictionaryBrowseLetter, false));
+  renderDictionaryAlphabetIndex();
+  void loadDictionaryBrowsePage("A", true);
+  dictionaryForm?.addEventListener("submit", async event => {
     event.preventDefault();
     event.stopPropagation();
     const query = dictionaryInput.value.trim();
@@ -649,24 +1024,42 @@
       dictionaryInput.focus({ preventScroll: true });
       return;
     }
-    write("dictionary-initialized", true);
-    write("dictionary-last-submit", query);
-    resultLabel.textContent = "未执行查询 · " + dictionaryCatalog[selectedDictionary].name + "数据未接入";
-    emptyCopy.textContent = "已保留「" + query + "」。" + dictionaryCatalog[selectedDictionary].name + "没有可核验的本机词条数据，无法判断该词是否存在；不会改用普通翻译生成词义。";
-    showToast("本机没有可查询的词典数据，输入已保留");
+    clearDictionaryResult("正在自动识别中文或英语词条…");
+    const requestRevision = dictionaryRequestRevision;
+    if (/[\u3040-\u30ff]/.test(query)) {
+      if (resultLabel) resultLabel.textContent = "日语词典尚未接入";
+      if (emptyCopy) emptyCopy.textContent = "当前可用的是英语—简体中文词典；日语词典数据尚未加入应用。";
+      return;
+    }
+    if (/[\u0400-\u04ff]/.test(query)) {
+      if (resultLabel) resultLabel.textContent = "俄语词典尚未接入";
+      if (emptyCopy) emptyCopy.textContent = "当前可用的是英语—简体中文词典；俄语词典数据尚未加入应用。";
+      return;
+    }
+    if (!isNativeHost() || !window.MiyinNativeBridge) {
+      if (resultLabel) resultLabel.textContent = "请在觅音 Android 应用中查词";
+      if (emptyCopy) emptyCopy.textContent = "本机词典随 Android 安装包提供；网页预览不包含词典数据。";
+      return;
+    }
+    try {
+      const lookupMethod = /[\u3400-\u9fff]/.test(query) ? "dictionary.lookupChinese" : "dictionary.lookup";
+      const result = await window.MiyinNativeBridge.request(lookupMethod, { query });
+      if (requestRevision !== dictionaryRequestRevision) return;
+      renderDictionaryLookup(result);
+    } catch (error) {
+      if (requestRevision !== dictionaryRequestRevision) return;
+      if (resultLabel) resultLabel.textContent = "本机词典暂时无法读取";
+      if (emptyCopy) {
+        emptyCopy.hidden = false;
+        emptyCopy.textContent = error?.message || "请重新打开觅音后再试。";
+      }
+      dictionarySenses?.replaceChildren();
+      if (dictionarySenses) dictionarySenses.hidden = true;
+    }
   }, true);
 
-  dictionarySelect?.addEventListener("change", () => {
-    selectedDictionary = dictionarySelect.value;
-    dictionaryChoiceExplicit = true;
-    write("dictionary-choice-explicit", true);
-    write("selected-dictionary", selectedDictionary);
-    write("dictionary-last-submit", "");
-    updateDictionaryPage();
-    updateLookupState();
-  });
-
   window.addEventListener("miyin:open-dictionary-page", openDictionaryPage);
+  window.addEventListener("miyin:open-offline-resources", () => navigate("resources"));
 
   document.addEventListener("click", event => {
     const screenButton = event.target.closest('[data-screen="resources"]');

@@ -1,0 +1,26 @@
+[
+  {
+    "path": "model.onnx",
+    "size": 170429550
+  },
+  {
+    "path": "lexicon.txt",
+    "size": 6837671
+  },
+  {
+    "path": "tokens.txt",
+    "size": 655
+  },
+  {
+    "path": "date.fst",
+    "size": 59154
+  },
+  {
+    "path": "number.fst",
+    "size": 64482
+  },
+  {
+    "path": "LICENSE",
+    "size": 1053
+  }
+]

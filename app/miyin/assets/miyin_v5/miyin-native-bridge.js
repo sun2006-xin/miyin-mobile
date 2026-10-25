@@ -17,7 +17,9 @@
       }
 
       const id = `${Date.now().toString(36)}-${(++sequence).toString(36)}`;
-      const timeoutMs = method === 'translation.downloadModel' ? modelDownloadTimeoutMs : defaultTimeoutMs;
+      const timeoutMs = method === 'translation.downloadModel' || method === 'voice.downloadMultilingualAsr' || method === 'voice.downloadMultilingualTts' || method === 'attachment.recognizeImage'
+        ? modelDownloadTimeoutMs
+        : defaultTimeoutMs;
       const timer = window.setTimeout(() => {
         pending.delete(id);
         reject(Object.assign(new Error('本机操作超时，请检查设备状态后重试。'), { code: 'request_timeout' }));

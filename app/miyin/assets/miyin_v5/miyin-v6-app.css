@@ -64,6 +64,8 @@
 .v6-resource-actions button:focus-visible,
 .v6-resource-heading:focus-visible,
 .v6-resource-manage:focus-visible,
+.v6-translation-language-field select:focus-visible,
+.v6-translation-swap:focus-visible,
 .v6-primary-action:focus-visible { outline: 3px solid rgba(20,184,166,.48); outline-offset: 2px; }
 
 .text-entry { position: relative; z-index: 8; gap: 6px; padding-left: 8px; }
@@ -163,6 +165,20 @@
 }
 .v6-dictionary-search button { flex: 0 0 44px; width: 44px; }
 .v6-dictionary-search svg { width: 19px; height: 19px; }
+.v6-dictionary-source-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0 0 10px 2px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 10px;
+  font-weight: 700;
+}
+.v6-dictionary-source-badge span { color: var(--muted); }
 .v6-result-label { margin: 14px 0 9px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: .015em; }
 .v6-empty-card {
   padding: 20px 18px 18px;
@@ -198,7 +214,7 @@
   min-width: 0;
   min-height: 245px;
   padding: 0 13px 15px;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid var(--line);
   border-radius: 17px;
   background: var(--surface);
@@ -206,7 +222,7 @@
 .v6-dictionary-columns {
   min-height: 38px;
   display: grid;
-  grid-template-columns: 1.05fr .72fr 1.4fr;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 6px;
   border-bottom: 1px solid var(--line);
@@ -242,9 +258,67 @@
   line-height: 1.6;
   overflow-wrap: anywhere;
 }
-.v6-dictionary-list .v6-primary-action { min-height: 40px; margin-top: 10px; }
+.v6-dictionary-empty[hidden],
+.v6-dictionary-senses[hidden] { display: none; }
+.v6-dictionary-senses { display: grid; gap: 9px; }
+.v6-dictionary-entry-result {
+  margin-top: 9px;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: var(--surface);
+}
+.v6-dictionary-entry-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-bottom: 9px; border-bottom: 1px solid var(--line); }
+.v6-dictionary-entry-heading h2 { min-width: 0; margin: 0; color: var(--title); font-size: 19px; line-height: 1.35; overflow-wrap: anywhere; }
+.v6-dictionary-phonetic { flex: 0 0 auto; color: var(--muted); font-size: 10px; line-height: 1.35; text-align: right; }
+.v6-dictionary-sense-row { padding: 11px 0 0; }
+.v6-dictionary-sense-row + .v6-dictionary-sense-row { margin-top: 10px; border-top: 1px solid var(--line); }
+.v6-dictionary-sense-row h3 { margin: 0 0 6px; color: var(--accent); font-size: 12px; line-height: 1.5; }
+.v6-dictionary-sense-translations { margin: 0 0 5px; color: var(--title); font-size: 13px; font-weight: 700; line-height: 1.55; overflow-wrap: anywhere; }
+.v6-dictionary-sense-definition { margin: 0; color: var(--ink); font-size: 12px; line-height: 1.65; overflow-wrap: anywhere; }
+.v6-dictionary-example-section { margin-top: 13px; padding-top: 10px; border-top: 1px solid var(--line); }
+.v6-dictionary-examples-heading { margin: 0; color: var(--title); font-size: 12px; line-height: 1.5; }
+.v6-dictionary-sense-examples { display: grid; gap: 5px; margin: 7px 0 0; padding-left: 18px; color: var(--muted); font-size: 11px; line-height: 1.6; }
+.v6-dictionary-sense-examples li { padding-left: 2px; overflow-wrap: anywhere; }
+.v6-dictionary-sense-examples .v6-dictionary-example-label { margin: 2px 0 0 -16px; padding: 0; color: var(--accent); font-size: 10px; font-weight: 700; list-style: none; }
+.v6-dictionary-sense-source { margin: 9px 0 0; color: var(--muted); font-size: 9px; line-height: 1.4; }
+.v6-dictionary-word {
+  width: 100%;
+  min-height: 38px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 2px;
+  border: 0;
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: var(--title);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.v6-dictionary-word:hover,
+.v6-dictionary-word:focus-visible { color: var(--accent); }
+.v6-dictionary-word > span:first-child { min-width: 0; font-size: 12px; font-weight: 650; overflow-wrap: anywhere; }
+.v6-dictionary-word > span:last-child { color: var(--muted); font-size: 9px; text-align: right; }
+.v6-dictionary-load-more {
+  width: 100%;
+  min-height: 40px;
+  margin-top: 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.v6-dictionary-load-more[hidden] { display: none; }
+.v6-dictionary-load-more:focus-visible { outline: 3px solid rgba(20,184,166,.48); outline-offset: 2px; }
 .v6-alphabet-index {
-  max-height: 430px;
+  max-height: min(560px, 68vh);
   display: flex;
   flex-direction: column;
   align-items: stretch;
@@ -254,7 +328,7 @@
 }
 .v6-alphabet-index::-webkit-scrollbar { display: none; }
 .v6-alphabet-index button {
-  min-height: 24px;
+  min-height: 22px;
   padding: 0;
   border: 0;
   border-radius: 7px;
@@ -304,6 +378,67 @@
 .v6-resource-heading svg { width: 17px; height: 17px; color: var(--accent); transition: transform .18s ease; }
 .v6-resource-heading[aria-expanded="false"] svg { transform: rotate(-90deg); }
 .v6-resource-list[hidden] { display: none; }
+.v6-translation-add-model {
+  margin-top: 10px;
+  padding: 11px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface-2);
+}
+.v6-translation-add-model > summary {
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  color: var(--title);
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.v6-translation-add-model[open] > summary { margin-bottom: 8px; }
+.v6-translation-language-picker { background: var(--surface); }
+.v6-installed-model-list:empty::before { content: "此设备尚未下载翻译语言包。"; display: block; padding: 14px; border: 1px dashed var(--line-strong); border-radius: 14px; color: var(--muted); font-size: 11px; line-height: 1.55; }
+.v6-installed-translation-model .v6-resource-actions { margin-top: 2px; }
+.v6-installed-translation-model .v6-resource-actions button { flex: 0 1 112px; }
+.v6-translation-resource-picker {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 44px minmax(0, 1fr);
+  align-items: end;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: var(--surface);
+}
+.v6-translation-language-field { display: grid; min-width: 0; gap: 5px; color: var(--muted); font-size: 10px; line-height: 1.3; }
+.v6-translation-language-field select {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 8px;
+  border: 1px solid var(--line-strong);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: 11px;
+  text-overflow: ellipsis;
+}
+.v6-translation-language-field select:disabled { color: var(--muted); opacity: .72; }
+.v6-translation-swap {
+  width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--line-strong);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--accent);
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+.v6-translation-swap:disabled { color: var(--muted); opacity: .62; cursor: not-allowed; }
+.v6-translation-resource-hint { margin: 8px 3px 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .v6-resource-loading { padding: 14px; border: 1px dashed var(--line-strong); border-radius: 14px; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .v6-resource-card {
   display: grid;
@@ -320,6 +455,7 @@
 .v6-resource-copy { min-width: 0; }
 .v6-resource-copy strong { display: block; overflow-wrap: anywhere; color: var(--title); font-size: 12px; line-height: 1.45; }
 .v6-resource-copy small { display: block; margin-top: 4px; color: var(--muted); font-size: 10px; line-height: 1.45; }
+.v6-resource-empty { margin: 8px 0 0; padding: 12px; border: 1px dashed var(--line-strong); border-radius: 14px; color: var(--muted); font-size: 11px; line-height: 1.55; }
 .v6-resource-status {
   max-width: 116px;
   padding: 6px 8px;

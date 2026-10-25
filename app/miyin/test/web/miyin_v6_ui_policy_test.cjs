@@ -56,13 +56,21 @@ test('dictionary mode stays on the translation home; the separate dictionary but
   assertDoesNotMatch(previewOpen[0], /\.focus\s*\(/, 'entering the preview dictionary page must not summon the keyboard');
 });
 
+test('language package management opens the complete offline resources page and dictionary is labeled generically', () => {
+  assertMatches(appShell, /data-action="open-offline-resources">管理语言包/);
+  assertMatches(appShell, /action==="open-offline-resources"[\s\S]*?miyin:open-offline-resources/);
+  assertMatches(v6Ui, /miyin:open-offline-resources",\s*\(\)\s*=>\s*navigate\("resources"\)/);
+  assertMatches(appShell, /<b>词典<\/b>/);
+  assertDoesNotMatch(appShell, /<b>英汉词典<\/b>/);
+});
+
 test('returning from orb appearance to settings does not replace the original settings return destination', () => {
   const orbStyleHeader = appShell.match(/<header class="settings-head orb-style-head">([\s\S]*?)<\/header>/);
   assert.ok(orbStyleHeader, 'orb appearance screen header must exist');
-  assertMatches(orbStyleHeader[1], /data-action="orb-style-back"/);
+  assertMatches(orbStyleHeader[1], /data-action="appearance-back"/);
   assertDoesNotMatch(orbStyleHeader[1], /data-screen="settings"/);
   assertMatches(appShell, /function showScreen\(name,options=\{\}\)[\s\S]*?options\.recordSettingsReturn!==false/);
-  assertMatches(appShell, /case "orb-style-back":showScreen\("settings",\{recordSettingsReturn:false\}\);break;/);
+  assertMatches(appShell, /case "appearance-back":if\(!window\.MiyinAppearance\?\.back\?\.\(\)\)showScreen\("settings",\{recordSettingsReturn:false\}\);break;/);
 });
 
 test('the translation home shows dictionary entry only for word mode and restores sentence input tools', () => {
@@ -79,14 +87,20 @@ test('the translation home shows dictionary entry only for word mode and restore
   assertMatches(previewUi, /syncTranslationInputTool/);
 });
 
-test('dictionary lookup keeps the submitted query and never fabricates or fetches a dictionary result', () => {
+test('dictionary lookup uses the local English-Chinese dataset and never falls back to translation', () => {
   const handler = v6Ui.match(
-    /dictionaryForm\?\.addEventListener\("submit", event => \{([\s\S]*?)\n  \}, true\);/,
+    /dictionaryForm\?\.addEventListener\("submit", async event => \{([\s\S]*?)\n  \}, true\);/,
   );
   assert.ok(handler, 'dictionary form submit handler must exist');
-  assertMatches(handler[1], /write\("dictionary-last-submit"/);
-  assertMatches(handler[1], /不会改用普通翻译生成词义/);
-  assertDoesNotMatch(handler[1], /MiyinNativeBridge\.request|\bfetch\s*\(/);
+  assertMatches(handler[1], /write\("dictionary-draft"/);
+  assertMatches(handler[1], /const lookupMethod = \/\[\\u3400-\\u9fff\]\//);
+  assertMatches(handler[1], /MiyinNativeBridge\.request\(lookupMethod, \{ query \}\)/);
+  assertMatches(handler[1], /renderDictionaryLookup\(result\)/);
+  assertDoesNotMatch(handler[1], /translation\.translate|\bfetch\s*\(/);
+  assertMatches(router, /'dictionary\.lookup'/);
+  assertMatches(v6Ui, /61,468 个英语词头/);
+  assertMatches(v6Ui, /简体中文—日语词典 · 尚未接入/);
+  assertMatches(v6Ui, /简体中文—俄语词典 · 尚未接入/);
 });
 
 test('AI chat keeps a narrower touch-friendly composer aligned with the right mode wheel', () => {
@@ -222,15 +236,42 @@ test('AI reply completion and failure do not overwrite a draft edited after send
   assertDoesNotMatch(appShell, /clearDraftOnSuccess|input\.value===generation\.draftSnapshot/);
 });
 
-test('voice controls do not fabricate speech or translation text before speech recognition is connected', () => {
-  const handler = appShell.match(/function finishVoice\(kind\)\{([\s\S]*?)\n\s*\}/);
+test('voice controls use native recognition and never fabricate speech or translations', () => {
+  const handler = appShell.match(/function finishVoice\(kind\)\{[^}]*\}/);
   assert.ok(handler, 'voice release handler must exist');
-  assertMatches(handler[1], /语音识别尚未接入/);
-  assertDoesNotMatch(handler[1], /你好，很高兴认识你|Hello, it’s nice to meet you|正在翻译/);
+  assertMatches(appShell, /voice\.startListening/);
+  assertMatches(appShell, /voice\.stopListening/);
+  assertMatches(appShell, /recognition_final/);
+  assertDoesNotMatch(handler[0], /你好，很高兴认识你|Hello, it’s nice to meet you|正在翻译/);
   assertDoesNotMatch(appShell, /已识别（预览）/);
 });
 
-test('the face-to-face footer has no pause control and keeps only transient transcript status', () => {
+test('TTS prewarms the selected output voice and states multilingual ASR limits clearly', () => {
+  assertMatches(appShell, /function prewarmTtsVoice\([^]*MiyinNativeBridge\.request\("voice\.prepare"/);
+  assertMatches(appShell, /function updateLanguages\(\)[^]*prewarmTtsVoice\(pair\.targetTag/);
+  assertMatches(appShell, /miyin:native-host-ready",\(\)=>\{const pair=translationPairParams\(\);void prewarmTtsVoice/);
+  assertMatches(router, /'voice\.prepare'/);
+  assertMatches(appShell, /多语种自动识别 57 种可尝试；准确度因语种而异/);
+  assertMatches(appShell, /多语种自动识别 \$\{asrCount\} 种可尝试（准确度因语种而异）/);
+});
+
+test('TTS prewarm retry uses a bounded key cooldown and clears only the matching failed request', () => {
+  assertMatches(appShell, /TTS_PREWARM_RETRY_AFTER_MS=30000/);
+  assertMatches(appShell, /setTimeout\(\(\)=>resetTtsPrewarmKey\(key\),TTS_PREWARM_RETRY_AFTER_MS\)/);
+  assertMatches(appShell, /catch\(\(\)=>\{resetTtsPrewarmKey\(key\);return null\}\)/);
+  assertMatches(appShell, /function resetTtsPrewarmKey\(key\)\{if\(lastTtsPrewarmKey!==key\)return/);
+});
+
+test('TTS click-to-start latency is correlated by session until the native started event', () => {
+  assertMatches(appShell, /async function toggleSpeechPlayback\(button\)\{\s*const clickStartedAt=performance\.now\(\)[^]*beginTtsStartTimer\(sessionId,clickStartedAt\);[^]*request\("voice\.speak"/);
+  assertMatches(appShell, /async function previewTtsVoice\(value\)\{const clickStartedAt=performance\.now\(\)[^]*activeTtsSessionId=sessionId;beginTtsStartTimer\(sessionId,clickStartedAt\);[^]*request\("voice\.speak"/);
+  assertMatches(appShell, /if\(type==="tts_started"\)\{finishTtsStartTimer\(sessionId\);return\}/);
+  assertMatches(appShell, /click_to_started_ms=.*sessionId=/);
+  assertMatches(appShell, /ttsStartTimes\.delete\(sessionId\)/);
+  assertDoesNotMatch(appShell, /click_to_started_ms=[^\n]*text/);
+});
+
+test('the face-to-face footer has no pause control and exposes transient recognition status', () => {
   assertMatches(appShell, /id="face-status" role="status" aria-live="polite">准备就绪<\/small>/);
   assertMatches(appShell, /faceStatus|role="status"/);
   assertDoesNotMatch(appShell, /session-pause|data-action="toggle-pause"|facePaused/);
@@ -239,7 +280,14 @@ test('the face-to-face footer has no pause control and keeps only transient tran
   assertDoesNotMatch(previewStyles, /session-state/);
   assertMatches(appShell, /\.face-status-row \{[^}]*clip-path:inset\(50%\)/);
   assertMatches(appShell, /#screen-face \.face-status-row\.is-visible small \{[^}]*opacity:1/);
-  assertMatches(appShell, /setFaceStatus\("语音识别尚未接入",true,1200\)/);
+  const faceBottom = appShell.match(/<div class="face-bottom">([\s\S]*?)<div class="mode-wheel" data-wheel="translate"/);
+  assert.ok(faceBottom, 'face-to-face status must be in the footer above the language controls');
+  assert.ok(faceBottom[1].indexOf('face-status-row') < faceBottom[1].indexOf('face-language'));
+  assert.doesNotMatch(faceBottom[1], /face-mic-wrap[^]*face-status-row/);
+  assertMatches(appShell, /#screen-face \.face-status-row\.is-visible \{[^}]*position:relative;grid-column:1\/-1;[^}]*width:100%/);
+  assertMatches(appShell, /#screen-face \.face-status-row \{[^}]*position:absolute;[^}]*width:1px;height:1px/);
+  assertMatches(appShell, /recognition_partial/);
+  assertMatches(appShell, /正在聆听：/);
 });
 
 test('AI attachment menu shows accessible camera, screen, file, and image icons', () => {
@@ -292,13 +340,20 @@ test('history categories share one-line back controls and offer multi-select del
   assertMatches(previewStyles, /\.history-content \[data-history-back\][\s\S]*?white-space: nowrap/);
 });
 
-test('offline resources use the existing setting capsule and disclose unavailable integrations', () => {
-  assertMatches(v6Ui, /button class="setting-trigger v6-resource-trigger" type="button" data-screen="resources"/);
+test('offline resources use the setting capsule and describe bundled speech and dictionary data accurately', () => {
+  assertMatches(v6Ui, /button class="setting-trigger v6-resource-trigger appearance-surface" type="button" data-screen="resources"/);
   assertMatches(previewUi, /button class="setting-trigger v6-resource-trigger" type="button" data-screen="resources"/);
   assertMatches(appStyles, /\.v6-resource-trigger \{[^}]*appearance: none/);
   assertMatches(previewStyles, /\.v6-resource-trigger \{[^}]*appearance: none/);
-  assertMatches(v6Ui, /词典数据目录未接入/);
-  assertMatches(v6Ui, /独立资源目录未接入/);
+  assertMatches(v6Ui, /词典 · 已内置/);
+  assertMatches(v6Ui, /61,468 个英语词头/);
+  assertMatches(v6Ui, /data-v6-asr-resource/);
+  assertMatches(v6Ui, /data-v6-tts-resource/);
+  assertMatches(v6Ui, /voice\.multilingualAsrStatus/);
+  assertMatches(v6Ui, /voice\.multilingualTtsStatus/);
+  assertMatches(v6Ui, /随 APK 内置/);
+  assertDoesNotMatch(v6Ui, /下载多音色包|可选下载|删除多音色包/);
+  assertMatches(v6Ui, /已下载的语言包会完整列在上方/);
   assertMatches(previewUi, /词典查词|英汉词典/);
 });
 
@@ -329,8 +384,8 @@ test('settings/resource return keeps its original destination and system back cl
   }
   assertMatches(appShell, /restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true/);
   assertMatches(appShell, /settingsReturnStack=\[\]/);
-  assertMatches(appShell, /if\(origin==="orb-style"\)\{if\(!settingsReturnStack\.length\)settingsReturnStack\.push\("home"\)\}else if\(origin!=="settings"&&!restoringSettingsRoute&&options\.recordSettingsReturn!==false\)\{settingsReturnStack\.length=0;settingsReturnStack\.push\(origin\)/);
-  assertMatches(appShell, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home";settingsReturnStack\.length=0;const target=candidate!=="orb-style"/);
+  assertMatches(appShell, /if\(origin==="appearance"\)\{if\(!settingsReturnStack\.length\)settingsReturnStack\.push\("home"\)\}else if\(origin!=="settings"&&!restoringSettingsRoute&&options\.recordSettingsReturn!==false\)\{settingsReturnStack\.length=0;settingsReturnStack\.push\(origin\)/);
+  assertMatches(appShell, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home";settingsReturnStack\.length=0;const target=candidate!=="appearance"/);
   assertDoesNotMatch(appShell, /settingsReturnScreen|isSettingsOwnedRoute/);
 
   assertMatches(previewShell, /function showScreen\(name\)\{[\s\S]*?restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true;if\(origin!=="settings"&&!restoringSettingsRoute\)\{settingsReturnStack\.push\(origin\)/);
@@ -421,17 +476,22 @@ test('restored image picker failures show a short retry message', () => {
   assertMatches(appShell, /上次图片选择未能恢复，请重新选择/);
 });
 
-test('home transcript starts below the header without a flex spacer and keeps model status in settings', () => {
+test('home transcript starts below the header and settings opens shared language management', () => {
   assertDoesNotMatch(appShell, /\.home-transcript::before\s*\{/);
   assertDoesNotMatch(appStyles, /\.home-transcript::before\s*\{/);
   assertDoesNotMatch(previewStyles, /\.home-transcript::before\s*\{/);
   assertDoesNotMatch(appShell, /<button class="offline-model-status"/);
   assertDoesNotMatch(appShell, /class="native-model-row"/);
-  assertMatches(appShell, /<b>离线翻译模型<\/b>[\s\S]*?data-action="offline-model-manager"/);
+  assertMatches(appShell, /data-settings-language-card[\s\S]*?<b>离线翻译<\/b>[\s\S]*?data-action="open-offline-resources"/);
 });
 
-test('history sticky toolbar uses a surface background across themes', () => {
-  assertMatches(appShell, /\.history-unified-toolbar\s*\{[^}]*background:\s*var\(--surface\)/);
+test('translation history stays on one vertical page and avoids a large sticky white toolbar', () => {
+  assertMatches(appShell, /\.history-content\s*\{[^}]*overflow-x:\s*hidden[^}]*touch-action:\s*pan-y/);
+  assertMatches(appShell, /\.history-unified-toolbar\s*\{[^}]*position:\s*relative[^}]*background:\s*transparent/);
+  assertMatches(appShell, /\.native-history-pair\s*\{[^}]*display:\s*grid/);
+  assertMatches(appShell, /entry\.sourceText\|\|""/);
+  assertMatches(appShell, /entry\.translatedText\|\|""/);
+  assertDoesNotMatch(appShell, /const open=event\.target\.closest\("\[data-native-history-open\]"\)/);
 });
 
 test('choosing a translation file never overwrites the translation draft with a filename', () => {
@@ -439,4 +499,72 @@ test('choosing a translation file never overwrites the translation draft with a 
     assertMatches(source, /已选择「"\+f\.name\+"」/);
     assertDoesNotMatch(source, /translation-input"\)\.value="已添加文件："\+f\.name/);
   }
+});
+
+test('offline translation resources list every installed language model independently of the selected pair', () => {
+  assertMatches(v6Ui, /data-v6-installed-translation-models/);
+  assertMatches(v6Ui, /translation\.installedModels/);
+  assertMatches(v6Ui, /translation\.deleteLanguageModel/);
+  assertMatches(v6Ui, /data-v6-language-model-action="delete"/);
+  assertMatches(androidTranslationHandler, /"getDownloadedModels"/);
+  assertMatches(androidTranslationHandler, /getDownloadedModels\(TranslateRemoteModel::class\.java\)/);
+  assertMatches(androidTranslationHandler, /"deleteLanguageModel"/);
+  assertMatches(androidTranslationHandler, /\.language\b/);
+  assertDoesNotMatch(v6Ui, /translation\.deleteModel/);
+});
+
+test('dictionary selects a package and automatically routes Chinese or English lookup with bounded A-Z browsing', () => {
+  assertMatches(v6Ui, /<h1 class="v6-page-heading">词典<\/h1>/);
+  assertMatches(v6Ui, /data-v6-dictionary-package/);
+  assertMatches(v6Ui, /简体中文—日语词典 · 尚未接入/);
+  assertMatches(v6Ui, /简体中文—俄语词典 · 尚未接入/);
+  assertMatches(v6Ui, /输入中文或英语词条…/);
+  assertMatches(v6Ui, /输入中文或英语词条开始查询/);
+  assertDoesNotMatch(v6Ui, /placeholder = "输入英语单词或短语/);
+  assertMatches(v6Ui, /dictionary\.lookupChinese/);
+  assertMatches(v6Ui, /const lookupMethod = \/\[\\u3400-\\u9fff\]\//);
+  assertDoesNotMatch(v6Ui, /data-v6-dictionary-direction|查词方向|切换到“简体中文 → 英语”/);
+  assertMatches(v6Ui, /data-v6-alphabet-index/);
+  assertMatches(v6Ui, /data-v6-dictionary-browse-items/);
+  assertMatches(v6Ui, /dictionary\.browse/);
+  assertMatches(v6Ui, /ABCDEFGHIJKLMNOPQRSTUVWXYZ/);
+  const renderer = v6Ui.match(/const makeDictionaryEntryCard = entry => \{([\s\S]*?)\n  \};/);
+  assert.ok(renderer, 'dictionary entry renderer must exist');
+  assertMatches(renderer[1], /v6-dictionary-entry-result/);
+  assertMatches(renderer[1], /v6-dictionary-sense-row/);
+  assertMatches(renderer[1], /exampleGroups\.push/);
+  assert.ok(renderer[1].indexOf('card.append(meanings)') < renderer[1].indexOf('card.append(exampleSection)'), 'all meanings must appear before the shared examples section');
+  assertMatches(renderer[1], /美式 IPA/);
+  assertMatches(v6Ui, /美式 IPA/);
+  assertMatches(v6Ui, /ipaByWord/);
+  assertDoesNotMatch(renderer[1], /card\.className = "v6-dictionary-sense"/);
+  assertMatches(v6Ui, /音标数据暂缺/);
+  assertMatches(appStyles, /\.v6-dictionary-entry-result\s*\{/);
+  assertMatches(appStyles, /\.v6-dictionary-sense-row\s*\{/);
+  assertMatches(appStyles, /\.v6-dictionary-example-section\s*\{/);
+  assertMatches(appStyles, /\.v6-dictionary-word\s*\{/);
+  assertMatches(appStyles, /\.v6-dictionary-load-more\s*\{/);
+  assertMatches(appStyles, /\.v6-translation-add-model\s*>\s*summary/);
+});
+
+test('dictionary retries A after native-host readiness and reloads the current letter when opened', () => {
+  const readyRetry = v6Ui.match(
+    /const retryDictionaryBrowseWhenNativeHostReady = \(\) => \{([\s\S]*?)\n  \};/,
+  );
+  assert.ok(readyRetry, 'dictionary browse must retry after the native host is ready');
+  assertMatches(readyRetry[1], /isNativeHost\(\)/);
+  assertMatches(readyRetry[1], /loadDictionaryBrowsePage\("A", true\)/);
+  assertMatches(v6Ui, /addEventListener\("miyin:native-host-ready", retryDictionaryBrowseWhenNativeHostReady\)/);
+
+  const screenReload = v6Ui.match(
+    /const reloadDictionaryBrowseWhenScreenOpens = \(\) => \{([\s\S]*?)\n  \};/,
+  );
+  assert.ok(screenReload, 'opening the dictionary screen must load its current browse letter');
+  assertMatches(screenReload[1], /activeScreenName\(\) !== "dictionary"/);
+  assertMatches(screenReload[1], /loadDictionaryBrowsePage\(dictionaryBrowseLetter, true\)/);
+  assertMatches(v6Ui, /addEventListener\("miyin:surface-visibility-change", reloadDictionaryBrowseWhenScreenOpens\)/);
+
+  const browse = v6Ui.match(/const loadDictionaryBrowsePage = async[\s\S]*?\n  \};/);
+  assert.ok(browse, 'dictionary browse loader must remain available to both lifecycle retries');
+  assertMatches(browse[0], /请在觅音 App 中浏览本机词典。/);
 });

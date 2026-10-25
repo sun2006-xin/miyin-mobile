@@ -523,9 +523,9 @@
 
   const floatingEnabled = Boolean(load("floating-ball", false));
   let floatBallEnabled = floatingEnabled;
-  let audioSources = load("audio-sources", { app: true, mic: true });
-  let captionPrefs = load("caption-window", { position: "bottom", size: "standard", display: "bilingual", font: "standard", backdrop: "medium" });
-  let pipEnabled = Boolean(load("pip-enabled", false));
+  let audioSources = { app: true, mic: true };
+  let captionPrefs = { position: "bottom", size: "standard", display: "bilingual", font: "standard", backdrop: "medium", color: "white", ...load("caption-window", {}) };
+  let pipEnabled = Boolean(load("pip-enabled", true));
   let videoActive = false;
   let priorFocus = null;
 
@@ -566,7 +566,7 @@
   if (privacyPanel) {
     const row = document.createElement("div");
     row.className = "setting-row v4-floating-setting";
-    row.innerHTML = '<div class="setting-copy"><b>全局悬浮球</b><small>开启后可在其他 App 使用截图翻译和字幕工具</small><span class="v4-switch-status" id="v4-float-status">预览关闭</span></div><button class="v4-toggle" type="button" data-v4-float-toggle aria-pressed="false" aria-label="开启全局悬浮球"></button>';
+    row.innerHTML = '<div class="setting-copy"><b>全局悬浮球</b><small>在其他 App 使用截屏翻译、同传和设置</small><span class="v4-switch-status" id="v4-float-status">已关闭</span></div><button class="v4-toggle" type="button" data-v4-float-toggle aria-pressed="false" aria-label="开启全局悬浮球"></button>';
     privacyPanel.appendChild(row);
   }
 
@@ -578,9 +578,9 @@
       sourcePanel.className = "v4-audio-sources";
       sourcePanel.setAttribute("role", "group");
       sourcePanel.setAttribute("aria-label", "字幕采集音源，可同时选择多个来源");
-      sourcePanel.innerHTML = '<div class="v4-audio-heading"><strong>音频来源</strong><small>会议可同时开启两种</small></div><div class="v4-audio-grid">' +
-        '<button type="button" class="v4-audio-choice" data-v4-audio="app" aria-pressed="true"><span class="v4-audio-icon">' + icon.appAudio + '</span><span class="v4-audio-copy"><strong>其他 App 音频</strong><small>会议 / 直播 / 视频</small></span><span class="v4-audio-check"></span></button>' +
-        '<button type="button" class="v4-audio-choice" data-v4-audio="mic" aria-pressed="true"><span class="v4-audio-icon">' + icon.mic + '</span><span class="v4-audio-copy"><strong>麦克风</strong><small>你的现场发言</small></span><span class="v4-audio-check"></span></button>' +
+      sourcePanel.innerHTML = '<div class="v4-audio-heading"><strong>音频来源</strong><small>会议可同时采集双方发言</small></div><div class="v4-audio-grid">' +
+        '<button type="button" class="v4-audio-choice" data-v4-audio="app" aria-pressed="false"><span class="v4-audio-icon">' + icon.appAudio + '</span><span class="v4-audio-copy"><strong>其他 App 音频</strong><small>需系统授权 · 部分应用禁止采集</small></span></button>' +
+        '<button type="button" class="v4-audio-choice" data-v4-audio="mic" aria-pressed="true"><span class="v4-audio-icon">' + icon.mic + '</span><span class="v4-audio-copy"><strong>麦克风</strong><small>你的现场发言</small></span></button>' +
         '</div><div class="v4-audio-status" id="v4-audio-status">两种音源同时开启</div>';
       oldSources.insertAdjacentElement("afterend", sourcePanel);
       oldSources.remove();
@@ -591,28 +591,17 @@
       startButton.dataset.v4Action = "toggle-video";
       startButton.textContent = "开始识别";
     }
-    const pipButton = $(".video-setting .switch[aria-label='字幕画中画 PiP']", videoScreen);
-    if (pipButton) {
-      pipButton.addEventListener("click", event => {
-        event.stopPropagation();
-        pipEnabled = !pipEnabled;
-        pipButton.setAttribute("aria-pressed", String(pipEnabled));
-        save("pip-enabled", pipEnabled);
-        syncSubtitleWindow();
-        notify(pipEnabled ? "字幕窗口已开启，可在其他页面预览" : "字幕窗口已关闭");
-      });
-    }
-    const bilingualButton = $(".video-setting .switch[aria-label='字幕双语对照']", videoScreen);
-    if (bilingualButton) {
-      bilingualButton.addEventListener("click", event => {
-        event.stopPropagation();
+    document.addEventListener("click", event => {
+      const bilingualButton = event.target.closest('#screen-video .video-setting .switch[aria-label="字幕双语对照"]');
+      if (bilingualButton) {
         const enabled = bilingualButton.getAttribute("aria-pressed") !== "true";
         bilingualButton.setAttribute("aria-pressed", String(enabled));
         captionPrefs.display = enabled ? "bilingual" : "translation";
         save("caption-window", captionPrefs);
         syncSubtitleWindow();
-      });
-    }
+        window.dispatchEvent(new Event("miyin:subtitle-preferences-change"));
+      }
+    });
   }
 
   const floatingLayer = document.createElement("div");
@@ -641,8 +630,6 @@
       button.setAttribute("aria-pressed", String(enabled));
       if (button.classList.contains("v4-audio-choice")) {
         button.setAttribute("aria-label", (button.dataset.v4Audio === "app" ? "其他 App 音频" : "麦克风") + (enabled ? "，已开启" : "，已关闭"));
-        const check = $(".v4-audio-check", button);
-        if (check) check.innerHTML = enabled ? icon.check : "";
       }
       const check = $(".v4-source-check", button);
       if (check) check.innerHTML = enabled ? icon.check : "";
@@ -669,14 +656,17 @@
     windowEl.dataset.display = captionPrefs.display;
     windowEl.dataset.font = captionPrefs.font;
     windowEl.dataset.backdrop = captionPrefs.backdrop;
+    windowEl.dataset.color = captionPrefs.color || "white";
     const source = $("#screen-home .v4-language-shell [data-action='source-language']")?.textContent.trim() || "中";
     const target = $("#screen-home .v4-language-shell [data-action='target-language']")?.textContent.trim() || "英";
     const meta = $("#v4-pip-meta");
-    const metaText = "字幕预览 · " + source + " ⇄ " + target;
+    const metaText = "同传字幕 · " + source + " ⇄ " + target;
     if (meta && meta.textContent !== metaText) meta.textContent = metaText;
     const videoPreview = $("#screen-video .subtitle-preview");
     if (videoPreview) {
       videoPreview.dataset.v4Display = captionPrefs.display;
+      videoPreview.dataset.v4Font = captionPrefs.font;
+      videoPreview.dataset.v4Color = captionPrefs.color;
       const original = $(".caption-card:not(.translation)", videoPreview);
       const translated = $(".caption-card.translation", videoPreview);
       if (original) original.hidden = captionPrefs.display === "translation";
@@ -685,12 +675,33 @@
     syncSettingSheet();
   }
 
+  window.addEventListener("miyin:subtitle-preferences-change", () => {
+    pipEnabled = Boolean(load("pip-enabled", true));
+    captionPrefs = { ...captionPrefs, ...load("caption-window", {}) };
+    syncSubtitleWindow();
+  });
+  window.addEventListener("miyin:caption-quick-preferences", event => {
+    const incoming = event.detail || {};
+    const allowed = { font: ["small", "standard", "large"], color: ["white", "mint", "yellow"], display: ["bilingual", "source", "translation"], size: ["small", "standard", "large"] };
+    for (const [key, values] of Object.entries(allowed)) {
+      if (values.includes(incoming[key])) captionPrefs[key] = incoming[key];
+    }
+    save("caption-window", captionPrefs);
+    window.dispatchEvent(new Event("miyin:subtitle-preferences-change"));
+  });
+
   function syncSettingSheet() {
     if (openSheetKind !== "caption-settings") return;
     $$("[data-v4-pref]", sheet).forEach(button => button.setAttribute("aria-pressed", String(captionPrefs[button.dataset.v4Pref] === button.dataset.v4Value)));
     const positionLabel = { top: "上方", middle: "中间", bottom: "下方" }[captionPrefs.position] || "下方";
     const previewPosition = $("#v4-setting-preview-position", sheet);
     if (previewPosition && previewPosition.textContent !== positionLabel) previewPosition.textContent = positionLabel;
+    const demo = $(".v4-demo-screen", sheet);
+    if (demo) {
+      demo.dataset.backdrop = captionPrefs.backdrop || "medium";
+      demo.dataset.color = captionPrefs.color || "white";
+      demo.dataset.font = captionPrefs.font || "standard";
+    }
   }
 
   function setFloatBall(enabled, quiet = false) {
@@ -719,21 +730,23 @@
     priorFocus = document.activeElement;
     closeFloatMenu();
     if (kind === "screenshot") {
-      sheet.innerHTML = '<section class="v4-sheet-card" role="dialog" aria-modal="true" aria-labelledby="v4-sheet-title"><div class="v4-sheet-head"><h2 id="v4-sheet-title">截图翻译</h2><button class="v4-sheet-close" type="button" data-v4-action="close-sheet" aria-label="关闭">×</button></div><p class="v4-sheet-copy">从当前画面选取文字并查看译文。这里先展示流程样例，暂不读取其他 App 的真实屏幕。</p><div class="v4-demo-screen"><div class="v4-demo-screen-head"><span>课程视频</span><span>09:30</span><span>⋯</span></div><div class="v4-demo-screen-copy"><b>THE COURSE STARTS AT HALF PAST NINE.</b><small>示例画面 · 已选择文字区域</small></div></div><div class="v4-result"><div><small>识别原文 · English</small><strong>The course starts at half past nine.</strong></div><div><small>翻译结果 · 简体中文</small><strong>课程九点半开始。</strong></div></div><p class="v4-note">正式功能会在用户授权后截取当前屏幕，并提供选择文字区域和翻译结果。</p><div class="v4-sheet-actions"><button type="button" data-v4-action="close-sheet">关闭</button><button class="primary" type="button" data-v4-action="save-screenshot-draft">保存译文草稿</button></div></section>';
+      sheet.innerHTML = '<section class="v4-sheet-card" role="dialog" aria-modal="true" aria-labelledby="v4-sheet-title"><div class="v4-sheet-head"><h2 id="v4-sheet-title">截屏翻译</h2><button class="v4-sheet-close" type="button" data-v4-action="close-sheet" aria-label="关闭">×</button></div><p class="v4-sheet-copy">切换到要翻译的应用，点击觅音悬浮球中的“截屏翻译”。允许系统单次截屏后，觅音会在原图文字位置生成译图。</p><div class="v4-sheet-actions"><button type="button" class="primary" data-v4-action="close-sheet">知道了</button></div></section>';
     } else {
-      sheet.innerHTML = '<section class="v4-sheet-card" role="dialog" aria-modal="true" aria-labelledby="v4-sheet-title"><div class="v4-sheet-head"><h2 id="v4-sheet-title">字幕窗口设置</h2><button class="v4-sheet-close" type="button" data-v4-action="close-sheet" aria-label="关闭">×</button></div><p class="v4-sheet-copy">调整字幕小窗口的位置、大小、采集音源和译文显示。更改会同步到悬浮窗预览。</p><div class="v4-demo-screen"><div class="v4-demo-screen-head"><span>字幕窗口预览</span><span id="v4-setting-preview-position">下方</span><span>觅音</span></div><div class="v4-demo-screen-copy"><b>The course starts at half past nine.</b><small>课程九点半开始。</small></div></div>' +
+      sheet.innerHTML = '<section class="v4-sheet-card" role="dialog" aria-modal="true" aria-labelledby="v4-sheet-title"><div class="v4-sheet-head"><h2 id="v4-sheet-title">字幕窗口设置</h2><button class="v4-sheet-close" type="button" data-v4-action="close-sheet" aria-label="关闭">×</button></div><p class="v4-sheet-copy">调整字幕窗口的位置、大小、音源和显示内容。正在同传时会立即生效。</p><div class="v4-demo-screen"><div class="v4-demo-screen-head"><span>字幕窗口预览</span><span id="v4-setting-preview-position">下方</span><span>觅音</span></div><div class="v4-demo-screen-copy"><b>The course starts at half past nine.</b><small>课程九点半开始。</small></div></div>' +
         '<section class="v4-setting-group"><b>窗口位置</b><div class="v4-choice-row"><button type="button" data-v4-pref="position" data-v4-value="top">上方</button><button type="button" data-v4-pref="position" data-v4-value="middle">中间</button><button type="button" data-v4-pref="position" data-v4-value="bottom">下方</button></div></section>' +
-        '<section class="v4-setting-group"><b>窗口大小</b><div class="v4-choice-row"><button type="button" data-v4-pref="size" data-v4-value="small">小</button><button type="button" data-v4-pref="size" data-v4-value="standard">标准</button><button type="button" data-v4-pref="size" data-v4-value="large">大</button></div></section>' +
-        '<section class="v4-setting-group"><b>音频来源 · 可以同时开启</b><div class="v4-source-sheet-list"><button type="button" data-v4-audio="app" aria-pressed="false"><span>其他 App 音频 · 会议 / 直播 / 视频</span><span class="v4-source-check"></span></button><button type="button" data-v4-audio="mic" aria-pressed="false"><span>麦克风 · 你的现场发言</span><span class="v4-source-check"></span></button></div></section>' +
+        '<section class="v4-setting-group"><b>字幕框高度 · 可见历史</b><div class="v4-choice-row"><button type="button" data-v4-pref="size" data-v4-value="small">约两段</button><button type="button" data-v4-pref="size" data-v4-value="standard">标准</button><button type="button" data-v4-pref="size" data-v4-value="large">更多历史</button></div></section>' +
+        '<section class="v4-setting-group"><b>音频来源 · 可同时开启</b><div class="v4-source-sheet-list"><button type="button" data-v4-audio="app" aria-pressed="false"><span>其他 App 媒体声音 · 对方发言</span><span class="v4-source-check"></span></button><button type="button" data-v4-audio="mic" aria-pressed="false"><span>麦克风 · 我的发言</span><span class="v4-source-check"></span></button></div></section>' +
+        '<section class="v4-setting-group"><b>翻译语言</b><div class="v4-choice-row"><button type="button" data-v4-action="choose-caption-language">选择源语言与译文语言</button></div></section>' +
         '<section class="v4-setting-group"><b>字幕内容</b><div class="v4-choice-row"><button type="button" data-v4-pref="display" data-v4-value="bilingual">原文 + 译文</button><button type="button" data-v4-pref="display" data-v4-value="translation">仅译文</button><button type="button" data-v4-pref="display" data-v4-value="source">仅原文</button></div></section>' +
-        '<section class="v4-setting-group"><b>字号与底色</b><div class="v4-choice-row"><button type="button" data-v4-pref="font" data-v4-value="small">小字</button><button type="button" data-v4-pref="font" data-v4-value="standard">标准</button><button type="button" data-v4-pref="font" data-v4-value="large">大字</button></div><div class="v4-choice-row" style="margin-top:6px"><button type="button" data-v4-pref="backdrop" data-v4-value="light">浅色底</button><button type="button" data-v4-pref="backdrop" data-v4-value="medium">半透明</button><button type="button" data-v4-pref="backdrop" data-v4-value="dark">深色底</button></div></section>' +
-        '<p class="v4-note">音源开关分别控制 App 播放声音和麦克风输入；两项都开启时，会议双方的声音都可进入字幕流程。</p><div class="v4-sheet-actions"><button type="button" data-v4-action="close-sheet">完成</button></div></section>';
+        '<section class="v4-setting-group"><b>字幕外观</b><div class="v4-choice-row"><button type="button" data-v4-pref="font" data-v4-value="small">小字</button><button type="button" data-v4-pref="font" data-v4-value="standard">标准</button><button type="button" data-v4-pref="font" data-v4-value="large">大字</button></div><div class="v4-choice-row" style="margin-top:6px"><button type="button" data-v4-pref="backdrop" data-v4-value="clear">更透明</button><button type="button" data-v4-pref="backdrop" data-v4-value="light">浅色半透明</button><button type="button" data-v4-pref="backdrop" data-v4-value="medium">深色半透明</button><button type="button" data-v4-pref="backdrop" data-v4-value="dark">深色增强</button></div><div class="v4-choice-row" style="margin-top:6px"><button type="button" data-v4-pref="color" data-v4-value="white">白字</button><button type="button" data-v4-pref="color" data-v4-value="mint">薄荷字</button><button type="button" data-v4-pref="color" data-v4-value="yellow">暖黄字</button></div></section>' +
+        '<p class="v4-note">其他 App 音频只采集 Android 和播放应用允许录制的媒体声音；通话声音可能无法采集。</p><div class="v4-sheet-actions"><button type="button" data-v4-action="close-sheet">完成</button></div></section>';
     }
     sheet.classList.add("open");
     sheet.setAttribute("aria-hidden", "false");
     if (kind === "caption-settings") {
       syncAudio();
       syncSettingSheet();
+      window.dispatchEvent(new Event("miyin:caption-settings-opened"));
     }
     const first = $("button", sheet);
     if (first) window.setTimeout(() => first.focus(), 0);
@@ -834,6 +847,7 @@
       }
       if (name === "open-screenshot") { openSheet("screenshot"); return; }
       if (name === "open-caption-settings") { openSheet("caption-settings"); return; }
+      if (name === "choose-caption-language") { closeSheet(); $("#screen-video .subtitle-lang")?.click(); return; }
       if (name === "close-sheet") { closeSheet(); return; }
       if (name === "save-screenshot-draft") { closeSheet(); notify("示例译文已加入本地草稿"); return; }
       if (name === "toggle-video") { toggleVideo(); return; }
@@ -860,6 +874,7 @@
       captionPrefs[preference.dataset.v4Pref] = preference.dataset.v4Value;
       save("caption-window", captionPrefs);
       syncSubtitleWindow();
+      window.dispatchEvent(new Event("miyin:subtitle-preferences-change"));
       return;
     }
 

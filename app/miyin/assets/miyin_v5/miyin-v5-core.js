@@ -244,6 +244,104 @@
     });
   }
 
+  function normalizeSpeechLanguageTag(value) {
+    if (typeof value !== "string") return null;
+    const normalized = value.trim().replace(/_/g, "-").toLocaleLowerCase();
+    if (!normalized) return null;
+
+    const aliases = {
+      chinese: "zh-Hans",
+      mandarin: "zh-Hans",
+      english: "en",
+      japanese: "ja",
+      french: "fr",
+      russian: "ru",
+      korean: "ko",
+      spanish: "es",
+      german: "de",
+      italian: "it",
+      portuguese: "pt",
+      dutch: "nl",
+      arabic: "ar",
+      hindi: "hi",
+      thai: "th",
+      turkish: "tr",
+      vietnamese: "vi",
+      indonesian: "id",
+      ukrainian: "uk",
+      polish: "pl",
+      swedish: "sv",
+      norwegian: "no",
+      danish: "da",
+      finnish: "fi",
+      czech: "cs",
+      greek: "el",
+      hebrew: "he",
+      hungarian: "hu",
+      romanian: "ro",
+      catalan: "ca",
+      croatian: "hr",
+      bulgarian: "bg",
+      serbian: "sr",
+      slovak: "sk",
+      slovenian: "sl",
+      malay: "ms",
+      persian: "fa",
+      bengali: "bn",
+      tamil: "ta",
+      telugu: "te",
+      marathi: "mr",
+      urdu: "ur",
+      swahili: "sw",
+      afrikaans: "af",
+      icelandic: "is",
+      welsh: "cy",
+      bosnian: "bs",
+      latvian: "lv",
+      lithuanian: "lt",
+      estonian: "et",
+      macedonian: "mk",
+      albanian: "sq",
+      armenian: "hy",
+      georgian: "ka",
+      lao: "lo",
+      khmer: "km",
+      myanmar: "my",
+    };
+    if (aliases[normalized]) return aliases[normalized];
+    if (normalized === "zh-hans") return "zh-Hans";
+    if (normalized === "zh-hant") return "zh-Hant";
+    if (normalized === "zh" || normalized.startsWith("zh-cn") || normalized.startsWith("zh-sg")) return "zh-Hans";
+    if (normalized.startsWith("zh-tw") || normalized.startsWith("zh-hk") || normalized.startsWith("zh-hant")) return "zh-Hant";
+    if (!/^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/u.test(normalized)) return null;
+    return normalized.split("-")[0];
+  }
+
+  function detectDistinctiveScriptLanguageTag(text) {
+    const value = String(text ?? "");
+    if (/[\u3040-\u30ff]/u.test(value)) return "ja";
+    if (/[\uac00-\ud7af]/u.test(value)) return "ko";
+    if (/[\u0e00-\u0e7f]/u.test(value)) return "th";
+    if (/[\u0370-\u03ff]/u.test(value)) return "el";
+    if (/[\u0590-\u05ff]/u.test(value)) return "he";
+    return null;
+  }
+
+  function resolveSpeechTranslationPair({ selectedSourceTag, selectedTargetTag, detectedLanguageTag }) {
+    const sourceTag = normalizeSpeechLanguageTag(selectedSourceTag);
+    const targetTag = normalizeSpeechLanguageTag(selectedTargetTag);
+    const detectedTag = normalizeSpeechLanguageTag(detectedLanguageTag);
+    if (!sourceTag || !targetTag || !detectedTag || sourceTag === targetTag) {
+      return { status: "unknown", detectedLanguageTag: detectedTag };
+    }
+    if (detectedTag !== sourceTag && detectedTag !== targetTag) {
+      return { status: "unsupported", detectedLanguageTag: detectedTag };
+    }
+    return detectedTag === targetTag
+      ? { status: "ready", sourceTag: targetTag, targetTag: sourceTag }
+      : { status: "ready", sourceTag, targetTag };
+  }
+
   function canRunTranslationMode(mode, dictionaryPackageInstalled) {
     if (mode === "sentence") return true;
     if (mode === "dictionary") return dictionaryPackageInstalled === true;
@@ -308,9 +406,12 @@
     createContextAttachment,
     createGeneration,
     createScreenReturnStack,
+    detectDistinctiveScriptLanguageTag,
     filterInstalledTranslationPairs,
     isSamePendingHomeTranslation,
+    normalizeSpeechLanguageTag,
     removeContextAttachment,
+    resolveSpeechTranslationPair,
     searchConversations,
     shouldConsumeRetriedChatDraft,
     shouldRestoreChatDraft,
