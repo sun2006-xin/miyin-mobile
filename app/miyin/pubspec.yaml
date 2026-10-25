@@ -1,7 +1,7 @@
 name: miyin_app
 description: "觅音独立手机应用"
 publish_to: 'none'
-version: 1.5.0+12
+version: 1.5.1+13
 
 environment:
   sdk: ^3.13.2
@@ -32,6 +32,7 @@ flutter:
     - assets/aurora-shape.glsl
     - assets/miyin-mode-wheel-glass.glsl
     - assets/miyin_v5/
+    - assets/miyin_v5/fonts/
     - assets/voice/asr-zh-en/
     - assets/voice/asr-whisper-base/
     - assets/voice/tts-melo-zh-en/

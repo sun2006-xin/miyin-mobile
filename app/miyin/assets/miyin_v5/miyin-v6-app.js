@@ -261,8 +261,8 @@
         modal.querySelector(".modal-close")?.click();
         return true;
       }
-      if (document.querySelector("#screen-orb-style.active")) {
-        document.querySelector("#screen-orb-style [data-action='orb-style-back']")?.click();
+      if (document.querySelector("#screen-appearance.active")) {
+        document.querySelector("#screen-appearance [data-action='appearance-back']")?.click();
         return true;
       }
       if (document.querySelector("#screen-settings.active")) {
@@ -412,7 +412,7 @@
   if (settingsList) {
     settingsList.insertAdjacentHTML("beforeend", `
       <article class="setting-card v6-resource-entry">
-        <button class="setting-trigger v6-resource-trigger" type="button" data-screen="resources" aria-label="打开离线资源管理">
+        <button class="setting-trigger v6-resource-trigger appearance-surface" type="button" data-screen="resources" aria-label="打开离线资源管理">
           <span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 5h16v14H4z"/><path d="M8 9h8M8 13h5m-3 6v-3"/><circle cx="17" cy="16" r="2.2"/></svg>离线资源</span>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m9 18 6-6-6-6"/></svg>
         </button>

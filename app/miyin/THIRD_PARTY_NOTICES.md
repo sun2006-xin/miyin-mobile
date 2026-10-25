@@ -1,5 +1,16 @@
 # Third-party notices
 
+## Bundled Chinese title font
+
+The appearance page bundles the Noto Serif SC variable font for Chinese
+headings. Noto Serif CJK is developed by Google and Adobe and is nearly
+identical in design to Source Han Serif. The font is available under the
+[SIL Open Font License 1.1](https://github.com/notofonts/noto-cjk/blob/main/Serif/LICENSE).
+The license text is included at `assets/miyin_v5/fonts/OFL.txt`.
+
+Bundled file: `assets/miyin_v5/fonts/NotoSerifSC-VF.ttf`.
+SHA-256: `A4AED9985A5916FBF6690456F8732A9FCCD517938E353165D4142B4F11A39280`.
+
 ## Chinese and English speech recognition model
 
 觅音 bundles the `k2fsa-zipformer-bilingual-zh-en-t` streaming model from

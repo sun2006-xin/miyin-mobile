@@ -579,8 +579,8 @@
       sourcePanel.setAttribute("role", "group");
       sourcePanel.setAttribute("aria-label", "字幕采集音源，可同时选择多个来源");
       sourcePanel.innerHTML = '<div class="v4-audio-heading"><strong>音频来源</strong><small>会议可同时采集双方发言</small></div><div class="v4-audio-grid">' +
-        '<button type="button" class="v4-audio-choice" data-v4-audio="app" aria-pressed="false"><span class="v4-audio-icon">' + icon.appAudio + '</span><span class="v4-audio-copy"><strong>其他 App 音频</strong><small>需系统授权 · 部分应用禁止采集</small></span><span class="v4-audio-check"></span></button>' +
-        '<button type="button" class="v4-audio-choice" data-v4-audio="mic" aria-pressed="true"><span class="v4-audio-icon">' + icon.mic + '</span><span class="v4-audio-copy"><strong>麦克风</strong><small>你的现场发言</small></span><span class="v4-audio-check"></span></button>' +
+        '<button type="button" class="v4-audio-choice" data-v4-audio="app" aria-pressed="false"><span class="v4-audio-icon">' + icon.appAudio + '</span><span class="v4-audio-copy"><strong>其他 App 音频</strong><small>需系统授权 · 部分应用禁止采集</small></span></button>' +
+        '<button type="button" class="v4-audio-choice" data-v4-audio="mic" aria-pressed="true"><span class="v4-audio-icon">' + icon.mic + '</span><span class="v4-audio-copy"><strong>麦克风</strong><small>你的现场发言</small></span></button>' +
         '</div><div class="v4-audio-status" id="v4-audio-status">两种音源同时开启</div>';
       oldSources.insertAdjacentElement("afterend", sourcePanel);
       oldSources.remove();
@@ -630,8 +630,6 @@
       button.setAttribute("aria-pressed", String(enabled));
       if (button.classList.contains("v4-audio-choice")) {
         button.setAttribute("aria-label", (button.dataset.v4Audio === "app" ? "其他 App 音频" : "麦克风") + (enabled ? "，已开启" : "，已关闭"));
-        const check = $(".v4-audio-check", button);
-        if (check) check.innerHTML = enabled ? icon.check : "";
       }
       const check = $(".v4-source-check", button);
       if (check) check.innerHTML = enabled ? icon.check : "";

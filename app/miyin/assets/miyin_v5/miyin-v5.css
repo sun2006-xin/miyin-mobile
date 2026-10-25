@@ -62,9 +62,6 @@
 .v4-audio-copy { min-width: 0; flex: 1; }
 .v4-audio-copy strong { display: block; overflow: hidden; font-size: 9px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
 .v4-audio-copy small { display: block; margin-top: 2px; overflow: hidden; color: var(--muted); font-size: 7px; text-overflow: ellipsis; white-space: nowrap; }
-.v4-audio-check { width: 14px; height: 14px; flex: none; border: 1px solid var(--line-strong); border-radius: 50%; display: grid; place-items: center; }
-.v4-audio-choice[aria-pressed="true"] .v4-audio-check { border-color: var(--ink); background: var(--ink); color: #fff; }
-.v4-audio-check svg { width: 9px; height: 9px; }
 .v4-audio-status { min-height: 13px; color: var(--muted); font-size: 8px; line-height: 1.4; }
 .v4-audio-status[data-error="true"] { color: var(--danger); }
 

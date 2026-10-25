@@ -67,10 +67,10 @@ test('language package management opens the complete offline resources page and 
 test('returning from orb appearance to settings does not replace the original settings return destination', () => {
   const orbStyleHeader = appShell.match(/<header class="settings-head orb-style-head">([\s\S]*?)<\/header>/);
   assert.ok(orbStyleHeader, 'orb appearance screen header must exist');
-  assertMatches(orbStyleHeader[1], /data-action="orb-style-back"/);
+  assertMatches(orbStyleHeader[1], /data-action="appearance-back"/);
   assertDoesNotMatch(orbStyleHeader[1], /data-screen="settings"/);
   assertMatches(appShell, /function showScreen\(name,options=\{\}\)[\s\S]*?options\.recordSettingsReturn!==false/);
-  assertMatches(appShell, /case "orb-style-back":showScreen\("settings",\{recordSettingsReturn:false\}\);break;/);
+  assertMatches(appShell, /case "appearance-back":if\(!window\.MiyinAppearance\?\.back\?\.\(\)\)showScreen\("settings",\{recordSettingsReturn:false\}\);break;/);
 });
 
 test('the translation home shows dictionary entry only for word mode and restores sentence input tools', () => {
@@ -341,7 +341,7 @@ test('history categories share one-line back controls and offer multi-select del
 });
 
 test('offline resources use the setting capsule and describe bundled speech and dictionary data accurately', () => {
-  assertMatches(v6Ui, /button class="setting-trigger v6-resource-trigger" type="button" data-screen="resources"/);
+  assertMatches(v6Ui, /button class="setting-trigger v6-resource-trigger appearance-surface" type="button" data-screen="resources"/);
   assertMatches(previewUi, /button class="setting-trigger v6-resource-trigger" type="button" data-screen="resources"/);
   assertMatches(appStyles, /\.v6-resource-trigger \{[^}]*appearance: none/);
   assertMatches(previewStyles, /\.v6-resource-trigger \{[^}]*appearance: none/);
@@ -384,8 +384,8 @@ test('settings/resource return keeps its original destination and system back cl
   }
   assertMatches(appShell, /restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true/);
   assertMatches(appShell, /settingsReturnStack=\[\]/);
-  assertMatches(appShell, /if\(origin==="orb-style"\)\{if\(!settingsReturnStack\.length\)settingsReturnStack\.push\("home"\)\}else if\(origin!=="settings"&&!restoringSettingsRoute&&options\.recordSettingsReturn!==false\)\{settingsReturnStack\.length=0;settingsReturnStack\.push\(origin\)/);
-  assertMatches(appShell, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home";settingsReturnStack\.length=0;const target=candidate!=="orb-style"/);
+  assertMatches(appShell, /if\(origin==="appearance"\)\{if\(!settingsReturnStack\.length\)settingsReturnStack\.push\("home"\)\}else if\(origin!=="settings"&&!restoringSettingsRoute&&options\.recordSettingsReturn!==false\)\{settingsReturnStack\.length=0;settingsReturnStack\.push\(origin\)/);
+  assertMatches(appShell, /function backFromSettings\(\)\{const candidate=settingsReturnStack\.pop\(\)\|\|"home";settingsReturnStack\.length=0;const target=candidate!=="appearance"/);
   assertDoesNotMatch(appShell, /settingsReturnScreen|isSettingsOwnedRoute/);
 
   assertMatches(previewShell, /function showScreen\(name\)\{[\s\S]*?restoringSettingsRoute=window\.MiyinV6Navigation\?\.consumeSettingsReturnRestore\?\.\(\)===true;if\(origin!=="settings"&&!restoringSettingsRoute\)\{settingsReturnStack\.push\(origin\)/);
