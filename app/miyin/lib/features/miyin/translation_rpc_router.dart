@@ -839,6 +839,7 @@ final class TranslationRpcRouter {
     if (value == null || value == 'translation') return 'translation';
     if (value == 'face') return 'face';
     if (value == 'video') return 'video';
+    if (value == 'chat') return 'chat';
     throw ArgumentError.value(value, 'mode', 'Invalid speech mode.');
   }
 

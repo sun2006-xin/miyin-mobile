@@ -108,7 +108,7 @@
     voiceStreamTimer = window.setTimeout(revealNext, 100);
   }
   function voicePanelMarkup() {
-    return '<div class="voice-experience"><header class="voice-topbar"><button class="voice-history" type="button" data-screen="history" aria-label="AI 会话历史" title="AI 会话历史"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="voice-top-title"><strong id="voice-title">觅音</strong></div><button class="voice-profile" type="button" data-screen="settings" aria-label="用户与设置" title="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header><main class="voice-stage"><p class="sr-only" id="voice-copy">AI 实时聊天的单一会话页面。上滑或点按箭头查看字幕，下滑或再次点按箭头收起字幕。</p><div class="voice-orb-row"><button class="voice-caption-toggle" type="button" data-v5-voice-action="toggle-captions" aria-label="上滑查看对话" aria-expanded="false"><svg class="voice-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg><svg class="voice-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 10 6 6 6-6"/></svg></button><div class="voice-orb-slot"></div><div class="voice-state-label" id="voice-state-label" role="status" aria-live="polite"></div><span class="voice-hint" id="voice-hint" aria-hidden="true">上滑查看对话</span></div><div class="voice-transcript" id="voice-transcript" role="log" aria-label="AI 实时聊天字幕" aria-live="off" aria-hidden="true" inert></div></main><footer class="voice-controls"><div class="voice-interrupt-slot"><button class="voice-interrupt" type="button" data-v5-voice-action="interrupt" hidden>点击中断回答</button></div><div class="voice-extension-menu" id="voice-extension-menu" aria-label="更多能力" hidden><button type="button" data-v5-voice-action="camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.4-2h5.2L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.2"/></svg>打开摄像头</button><button type="button" data-v5-voice-action="screen-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4m-3-10 3-3 3 3m-3-3v7"/></svg>共享屏幕</button><button type="button" data-v5-voice-action="image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="1.3"/><path d="m20 15-4-4-7 8"/></svg>发送图片</button><button type="button" data-v5-voice-action="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6m-6 4h6"/></svg>发送文件</button><div class="voice-selected-files" id="voice-selected-files" aria-live="polite"></div></div><form class="voice-controls-row" id="voice-composer"><button class="voice-add" type="button" data-v5-voice-action="toggle-menu" aria-label="更多能力" aria-expanded="false" aria-controls="voice-extension-menu" title="更多能力"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><div class="voice-input-capsule"><input id="voice-input" type="text" enterkeyhint="send" autocomplete="off" placeholder="回复 AI…" aria-label="在 AI 实时聊天中输入消息"><button class="voice-microphone is-muted" type="button" data-v5-voice-action="toggle-mic" aria-label="开启麦克风" aria-pressed="false" title="开启麦克风"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6M4 4l16 16"/></svg></button></div><button class="voice-end" type="button" data-v5-voice-action="end" aria-label="结束 AI 实时会话" title="结束 AI 实时会话"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><input class="voice-file-input" id="voice-image-file" type="file" accept="image/*" aria-label="选择图片"><input class="voice-file-input" id="voice-document-file" type="file" accept=".pdf,.doc,.docx,.txt,.md,.ppt,.pptx,.xls,.xlsx" aria-label="选择文件"></footer></div>';
+    return '<div class="voice-experience"><header class="voice-topbar"><button class="voice-history" type="button" data-screen="history" aria-label="AI 会话历史" title="AI 会话历史"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.2 2"/></svg></button><div class="voice-top-title"><strong id="voice-title">觅音</strong></div><button class="voice-profile" type="button" data-screen="settings" aria-label="用户与设置" title="用户与设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c.4-3.5 2.8-5.5 7-5.5s6.6 2 7 5.5"/></svg></button></header><main class="voice-stage"><p class="sr-only" id="voice-copy">AI 实时聊天的单一会话页面。上滑或点按箭头查看字幕，下滑或再次点按箭头收起字幕。</p><div class="voice-orb-row"><button class="voice-caption-toggle" type="button" data-v5-voice-action="toggle-captions" aria-label="上滑查看对话" aria-expanded="false"><svg class="voice-arrow-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 14 6-6 6 6"/></svg><svg class="voice-arrow-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m6 10 6 6 6-6"/></svg></button><div class="voice-orb-slot"></div><div class="voice-state-label" id="voice-state-label" role="status" aria-live="polite"></div><span class="voice-hint" id="voice-hint" aria-hidden="true">上滑查看对话</span></div><div class="voice-transcript" id="voice-transcript" role="log" aria-label="AI 实时聊天字幕" aria-live="off" aria-hidden="true" inert></div></main><footer class="voice-controls"><div class="voice-interrupt-slot"><button class="voice-interrupt" type="button" data-v5-voice-action="interrupt" hidden>点击中断回答</button></div><div class="voice-extension-menu" id="voice-extension-menu" aria-label="更多能力" hidden><button type="button" data-v5-voice-action="camera"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6H8l1.4-2h5.2L16 6h1.5A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5z"/><circle cx="12" cy="12.5" r="3.2"/></svg>拍照附加文字</button><button type="button" data-v5-voice-action="screen-share"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="3" y="4" width="18" height="13" rx="2"/><path d="M8 21h8m-4-4v4m-3-10 3-3 3 3m-3-3v7"/></svg>共享屏幕</button><button type="button" data-v5-voice-action="image"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5h16v14H4z"/><circle cx="9" cy="10" r="1.3"/><path d="m20 15-4-4-7 8"/></svg>附加图片文字</button><button type="button" data-v5-voice-action="file"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h5M9 13h6m-6 4h6"/></svg>附加文本文件</button><button type="button" data-v5-voice-action="tts-language">朗读语言与音色</button><div class="voice-selected-files" id="voice-selected-files" aria-live="polite"></div></div><form class="voice-controls-row" id="voice-composer"><button class="voice-add" type="button" data-v5-voice-action="toggle-menu" aria-label="更多能力" aria-expanded="false" aria-controls="voice-extension-menu" title="更多能力"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button><div class="voice-input-capsule"><input id="voice-input" type="text" enterkeyhint="send" autocomplete="off" placeholder="回复 AI…" aria-label="在 AI 实时聊天中输入消息"><button class="voice-microphone is-muted" type="button" data-v5-voice-action="toggle-mic" aria-label="开启麦克风" aria-pressed="false" title="开启麦克风"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5.5 11.5a6.5 6.5 0 0 0 13 0M12 18v3m-3 0h6M4 4l16 16"/></svg></button></div><button class="voice-end" type="button" data-v5-voice-action="end" aria-label="结束 AI 实时会话" title="结束 AI 实时会话"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button></form><input class="voice-file-input" id="voice-image-file" type="file" accept="image/*" aria-label="选择图片"><input class="voice-file-input" id="voice-document-file" type="file" accept=".pdf,.doc,.docx,.txt,.md,.ppt,.pptx,.xls,.xlsx" aria-label="选择文件"></footer></div>';
   }
   function renderVoiceTranscript() {
     const box = $("#voice-transcript", voiceOverlay);
@@ -170,7 +170,7 @@
       "permission-denied": "麦克风未开启 · 仍可输入文字",
       error: "语音暂时中断 · 仍可输入文字"
     };
-    if (label) label.textContent = statuses[voiceState] || "";
+    if (label) label.textContent = window.MiyinChat?.native ? ({listening:"正在本机聆听 · 停顿两秒或点麦克风结束",processing:"正在处理这条消息",speaking:"觅音正在回答",paused:"点麦克风继续 · 也可直接输入", "permission-required":"点麦克风开始 · 也可直接输入"}[voiceState] || statuses[voiceState] || "") : statuses[voiceState] || "";
     if (mic) {
       const micLabel = microphoneEnabled ? "静音麦克风" : "开启麦克风";
       mic.setAttribute("aria-label", micLabel);
@@ -204,7 +204,8 @@
   function renderVoiceFiles() {
     const box = $("#voice-selected-files", voiceOverlay);
     if (!box) return;
-    box.innerHTML = voiceFiles.map((file, index) => '<span class="voice-file-chip"><span class="voice-file-name">' + escapeHTML(file.name) + '</span><button type="button" data-v5-voice-action="remove-file" data-file-index="' + index + '" aria-label="移除 ' + escapeHTML(file.name) + '">×</button></span>').join("");
+    const shownFiles=window.MiyinChat?.native?window.MiyinChatUI.getPending().files:voiceFiles;
+    box.innerHTML = shownFiles.map((file, index) => '<span class="voice-file-chip"><span class="voice-file-name">' + escapeHTML(file.name) + '</span><button type="button" data-v5-voice-action="remove-file" data-file-index="' + index + '" aria-label="移除 ' + escapeHTML(file.name) + '">×</button></span>').join("");
   }
   function renderVoiceSession() {
     if (!voiceOverlay) return;
@@ -281,6 +282,7 @@
     setVoiceDisplayMode(voiceDisplayMode === "immersive" ? "captions" : "immersive");
   }
   function toggleMicrophone() {
+    if(window.MiyinChat?.native){void window.MiyinChatVoice.toggleMicrophone();return}
     if (voiceState === "permission-required") {
       microphoneEnabled = true;
       applyVoiceEvent("allow");
@@ -304,6 +306,7 @@
     return "收到，我会围绕“" + shortText + "”继续和你讨论。这是本地预览回复，没有调用模型 API。";
   }
   function sendVoiceMessage(text = voiceDraft) {
+    if(window.MiyinChat?.native){window.MiyinChatVoice.submit(text);return}
     const message = String(text || "").trim();
     if (voiceState === "idle") return;
     if (voiceState === "speaking") interruptVoiceAnswer();
@@ -334,6 +337,7 @@
     updateVoiceControls();
   }
   function interruptVoiceAnswer() {
+    if(window.MiyinChat?.native){void window.MiyinChatVoice.interrupt();return}
     if (voiceState !== "speaking") return;
     commitVoiceStream();
     clearVoiceTimers();
@@ -341,6 +345,7 @@
     notify("已中断觅音回答");
   }
   function endVoiceSession() {
+    if(window.MiyinChat?.native)void window.MiyinChatVoice.shutdown();
     if (voiceState === "speaking") commitVoiceStream();
     clearVoiceTimers();
     if (voiceState !== "idle") applyVoiceEvent("end");
@@ -456,6 +461,11 @@
   bindVoiceInteractions();
   renderVoiceSession();
   window.addEventListener("miyin-v5:start-voice-session", startVoiceSession);
+  window.MiyinVoiceUI = Object.freeze({open:startVoiceSession,
+    state(value,mic=false){microphoneEnabled=mic;setVoiceSessionState(value)},
+    refresh:renderVoiceTranscript,refreshFiles:renderVoiceFiles,
+    draft(text){const input=$("#voice-input",voiceOverlay);if(input){input.value=text;voiceDraft=text}},
+    close:endVoiceSession});
 
   function shortLanguage(value) {
     const names = {

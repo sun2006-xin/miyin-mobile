@@ -1841,6 +1841,11 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       _appVisible = false;
+      if (state == AppLifecycleState.paused && _nativeHostReady) {
+        unawaited(_controller.runJavaScript(
+          'window.dispatchEvent(new Event("miyin:app-paused"));',
+        ).catchError((Object _) {}));
+      }
       if (!(_liveActive && (_liveMode == 'mic' || _liveMode == 'conference'))) {
         unawaited(MiyinOfflineSpeechRecognizer.instance.cancelActive());
       }

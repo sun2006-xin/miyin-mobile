@@ -41,6 +41,25 @@ class MainActivity : FlutterActivity() {
         super.configureFlutterEngine(flutterEngine)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-secrets")
             .setMethodCallHandler(MiyinChatSecrets(this))
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-actions")
+            .setMethodCallHandler { call, result ->
+                if (call.method != "shareText") {
+                    result.notImplemented()
+                } else {
+                    val text = call.arguments as? String
+                    if (text.isNullOrEmpty() || text.length > 256000) {
+                        result.error("invalid_text", "分享内容为空或过长。", null)
+                    } else try {
+                        startActivity(Intent.createChooser(Intent(Intent.ACTION_SEND).apply {
+                            type = "text/plain"
+                            putExtra(Intent.EXTRA_TEXT, text)
+                        }, "分享觅音对话"))
+                        result.success(null)
+                    } catch (_: Exception) {
+                        result.error("share_unavailable", "没有可用的分享应用。", null)
+                    }
+                }
+            }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             performanceChannelName,

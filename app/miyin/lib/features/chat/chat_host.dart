@@ -4,11 +4,18 @@ import 'dart:convert';
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:sqflite/sqflite.dart';
+import 'package:sqflite/sqflite.dart' as sqlite;
 
 import 'deepseek_client.dart';
 
 final class ChatHost {
-  ChatHost({required this.onEvent});
+  ChatHost({
+    required this.onEvent,
+    this.databasePath,
+    DatabaseFactory? databaseFactory,
+  }) : _databaseFactory = databaseFactory;
+  final String? databasePath;
+  final DatabaseFactory? _databaseFactory;
   final Future<void> Function(Map<String, Object?>) onEvent;
   static const _secrets = MethodChannel('com.miyin.app/chat-secrets');
   String? _key;
@@ -24,6 +31,7 @@ final class ChatHost {
   Future<Database>? _database;
   Future<void> _writes = Future<void>.value();
   bool _closed = false;
+  Map<String, String> _storedBodies = {};
 
   Future<void> loadConfiguration({bool? legacySaveHistory}) async {
     final db = await _db();
@@ -178,6 +186,21 @@ final class ChatHost {
       case 'chat.privacy':
         await savePrivacy(params);
         return status;
+      case 'chat.copy':
+        final text = params['text'];
+        if (text is! String || text.length > 256000) {
+          throw const ChatFailure('invalid_text', '要复制的内容过长。');
+        }
+        await Clipboard.setData(ClipboardData(text: text));
+        return {'copied': true};
+      case 'chat.share':
+        final text = params['text'];
+        if (text is! String || text.isEmpty || text.length > 256000) {
+          throw const ChatFailure('invalid_text', '要分享的内容为空或过长。');
+        }
+        await const MethodChannel('com.miyin.app/chat-actions')
+            .invokeMethod<void>('shareText', text);
+        return {'opened': true};
       case 'chat.start':
         return start(params);
       case 'chat.cancel':
@@ -292,26 +315,30 @@ final class ChatHost {
   }
 
   Future<Database> _db() => _database ??= () async {
-    final directory = await getApplicationSupportDirectory();
-    return openDatabase(
-      '${directory.path}/miyin_chat.db',
-      version: 2,
-      onCreate: (db, _) async {
-        await db.execute(
-          'CREATE TABLE conversations (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
-        );
-        await db.execute('CREATE TABLE metadata (id TEXT PRIMARY KEY)');
-        await db.execute(
-          'CREATE TABLE settings (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
-        );
-      },
-      onUpgrade: (db, oldVersion, _) async {
-        if (oldVersion < 2) {
+    final path =
+        databasePath ??
+        '${(await getApplicationSupportDirectory()).path}/miyin_chat.db';
+    return (_databaseFactory ?? sqlite.databaseFactory).openDatabase(
+      path,
+      options: OpenDatabaseOptions(
+        version: 2,
+        onCreate: (db, _) async {
+          await db.execute(
+            'CREATE TABLE conversations (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
+          );
+          await db.execute('CREATE TABLE metadata (id TEXT PRIMARY KEY)');
           await db.execute(
             'CREATE TABLE settings (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
           );
-        }
-      },
+        },
+        onUpgrade: (db, oldVersion, _) async {
+          if (oldVersion < 2) {
+            await db.execute(
+              'CREATE TABLE settings (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
+            );
+          }
+        },
+      ),
     );
   }();
 
@@ -355,24 +382,35 @@ final class ChatHost {
         await tx.insert('metadata', {'id': 'legacy_imported'});
       });
     }
-    return (await db.query('conversations'))
-        .map((row) => jsonDecode(row['body'] as String))
-        .toList();
+    final saved = await db.query('conversations');
+    _storedBodies = {
+      for (final row in saved) row['id'] as String: row['body'] as String,
+    };
+    return saved.map((row) => jsonDecode(row['body'] as String)).toList();
   }
 
   Future<void> saveHistory(Object? input) {
     final rows = _validateHistory(input);
     final write = _writes.then((_) async {
       final db = await _db();
+      final bodies = {
+        for (final row in rows) row['id'] as String: jsonEncode(row),
+      };
       await db.transaction((tx) async {
-        await tx.delete('conversations');
-        for (final row in rows) {
+        for (final id in _storedBodies.keys.where(
+          (id) => !bodies.containsKey(id),
+        )) {
+          await tx.delete('conversations', where: 'id = ?', whereArgs: [id]);
+        }
+        for (final entry in bodies.entries) {
+          if (_storedBodies[entry.key] == entry.value) continue;
           await tx.insert('conversations', {
-            'id': row['id'],
-            'body': jsonEncode(row),
-          });
+            'id': entry.key,
+            'body': entry.value,
+          }, conflictAlgorithm: ConflictAlgorithm.replace);
         }
       });
+      _storedBodies = bodies;
     });
     _writes = write.catchError((Object _) {});
     return write;

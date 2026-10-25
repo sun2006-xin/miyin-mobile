@@ -57,6 +57,9 @@ final class MiyinOfflineSpeechRecognizer {
   bool _usesMultilingualAsr = false;
   String? _multilingualModelPath;
   bool _videoMode = false;
+  bool _chatMode = false;
+  int _chatVoicedSamples = 0;
+  int _chatSilenceSamples = 0;
   bool _retainLiveAudio = false;
   bool _bilingualPreviewActive = false;
   int _liveSegmentSamples = 0;
@@ -317,6 +320,9 @@ final class MiyinOfflineSpeechRecognizer {
     _usesMultilingualAsr = useMultilingualAsr;
     _multilingualModelPath = multilingualModelPath;
     _videoMode = mode == 'video';
+    _chatMode = mode == 'chat';
+    _chatVoicedSamples = 0;
+    _chatSilenceSamples = 0;
     _retainLiveAudio = mode == 'video' && retainLiveAudio;
     _bilingualPreviewActive = useMultilingualAsr && stream != null;
     _liveSegmentSamples = 0;
@@ -735,6 +741,21 @@ final class MiyinOfflineSpeechRecognizer {
       final samplesToKeep = sampleIndex == samples.length
           ? samples
           : Float32List.sublistView(samples, 0, sampleIndex);
+      if (_chatMode && !_stopping) {
+        var energy = 0.0;
+        for (final sample in samplesToKeep) { energy += sample * sample; }
+        if (energy / samplesToKeep.length >= 0.00012) {
+          _chatVoicedSamples += samplesToKeep.length;
+          _chatSilenceSamples = 0;
+        } else {
+          _chatSilenceSamples += samplesToKeep.length;
+        }
+        if (_chatVoicedSamples >= 4000 && _chatSilenceSamples >= 32000) {
+          // Two seconds of silence ends this turn. TTS never records itself:
+          // the next microphone turn requires an explicit user tap.
+          unawaited(stopListening(sessionId: sessionId).catchError((Object _) => <String, Object?>{}));
+        }
+      }
       if ((_retainLiveAudio || _videoMode) && !_usesMultilingualAsr) {
         _multilingualAudioChunks.add(samplesToKeep);
         _multilingualSampleCount += sampleIndex;
@@ -1000,6 +1021,7 @@ final class MiyinOfflineSpeechRecognizer {
     _usesMultilingualAsr = false;
     _multilingualModelPath = null;
     _videoMode = false;
+    _chatMode = false;
     _retainLiveAudio = false;
     try {
       if (cancelRecorder) {
