@@ -278,14 +278,19 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
               // A restored backup may lack its original Keystore key.
               // Let the user replace it instead of silently dropping it.
             }
+            var settingsSaved = false;
             if (mounted) {
-              await showDialog<void>(
+              final page = (request['params'] is Map)
+                  ? (request['params'] as Map)['page'] : null;
+              settingsSaved = await showDialog<bool>(
                 context: _navigatorKey.currentContext!,
                 barrierDismissible: false,
-                builder: (_) => DeepSeekSettings(host: _chat),
-              );
+                builder: (_) => DeepSeekSettings(host: _chat,
+                  page: ['models', 'provider', 'privacy'].contains(page)
+                    ? page as String : 'models'),
+              ) == true;
             }
-            result = _chat.status;
+            result = {..._chat.status, 'settingsSaved': settingsSaved};
           } finally {
             _chatSettingsOpen = false;
           }

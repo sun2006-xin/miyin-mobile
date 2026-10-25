@@ -12,26 +12,49 @@ final class ChatHost {
   final Future<void> Function(Map<String, Object?>) onEvent;
   static const _secrets = MethodChannel('com.miyin.app/chat-secrets');
   String? _key;
-  String? model;
-  List<String> models = [];
+  static const presetModels = ['deepseek-flash', 'deepseek-v4-pro'];
+  String? model = presetModels.first;
+  List<String> models = [...presetModels];
+  bool allowNetwork = false;
+  bool sendHistory = true;
+  bool saveLocalHistory = true;
+  bool connectionChecked = false;
   DeepSeekClient? _active;
   String? _activeId;
   Future<Database>? _database;
   Future<void> _writes = Future<void>.value();
   bool _closed = false;
 
-  Future<void> loadConfiguration() async {
+  Future<void> loadConfiguration({bool? legacySaveHistory}) async {
+    final db = await _db();
+    final rows = await db.query(
+      'settings',
+      where: 'id = ?',
+      whereArgs: ['config'],
+    );
+    if (rows.isNotEmpty) {
+      final config = jsonDecode(rows.first['body'] as String) as Map;
+      model = config['model'] as String? ?? presetModels.first;
+      models = (config['models'] as List?)?.cast<String>() ?? [...presetModels];
+      allowNetwork = config['allowNetwork'] == true;
+      sendHistory = config['sendHistory'] != false;
+      saveLocalHistory = config['saveLocalHistory'] != false;
+      connectionChecked = config['connectionChecked'] == true;
+    }
+    if (rows.isEmpty && legacySaveHistory != null) {
+      saveLocalHistory = legacySaveHistory;
+    }
     final saved = await _secrets.invokeMethod<String>('read');
     if (saved == null) {
       _key = null;
-      model = null;
-      models = [];
       return;
     }
     final value = jsonDecode(saved) as Map;
     _key = value['key'] as String;
-    model = value['model'] as String;
-    models = (value['models'] as List).cast<String>();
+    if (rows.isEmpty) {
+      model = value['model'] as String? ?? model;
+      models = (value['models'] as List?)?.cast<String>() ?? models;
+    }
   }
 
   Map<String, Object?> get status => {
@@ -39,7 +62,56 @@ final class ChatHost {
     'provider': 'DeepSeek',
     'model': model,
     'models': models,
+    'connectionChecked': connectionChecked && _key != null,
+    'privacy': {
+      'allowNetwork': allowNetwork,
+      'sendHistory': sendHistory,
+      'saveLocalHistory': saveLocalHistory,
+    },
   };
+
+  Future<void> _saveSettings() async {
+    final db = await _db();
+    await db.insert('settings', {
+      'id': 'config',
+      'body': jsonEncode({
+        'model': model,
+        'models': models,
+        'allowNetwork': allowNetwork,
+        'sendHistory': sendHistory,
+        'saveLocalHistory': saveLocalHistory,
+        'connectionChecked': connectionChecked,
+      }),
+    }, conflictAlgorithm: ConflictAlgorithm.replace);
+  }
+
+  Future<void> saveDraft(String selected) async {
+    if (_active != null) throw const ChatFailure('busy', '请先停止当前回答。');
+    if (!RegExp(r'^[a-zA-Z0-9._:-]{1,128}$').hasMatch(selected)) {
+      throw const ChatFailure('invalid_model', '模型 ID 只能包含字母、数字、点、横线或冒号。');
+    }
+    model = selected;
+    if (!models.contains(selected)) models = [...models, selected];
+    await _saveSettings();
+  }
+
+  Future<void> savePrivacy(Map<String, Object?> values) async {
+    if (_active != null &&
+        (values.containsKey('allowNetwork') ||
+            values.containsKey('sendHistory'))) {
+      throw const ChatFailure('busy', '请先停止当前回答。');
+    }
+    if (values['allowNetwork'] is bool) {
+      allowNetwork = values['allowNetwork'] as bool;
+    }
+    if (values['sendHistory'] is bool) {
+      sendHistory = values['sendHistory'] as bool;
+    }
+    if (values['saveLocalHistory'] is bool) {
+      saveLocalHistory = values['saveLocalHistory'] as bool;
+    }
+    await _saveSettings();
+  }
 
   Future<List<String>> checkKey(String key) {
     if (!RegExp(r'^[\x21-\x7e]{8,512}$').hasMatch(key)) {
@@ -66,19 +138,20 @@ final class ChatHost {
     _key = key;
     model = selected;
     models = available;
+    connectionChecked = true;
+    await _saveSettings();
   }
 
   Future<void> selectModel(String selected) async {
-    if (_key == null) throw const ChatFailure('unconfigured', '请先配置 DeepSeek。');
-    await saveConfiguration(_key!, selected, models);
+    await saveDraft(selected);
   }
 
   Future<void> clearConfiguration() async {
     cancel();
     await _secrets.invokeMethod<void>('clear');
     _key = null;
-    model = null;
-    models = [];
+    connectionChecked = false;
+    await _saveSettings();
   }
 
   Future<List<String>> checkSavedKey() async {
@@ -93,10 +166,17 @@ final class ChatHost {
   ) async {
     switch (method) {
       case 'chat.status':
-        await loadConfiguration();
+        await loadConfiguration(
+          legacySaveHistory: params['saveHistory'] is bool
+              ? params['saveHistory'] as bool
+              : null,
+        );
         return status;
       case 'chat.selectModel':
         await selectModel(params['model'] as String);
+        return status;
+      case 'chat.privacy':
+        await savePrivacy(params);
         return status;
       case 'chat.start':
         return start(params);
@@ -115,6 +195,9 @@ final class ChatHost {
 
   Map<String, Object?> start(Map<String, Object?> params) {
     if (_closed) throw const ChatFailure('closed', '聊天页面已关闭。');
+    if (!allowNetwork) {
+      throw const ChatFailure('network_disabled', 'AI 隐私设置中尚未允许发送至远程模型。');
+    }
     if (_key == null || model == null) {
       throw const ChatFailure('unconfigured', '请在模型设置中配置 DeepSeek 后再发送。');
     }
@@ -143,6 +226,12 @@ final class ChatHost {
         throw const ChatFailure('context_limit', '对话内容过长，请新建会话或减少附加资料。');
       }
       messages.add({'role': item['role'] as String, 'content': content});
+    }
+    if (!sendHistory && messages.isNotEmpty) {
+      final lastUser = messages.lastWhere((item) => item['role'] == 'user');
+      messages
+        ..clear()
+        ..add(lastUser);
     }
     final client = DeepSeekClient(apiKey: _key!);
     final selected = model!;
@@ -206,12 +295,22 @@ final class ChatHost {
     final directory = await getApplicationSupportDirectory();
     return openDatabase(
       '${directory.path}/miyin_chat.db',
-      version: 1,
+      version: 2,
       onCreate: (db, _) async {
         await db.execute(
           'CREATE TABLE conversations (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
         );
         await db.execute('CREATE TABLE metadata (id TEXT PRIMARY KEY)');
+        await db.execute(
+          'CREATE TABLE settings (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
+        );
+      },
+      onUpgrade: (db, oldVersion, _) async {
+        if (oldVersion < 2) {
+          await db.execute(
+            'CREATE TABLE settings (id TEXT PRIMARY KEY, body TEXT NOT NULL)',
+          );
+        }
       },
     );
   }();

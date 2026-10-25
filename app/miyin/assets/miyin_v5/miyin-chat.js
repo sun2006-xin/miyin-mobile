@@ -9,11 +9,18 @@
 
   function setStatus(next) {
     status = next;
-    ui()?.setModel(next.configured ? next.model : 'DeepSeek · 待配置');
+    ui()?.setModel(next.model || 'DeepSeek · 待配置');
+    if (next.privacy) ui()?.setHistorySaving(next.privacy.saveLocalHistory !== false);
   }
-  async function configure() {
+  async function configure(page = 'provider') {
     if (active) { notify('请先停止当前回答，再更改模型配置。'); return; }
-    try { setStatus(await rpc('chat.configure')); }
+    try {
+      const result = await rpc('chat.configure', {page});
+      setStatus(result);
+      if (page === 'models' && result.settingsSaved && ui().getActiveId()) {
+        ui().pinModel(ui().getActiveId(), result.model);
+      }
+    }
     catch (error) { notify(error.message || '打开模型设置失败。'); }
   }
   function persist(rows, immediate = false) {
@@ -43,7 +50,7 @@
       localStorage.removeItem('miyin.full.preview.v5.conversations');
       ready = true;
       persist(rows, true);
-      try { setStatus(await rpc('chat.status')); }
+      try { setStatus(await rpc('chat.status', {saveHistory: ui().getHistorySaving()})); }
       catch (_) { setStatus({configured: false}); notify('模型配置需要重新填写，请打开模型设置。'); }
     } catch (error) { notify(error.message || '聊天历史尚未就绪，请重新打开软件。'); }
   }
@@ -51,6 +58,10 @@
     if (!native) return true;
     if (!ready) { notify('正在读取聊天记录，请稍候。'); return false; }
     if (!status.configured) { void configure(); return false; }
+    if (!status.privacy?.allowNetwork) {
+      notify('请先在 AI 隐私设置中允许发送至远程模型。');
+      void configure('privacy'); return false;
+    }
     if (active) { notify('请先等待或停止当前回答。'); return false; }
     if (hasFiles || hasContexts) {
       notify('首轮先支持文字对话，请移除附件；资料和会议上下文将在下一阶段接入。');
@@ -85,15 +96,16 @@
     const entry = {conversationId, messageId, requestId, text: '', timer: 0};
     if (active) { notify('请先停止当前回答。'); return; }
     active = entry;
-    const messages = conversation.messages.slice(0, index)
+    let messages = conversation.messages.slice(0, index)
       .filter(message => message.status === 'complete')
       .map(message => ({role: message.role, content: message.text}));
+    if (status.privacy?.sendHistory === false) messages = messages.slice(-1);
     // Old preview replies must not masquerade as context from a real model.
     if (messages.some(message => /这是本地模拟回复|没有调用模型 API/.test(message.content))) {
       finish(entry, 'failed', '这段会话含有早期演示回答，请新建对话后使用真实模型。');
       return;
     }
-    if (conversation.messages.slice(0, index).some(message =>
+    if (status.privacy?.sendHistory !== false && conversation.messages.slice(0, index).some(message =>
       message.attachments?.length || message.contextAttachments?.length)) {
       finish(entry, 'failed', '这段会话包含尚未接入的附件，请新建文字对话。'); return;
     }
@@ -128,18 +140,23 @@
       notify('AI 回答朗读将在语音对话阶段接入。'); return;
     }
     const button = event.target.closest('[data-action]');
-    if (!button || !['model-picker', 'provider-picker', 'chat-voice'].includes(button.dataset.action)) return;
+    if (!button || !['model-picker', 'provider-picker', 'chat-privacy', 'chat-voice'].includes(button.dataset.action)) return;
     event.preventDefault(); event.stopImmediatePropagation();
     if (button.dataset.action === 'chat-voice') {
       notify('真实语音对话将在文字聊天验收后接入。'); return;
     }
-    void configure();
+    void configure(button.dataset.action === 'model-picker' ? 'models' :
+      button.dataset.action === 'chat-privacy' ? 'privacy' : 'provider');
   }, true);
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) { clearTimeout(saveTimer); flush(); }
   });
   window.addEventListener('miyin:native-host-ready', () => { void initialize(); });
   window.MiyinChat = Object.freeze({native, start, cancel, canSend, persist,
+    saveHistoryPreference(value) {
+      if (native && ready) void rpc('chat.privacy', {saveLocalHistory: !!value})
+        .then(next => { status = next; }).catch(error => notify(error.message));
+    },
     get ready() { return ready; },
     get model() { return status.model; }});
 })();
