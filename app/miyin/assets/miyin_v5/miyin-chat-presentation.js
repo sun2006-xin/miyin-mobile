@@ -82,7 +82,7 @@
       const textNodes = []; while (walker.nextNode()) textNodes.push(walker.currentNode);
       for (const node of textNodes) {
         if (node.parentElement?.closest('code,pre,button,a')) continue;
-        const text = node.textContent, pattern = /\[(资料|网页)([1-9]\d*)\]/g;
+        const text = node.textContent, pattern = /\[(资料|网页)\s*([1-9]\d*)\s*\]/g;
         let match, offset = 0; const replacement = document.createDocumentFragment();
         while ((match = pattern.exec(text))) {
           const web = match[1] === '网页';

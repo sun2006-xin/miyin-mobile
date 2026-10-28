@@ -8,7 +8,7 @@
   const notify = text => chat().announce(text);
   const prefix = 'miyin.full.preview.v5.';
   const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(prefix + key)) ?? fallback; } catch (_) { return fallback; } };
-  let opened = false, micId = null, micBusy = false, sequence = 0, epoch = 0;
+  let opened = false, micId = null, micBusy = false, sequence = 0, epoch = 0, lifecycle = 0;
   let turn = null, buffer = '', queue = [], ttsId = null, speaking = false, finished = false;
   let timer = 0, lastReadId = null;
   function state(value, mic = false) { if (opened) ui().state(value, mic); }
@@ -36,33 +36,40 @@
     if (old) { try { await rpc('voice.cancelListening', {sessionId: old}); } catch (_) {} }
   }
   async function toggleMicrophone() {
-    if (micBusy) return;
+    if (micBusy || !opened) return;
     micBusy = true;
+    let session = lifecycle;
     try {
       if (micId) {
         state('processing');
         await rpc('voice.stopListening', {sessionId: micId});
         return;
       }
-      await interrupt();
+      session = await interrupt();
+      if (!opened || session !== lifecycle) return;
       const id = 'chat-asr-' + Date.now() + '-' + (++sequence);
       micId = id;
       state('processing');
       await rpc('voice.startListening', {sessionId: id, mode: 'chat'});
-      if (micId !== id || !opened) {
+      if (micId !== id || !opened || session !== lifecycle) {
         await rpc('voice.cancelListening', {sessionId: id}); return;
       }
       state('listening', true);
     } catch (error) {
-      micId = null; state('error'); notify(error.message || '本机语音识别未能开始。');
+      if (opened && session === lifecycle) {
+        micId = null; state('error'); notify(error.message || '本机语音识别未能开始。');
+      }
     } finally { micBusy = false; }
   }
   async function submit(text) {
     text = String(text || '').trim();
-    if (!text) return;
+    if (!text || !opened) return;
     if (window.MiyinChat.isGenerating) { notify('请先中断当前回答。'); return; }
+    const session = ++lifecycle;
     await cancelMic();
+    if (!opened || session !== lifecycle) return;
     await stopSpeech();
+    if (!opened || session !== lifecycle) return;
     const result = chat().sendVoice(text);
     if (!result) { ui().draft(text); state('paused'); return; }
     ui().draft('');
@@ -107,24 +114,33 @@
       if (epoch !== generation || ttsId !== id) return;
     } catch (error) {
       if (epoch !== generation || ttsId !== id) return;
-      await stopSpeech(); state('error'); notify(error.message || '朗读失败，文字已保留。');
+      const session = lifecycle, stopping = stopSpeech(), stoppedEpoch = epoch;
+      await stopping;
+      if (session !== lifecycle || stoppedEpoch !== epoch) return;
+      state('error'); notify(error.message || '朗读失败，文字已保留。');
     }
   }
   async function interrupt() {
-    if (turn) window.MiyinChat.cancel(turn.conversationId, turn.messageId);
+    const session = ++lifecycle, previous = turn;
     turn = null;
+    if (previous) window.MiyinChat.cancel(previous.conversationId, previous.messageId);
     await stopSpeech();
-    state('paused');
+    if (session === lifecycle) state('paused');
+    return session;
   }
   async function shutdown() {
     opened = false;
+    lifecycle++;
     await Promise.all([cancelMic(), interrupt()]);
-    lastReadId = null;
   }
   async function read(text, id) {
     if (window.MiyinChat.isGenerating) { notify('请先停止当前回答，再朗读其他消息。'); return; }
-    if (lastReadId === id && (ttsId || queue.length)) { await stopSpeech(); lastReadId = null; notify('已停止朗读'); return; }
-    await cancelMic(); await stopSpeech();
+    if (lastReadId === id && (ttsId || queue.length)) { await stopSpeech(); notify('已停止朗读'); return; }
+    const session = ++lifecycle;
+    await cancelMic();
+    if (session !== lifecycle) return;
+    await stopSpeech();
+    if (session !== lifecycle) return;
     lastReadId = id; buffer = String(text); finished = true;
     chat().setReading(id);
     splitSentences(true);
@@ -150,18 +166,16 @@
       if (['tts_done', 'tts_stopped', 'tts_error'].includes(data.type)) {
         clearTimeout(timer); timer = 0; ttsId = null; speaking = false;
         if (data.type === 'tts_error') {
-          queue = []; buffer = ''; state('error'); notify(data.message || '朗读失败，文字已保留。');
+          void stopSpeech(); state('error'); notify(data.message || '朗读失败，文字已保留。');
         } else void drain();
       }
     }
   });
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      if (opened) { ui().close(); } else { void stopSpeech(); }
-    }
+    if (document.hidden) suspend();
   });
   function suspend() {
-    if (opened) ui().close(); else void stopSpeech();
+    if (opened) ui().close(); else { lifecycle++; void stopSpeech(); }
   }
   window.addEventListener('miyin:app-paused', suspend);
   window.addEventListener('miyin:surface-visibility-change', () => {
@@ -190,11 +204,17 @@
   }, true);
   window.addEventListener('miyin:chat-attachments-changed', () => { if (opened) ui().refreshFiles(); });
   window.MiyinChatVoice = Object.freeze({
-    open() { opened = true; ui().open(); state('paused'); },
+    open() { if (!opened) lifecycle++; opened = true; ui().open(); state('paused'); },
     get isOpen() { return opened; }, toggleMicrophone, submit, interrupt, shutdown, read,
     async beforeGeneration(entry) {
-      await cancelMic(); await stopSpeech();
-      if (opened) { turn = {conversationId: entry.conversationId, messageId: entry.messageId}; state('processing'); }
+      const session = lifecycle;
+      // Register ownership before any awaited cleanup, so closing can cancel
+      // a generation that is still waiting for microphone/TTS cleanup.
+      if (opened) turn = {conversationId: entry.conversationId, messageId: entry.messageId};
+      await cancelMic();
+      if (session !== lifecycle) return;
+      await stopSpeech();
+      if (opened && session === lifecycle) state('processing');
     },
     delta(text) { if (opened) { buffer += text; splitSentences(); ui().refresh(); } },
     finish(success) {

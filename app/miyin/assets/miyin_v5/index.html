@@ -1953,7 +1953,7 @@
         appendMessage(conversation.id,userMessage);
         const generation={...MiyinV5Core.createGeneration({id:nextId("generation"),conversationId:conversation.id,prompt:text,draftSnapshot:text,modelId:conversation.modelId,contextAttachments:userMessage.contextAttachments,now:createdAt+1}),inputRevisionAtSend:chatDraftRevision};
         const assistantMessage={id:nextId("msg"),role:"assistant",text:"正在生成回答…",createdAt:createdAt+1,status:"pending",contextAttachments:[],generation};
-        appendMessage(conversation.id,assistantMessage);pendingContextAttachments=[];pendingChatAttachments=[];renderPendingContextAttachments();renderPendingChatAttachments();if(voiceText===null)input.value="";resizeChatInput();renderChatConversation(getConversation(conversation.id));startMockGeneration(conversation.id,assistantMessage.id,generation);announce(window.MiyinChat?.native?"消息已发送至 DeepSeek":historySavingEnabled?"消息已发送，正在生成本地模拟回复":"本次对话仅保留在当前页面");return {conversationId:conversation.id,messageId:assistantMessage.id}
+        appendMessage(conversation.id,assistantMessage);pendingContextAttachments=[];pendingChatAttachments=[];renderPendingContextAttachments();renderPendingChatAttachments();if(voiceText===null)input.value="";resizeChatInput();renderChatConversation(getConversation(conversation.id));startMockGeneration(conversation.id,assistantMessage.id,generation);announce(window.MiyinChat?.native?"消息已发送，正在处理":historySavingEnabled?"消息已发送，正在生成本地模拟回复":"本次对话仅保留在当前页面");return {conversationId:conversation.id,messageId:assistantMessage.id}
       }
       document.addEventListener("click",e=>{
         const action=e.target.closest("[data-modal-action]");if(!action)return;

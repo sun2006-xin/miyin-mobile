@@ -13,7 +13,7 @@
 
   function setStatus(next) {
     status = next;
-    ui()?.setModel(next.model || 'DeepSeek · 待配置');
+    ui()?.setModel(next.model || '配置模型');
     if (next.privacy) ui()?.setHistorySaving(next.privacy.saveLocalHistory !== false);
     void warmLocal();
   }

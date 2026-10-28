@@ -51,6 +51,11 @@ test('late sources and changed sources invalidate the rendered answer cache', as
   }
   assert.equal((await rendered({...message,webSources:[]})).links.length,0);
 });
+test('citation spacing does not break the source route', async () => {
+  const result=await rendered({id:'spaced-citations',role:'assistant',text:'来源[网页 1] 和[资料 2 ]',webSources:[{url:'https://example.com/spaced'}]});
+  assert.equal(result.links[0]?.web,'https://example.com/spaced');
+  assert.equal(result.links[1]?.material,'spaced-citations');assert.equal(result.links[1]?.index,'2');
+});
 test('missing and unsafe web references remain readable text without clickable actions', async () => {
   for (const url of ['javascript:alert(1)','file:///private','https://user:password@example.com/', 'https://example.com/\nwrong']) {
     const result=await rendered({id:url,role:'assistant',text:'内容[网页1] [网页2]',webSources:[{url}]});
