@@ -39,9 +39,23 @@
     }
   });
 
+  function webReference(message, index) {
+    if (!Number.isInteger(index) || index < 1 || index > 5) return null;
+    const sources = Array.isArray(message.webSources) ? message.webSources : [];
+    const raw = sources[index - 1]?.url;
+    if (typeof raw !== 'string' || raw.length > 2048 || /[\u0000-\u0020]/.test(raw)) return null;
+    try {
+      const url = new URL(raw);
+      return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password
+        ? url.href : null;
+    } catch (_) { return null; }
+  }
+
   function render(message) {
     if (message.role !== 'assistant') return escape(message.text);
-    const key = String(message.id) + '\u0000' + String(message.text);
+    // Sources arrive independently of text and can change on regeneration.
+    const sources = Array.isArray(message.webSources) ? message.webSources.slice(0, 5) : [];
+    const key = JSON.stringify([message.id, message.text, sources.map(row => row?.url)]);
     if (cache.has(key)) return cache.get(key);
     let output;
     if (!parser || !window.DOMPurify) return escape(message.text);
@@ -68,13 +82,23 @@
       const textNodes = []; while (walker.nextNode()) textNodes.push(walker.currentNode);
       for (const node of textNodes) {
         if (node.parentElement?.closest('code,pre,button,a')) continue;
-        const text = node.textContent, pattern = /\[资料([1-9]\d*)\]/g;
+        const text = node.textContent, pattern = /\[(资料|网页)([1-9]\d*)\]/g;
         let match, offset = 0; const replacement = document.createDocumentFragment();
         while ((match = pattern.exec(text))) {
+          const web = match[1] === '网页';
+          const url = web ? webReference(message, Number(match[2])) : null;
+          if (web && !url) continue;
           replacement.append(document.createTextNode(text.slice(offset, match.index)));
           const citation = document.createElement('button'); citation.type = 'button';
-          citation.className = 'chat-source-citation'; citation.dataset.chatSource = String(message.id);
-          citation.dataset.sourceIndex = match[1]; citation.textContent = match[0];
+          citation.className = 'chat-source-citation';
+          if (web) {
+            citation.dataset.chatWebUrl = url;
+            citation.setAttribute('aria-label', '打开网页来源 ' + match[2]);
+          } else {
+            citation.dataset.chatSource = String(message.id);
+            citation.dataset.sourceIndex = match[2];
+          }
+          citation.textContent = match[0];
           replacement.append(citation); offset = pattern.lastIndex;
         }
         if (offset) { replacement.append(document.createTextNode(text.slice(offset))); node.replaceWith(replacement); }

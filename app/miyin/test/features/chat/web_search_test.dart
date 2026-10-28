@@ -1,8 +1,21 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:miyin_app/features/chat/web_search.dart';
 import 'package:miyin_app/features/chat/ollama_client.dart';
+import 'package:miyin_app/features/chat/deepseek_client.dart';
 
 void main() {
+  test('search documents above two MiB are rejected before HTML parsing', () {
+    expect(
+      () => WebSearch.parseResults('x' * (2 * 1024 * 1024 + 1)),
+      throwsA(
+        isA<ChatFailure>().having(
+          (error) => error.code,
+          'code',
+          'search_limit',
+        ),
+      ),
+    );
+  });
   test('ordinary translation and device date do not trigger automatic web restrictions', () {
     for (final query in [
       '你现在作为我的翻译助手，我现在在俄国旅游',

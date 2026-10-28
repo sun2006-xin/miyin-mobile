@@ -13,6 +13,9 @@ final class PublicPageReader {
   final HttpClient _client = HttpClient();
   bool _canceled = false;
   static const maxBytes = 512 * 1024;
+  // Search result documents include substantial HTML boilerplate. Their raw
+  // read path is internal; user-imported pages keep the smaller default cap.
+  static const maxSearchBytes = 2 * 1024 * 1024;
   static const maxText = 7000;
 
   static Uri validateUrl(String raw) {
@@ -193,7 +196,7 @@ final class PublicPageReader {
       final bytes = <int>[];
       await for (final chunk in response) {
         _ensureActive();
-        if (bytes.length + chunk.length > maxBytes) {
+        if (bytes.length + chunk.length > (feed ? maxSearchBytes : maxBytes)) {
           throw const ChatFailure('web_size', '网页内容过大，请复制需要的段落后发送。');
         }
         bytes.addAll(chunk);

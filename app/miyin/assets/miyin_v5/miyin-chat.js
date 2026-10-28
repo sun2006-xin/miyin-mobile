@@ -154,7 +154,7 @@
     if (active) { notify('请先停止当前回答。'); return; }
     active = entry;
     const initial = ui().find(conversationId, messageId);
-    ui().update(conversationId, messageId, {contextNotice:'', generation:{...initial.generation,finishReason:null}});
+    ui().update(conversationId, messageId, {contextNotice:'', webSources:[], generation:{...initial.generation,finishReason:null}});
     await window.MiyinChatVoice?.beforeGeneration(entry);
     if (active !== entry) return;
     let messages;

@@ -105,6 +105,9 @@ final class WebSearch {
       .trim();
 
   static List<Map<String, Object?>> parseResults(String body) {
+    if (body.length > PublicPageReader.maxSearchBytes) {
+      throw const ChatFailure('search_limit', '搜索返回内容过大。');
+    }
     final doc = html.parse(body),
         rows = <Map<String, Object?>>[],
         seen = <String>{};

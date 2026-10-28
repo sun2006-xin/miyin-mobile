@@ -30,6 +30,44 @@ void main() {
     databaseFactory: databaseFactoryFfi,
   );
   test(
+    'web source snapshots survive reopen and remain bound to their answer',
+    () async {
+      final host = open();
+      await host.loadHistory([]);
+      final rows = [
+        {
+          'id': 'web-conversation',
+          'messages': [
+            for (final id in ['first', 'second'])
+              {
+                'id': id,
+                'role': 'assistant',
+                'status': 'complete',
+                'text': '信息[网页1]',
+                'webSources': [
+                  {
+                    'title': '来源$id',
+                    'url': 'https://example.com/$id',
+                    'kind': 'pageExcerpt',
+                    'publishedAt': '2026-10-28',
+                    'fetchedAt': '2026-10-28T01:00:00Z',
+                  },
+                ],
+              },
+          ],
+        },
+      ];
+      await host.saveHistory(rows);
+      await host.close();
+      final reopened = open();
+      try {
+        expect(await reopened.loadHistory([]), rows);
+      } finally {
+        await reopened.close();
+      }
+    },
+  );
+  test(
     'local warm-up status never exposes runtime credentials to the page',
     () async {
       const local = MethodChannel('com.miyin.app/chat-local');
