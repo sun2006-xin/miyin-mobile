@@ -10,7 +10,7 @@
   const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(prefix + key)) ?? fallback; } catch (_) { return fallback; } };
   let opened = false, micId = null, micBusy = false, sequence = 0, epoch = 0, lifecycle = 0;
   let turn = null, buffer = '', queue = [], ttsId = null, speaking = false, finished = false;
-  let timer = 0, lastReadId = null;
+  let timer = 0, lastReadId = null, playbackStarted = false, hasSpoken = false, preparation = null;
   function state(value, mic = false) { if (opened) ui().state(value, mic); }
   function language(text) {
     const selected = load('ai-tts-language', 'auto');
@@ -20,9 +20,57 @@
     if (/[\u0400-\u04ff]/u.test(text)) return 'ru';
     return /[\u3400-\u9fff]/u.test(text) ? 'zh-Hans' : 'en';
   }
+  function speechParams(text) {
+    return {text, languageTag:language(text), provider:load('tts-provider', 'melo'),
+      speed:Number(load('tts-speed', 1)), speakerId:Number(load('tts-speaker', 0))};
+  }
+  // Combine adjacent sentences instead of paying synthesis startup after every
+  // full stop. Keep a short first segment and bounded, word-aligned successors.
+  function speechChunks(text, firstLimit = 120) {
+    const chunks = [], sentences = String(text || '').match(/[\s\S]*?(?:[。！？!?\n]|\.(?:\s|$))|[\s\S]+$/gu) || [];
+    // For a long answer, start with its first complete sentence rather than
+    // delaying the first sound while synthesizing several sentences together.
+    const chinese = language(text) === 'zh-Hans';
+    const nextLimit = chinese ? 64 : 240;
+    let current = '', limit = chinese ? (firstLimit === 120 ? 24 : 64) : Array.from(String(text || '')).length > 240 && firstLimit === 120
+      ? Math.min(120, Math.max(1, Array.from(sentences[0] || '').length)) : firstLimit;
+    const flush = () => {if (current.trim()) {chunks.push(current.trim()); limit=nextLimit;} current='';};
+    for (const sentence of sentences) {
+      // Formatting-only lines have no spoken content and must not switch the
+      // synthesis model between two Chinese segments.
+      if (!/[\p{L}\p{N}]/u.test(sentence)) continue;
+      if (current && (Array.from(current + sentence).length > limit || language(current) !== language(sentence))) flush();
+      let rest = Array.from(sentence);
+      while (rest.length > limit) {
+        flush();
+        let cut = limit;
+        for (let i=limit-1; i>limit/2; i--) {if (/[\s，、；：,;:]/u.test(rest[i] || '')) {cut=i+1;break;}}
+        current=rest.splice(0,cut).join('');flush();
+      }
+      current += rest.join('');
+    }
+    flush();return chunks;
+  }
+  function prepare(text) {
+    const params=speechParams(text), key=JSON.stringify(params), generation=epoch;
+    if (preparation?.generation === generation && preparation.key === key) return;
+    const job={generation,key,text};preparation=job;
+    void rpc('voice.prepareUtterance',params).catch(() => {
+      // Preparation is speculative; a normal speak request still reports errors.
+      if (preparation === job) preparation=null;
+    });
+  }
+  function prepareNext() {
+    if (playbackStarted && ttsId && queue.length) prepare(queue[0]);
+  }
+  function prepareMessage(text) {
+    if (ttsId || speaking || opened || window.MiyinChat.isGenerating) return;
+    const first=speechChunks(text)[0];if (first) prepare(first);
+  }
   async function stopSpeech() {
     epoch++;
     buffer = ''; queue = []; finished = false; speaking = false;
+    playbackStarted = false; hasSpoken = false; preparation = null;
     clearTimeout(timer); timer = 0;
     const old = ttsId;
     ttsId = null;
@@ -77,20 +125,26 @@
     state('processing');
   }
   function splitSentences(final = false) {
-    for (;;) {
-      let cut = -1;
-      const match = buffer.match(/[。！？!?\n]|\.(?:\s|$)/u);
-      if (match) cut = match.index + match[0].length;
-      else if (buffer.length >= 240) {
-        const space = buffer.lastIndexOf(' ', 220);
-        cut = space > 60 ? space + 1 : 200;
-      } else if (final) cut = buffer.length;
-      if (cut <= 0) break;
-      const sentence = buffer.slice(0, cut).trim();
-      buffer = buffer.slice(cut);
-      if (sentence) queue.push(sentence);
+    let cut=final ? buffer.length : 0;
+    if (!final) {
+      const boundaries=buffer.matchAll(/[。！？!?\n]|\.(?:\s|$)/gu);
+      for (const match of boundaries) cut=match.index+match[0].length;
+      if (!cut && buffer.length >= 240) {
+        const space=buffer.lastIndexOf(' ',220);cut=space>60?space+1:200;
+      }
+    }
+    if (cut) {
+      const text=buffer.slice(0,cut);buffer=buffer.slice(cut);
+      for (const chunk of speechChunks(text,hasSpoken?240:120)) {
+        const last=queue.length-1, previous=queue[last];
+        const locked=last===0 && preparation?.generation===epoch && preparation.text===previous;
+        const limit=language(chunk)==='zh-Hans'?64:240;
+        if (previous && !locked && language(previous)===language(chunk) && Array.from(previous+chunk).length+1<=limit) queue[last]=previous+' '+chunk;
+        else queue.push(chunk);
+      }
     }
     void drain();
+    prepareNext();
   }
   async function drain() {
     if (speaking || ttsId) return;
@@ -100,6 +154,7 @@
       return;
     }
     const text = queue.shift(), generation = epoch;
+    preparation = null;playbackStarted = false;hasSpoken = true;
     const id = 'chat-tts-' + Date.now() + '-' + (++sequence);
     ttsId = id; speaking = true;
     state('speaking');
@@ -108,10 +163,9 @@
       void stopSpeech(); state('error'); notify('朗读超时，文字已保留，可以重新点按朗读。');
     }, 60000);
     try {
-      await rpc('voice.speak', {sessionId: id, text, languageTag: language(text),
-        provider: load('tts-provider', 'melo'), speed: Number(load('tts-speed', 1)),
-        speakerId: Number(load('tts-speaker', 0))});
+      await rpc('voice.speak', {sessionId:id,...speechParams(text)});
       if (epoch !== generation || ttsId !== id) return;
+      playbackStarted = true;prepareNext();
     } catch (error) {
       if (epoch !== generation || ttsId !== id) return;
       const session = lifecycle, stopping = stopSpeech(), stoppedEpoch = epoch;
@@ -141,9 +195,9 @@
     if (session !== lifecycle) return;
     await stopSpeech();
     if (session !== lifecycle) return;
-    lastReadId = id; buffer = String(text); finished = true;
+    lastReadId = id; queue = speechChunks(text); finished = true;
     chat().setReading(id);
-    splitSentences(true);
+    void drain();
   }
   window.addEventListener('miyin:voice-event', event => {
     const data = event.detail || {};
@@ -164,7 +218,7 @@
     }
     if (ttsId && data.sessionId === ttsId) {
       if (['tts_done', 'tts_stopped', 'tts_error'].includes(data.type)) {
-        clearTimeout(timer); timer = 0; ttsId = null; speaking = false;
+        clearTimeout(timer); timer = 0; ttsId = null; speaking = false; playbackStarted = false;
         if (data.type === 'tts_error') {
           void stopSpeech(); state('error'); notify(data.message || '朗读失败，文字已保留。');
         } else void drain();
@@ -205,7 +259,7 @@
   window.addEventListener('miyin:chat-attachments-changed', () => { if (opened) ui().refreshFiles(); });
   window.MiyinChatVoice = Object.freeze({
     open() { if (!opened) lifecycle++; opened = true; ui().open(); state('paused'); },
-    get isOpen() { return opened; }, toggleMicrophone, submit, interrupt, shutdown, read,
+    get isOpen() { return opened; }, toggleMicrophone, submit, interrupt, shutdown, read, prepareMessage,
     async beforeGeneration(entry) {
       const session = lifecycle;
       // Register ownership before any awaited cleanup, so closing can cancel
@@ -217,8 +271,8 @@
       if (opened && session === lifecycle) state('processing');
     },
     delta(text) { if (opened) { buffer += text; splitSentences(); ui().refresh(); } },
-    finish(success) {
-      if (!opened) return;
+    finish(success, text) {
+      if (!opened) {if (success && text) prepareMessage(text);return;}
       if (success) { finished = true; splitSentences(true); }
       else { void stopSpeech(); state('paused'); }
       ui().refresh();

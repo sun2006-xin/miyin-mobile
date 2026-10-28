@@ -66,8 +66,10 @@ final class MiyinOfflineSpeechSynthesizer {
   int _completedPrewarmGeneration = 0;
   final MiyinSpeechRequestGate _prewarmRequests = MiyinSpeechRequestGate();
   final MiyinSpeechRequestGate _speechRequests = MiyinSpeechRequestGate();
-  final MiyinSpeechRequestGate _utterancePreparationRequests = MiyinSpeechRequestGate();
+  final MiyinSpeechRequestGate _utterancePreparationRequests =
+      MiyinSpeechRequestGate();
   String? _preparedAudioKey;
+  String? _preparingAudioKey;
   File? _preparedAudioFile;
   String _preferredTtsProvider = 'melo';
   String _preferredTtsLanguage = 'zh-Hans';
@@ -153,10 +155,19 @@ final class MiyinOfflineSpeechSynthesizer {
     // A newer speak request supersedes an older synthesis that has not reached
     // the native player yet. stopSpeaking invalidates this same gate.
     final requestGeneration = _speechRequests.next();
+    // Actual speech outranks an older preference-only model warmup. Otherwise
+    // that queued warmup can unload the worker required by the next segment.
+    _completedPrewarmGeneration = _prewarmRequests.next();
     // A tap is higher priority than background sentence preparation. A queued
     // preparation checks this generation before entering the worker, and the
     // spoken request must not wait for ASR warmup to finish first.
-    _utterancePreparationRequests.invalidate();
+    // A matching in-flight preparation should finish once and feed this tap.
+    // Unrelated speculative work remains lower priority than a spoken request.
+    if (_preparingAudioKey !=
+        _utteranceKey(languageTag, text, speed, speakerId, provider)) {
+      _utterancePreparationRequests.invalidate();
+      _preparingAudioKey = null;
+    }
     if (!_speechInitializationReady.isCompleted) {
       _speechInitializationReady.complete();
     }
@@ -181,8 +192,13 @@ final class MiyinOfflineSpeechSynthesizer {
     );
   }
 
-  String _utteranceKey(String languageTag, String text, double speed, int speakerId, String provider) =>
-      '$languageTag|$provider|$speakerId|$speed|$text';
+  String _utteranceKey(
+    String languageTag,
+    String text,
+    double speed,
+    int speakerId,
+    String provider,
+  ) => '$languageTag|$provider|$speakerId|$speed|$text';
 
   /// Prepares the latest translated sentence without starting playback.
   Future<Map<String, Object?>> prepareUtterance({
@@ -197,18 +213,26 @@ final class MiyinOfflineSpeechSynthesizer {
       return Future.value({'status': 'ready'});
     }
     final generation = _utterancePreparationRequests.next();
-    return _runWorkerExclusive(() => _synthesizeExclusive(
-      sessionId: 'prepared',
-      languageTag: languageTag,
-      text: text,
-      speed: speed,
-      speakerId: speakerId,
-      provider: provider,
-      requestGeneration: _speechRequests.generation,
-      requestClock: Stopwatch()..start(),
-      prepareOnly: true,
-      prepareGeneration: generation,
-    ));
+    _completedPrewarmGeneration = _prewarmRequests.next();
+    _preparingAudioKey = key;
+    return _runWorkerExclusive(
+      () => _synthesizeExclusive(
+        sessionId: 'prepared',
+        languageTag: languageTag,
+        text: text,
+        speed: speed,
+        speakerId: speakerId,
+        provider: provider,
+        requestGeneration: _speechRequests.generation,
+        requestClock: Stopwatch()..start(),
+        prepareOnly: true,
+        prepareGeneration: generation,
+      ),
+    ).whenComplete(() {
+      if (_utterancePreparationRequests.isCurrent(generation)) {
+        _preparingAudioKey = null;
+      }
+    });
   }
 
   Future<Map<String, Object?>> _synthesizeExclusive({
@@ -224,7 +248,8 @@ final class MiyinOfflineSpeechSynthesizer {
     int? prepareGeneration,
   }) async {
     await _speechInitializationReady.future;
-    if (prepareOnly && !_utterancePreparationRequests.isCurrent(prepareGeneration!)) {
+    if (prepareOnly &&
+        !_utterancePreparationRequests.isCurrent(prepareGeneration!)) {
       return {'status': 'superseded'};
     }
     if (!prepareOnly && !_speechRequests.isCurrent(requestGeneration)) {
@@ -261,12 +286,22 @@ final class MiyinOfflineSpeechSynthesizer {
     }
 
     final key = _utteranceKey(languageTag, text, speed, speakerId, provider);
-    if (!prepareOnly && key == _preparedAudioKey && _preparedAudioFile?.existsSync() == true) {
+    if (!prepareOnly &&
+        key == _preparedAudioKey &&
+        _preparedAudioFile?.existsSync() == true) {
       final directory = await getTemporaryDirectory();
-      final output = File('${directory.path}${Platform.pathSeparator}miyin-tts-${DateTime.now().microsecondsSinceEpoch}.wav');
+      final output = File(
+        '${directory.path}${Platform.pathSeparator}miyin-tts-${DateTime.now().microsecondsSinceEpoch}.wav',
+      );
       await _preparedAudioFile!.copy(output.path);
-      debugPrint('[MiyinTTS] preparedAudioHit requestToWavReadyMs=${requestClock.elapsedMilliseconds}');
-      return {'status': 'ready', 'path': output.path, 'requestGeneration': requestGeneration};
+      debugPrint(
+        '[MiyinTTS] preparedAudioHit requestToWavReadyMs=${requestClock.elapsedMilliseconds}',
+      );
+      return {
+        'status': 'ready',
+        'path': output.path,
+        'requestGeneration': requestGeneration,
+      };
     }
 
     if (!useMultilingual) {
@@ -334,7 +369,8 @@ final class MiyinOfflineSpeechSynthesizer {
         }
         requestClock.stop();
         debugPrint(
-          '[MiyinTTS] provider=$provider language=$languageTag '
+          '[MiyinTTS] provider=${useMultilingual ? 'supertonic' : 'melo'} '
+          'requestedProvider=$provider language=$languageTag textChars=${text.runes.length} '
           'workerReadyMs=${workerReadyClock.elapsedMilliseconds} '
           'synthesisMs=${response['synthesisMs'] ?? 'n/a'} '
           'wavWriteMs=${response['wavWriteMs'] ?? 'n/a'} '
@@ -348,7 +384,8 @@ final class MiyinOfflineSpeechSynthesizer {
           final previous = _preparedAudioFile;
           _preparedAudioFile = output;
           _preparedAudioKey = key;
-          if (previous != null && previous.path != output.path) await _deleteOutput(previous);
+          if (previous != null && previous.path != output.path)
+            await _deleteOutput(previous);
           return {'status': 'ready'};
         }
         return {
@@ -431,7 +468,12 @@ final class MiyinOfflineSpeechSynthesizer {
   bool isCurrentSynthesisRequest(Object? generation) =>
       generation is int && _speechRequests.isCurrent(generation);
 
-  void cancelPending() => _speechRequests.invalidate();
+  void cancelPending() {
+    _speechRequests.invalidate();
+    _utterancePreparationRequests.invalidate();
+    _completedPrewarmGeneration = _prewarmRequests.next();
+    _preparingAudioKey = null;
+  }
 
   Future<void> discardAudioFile(Object? path) async {
     if (path is! String || path.isEmpty) return;
@@ -621,7 +663,9 @@ final class MiyinOfflineSpeechSynthesizer {
             await Future<void>.delayed(prewarmRetryDelay);
           }
         }
-        _completedPrewarmGeneration = requestGeneration;
+        if (_prewarmRequests.isCurrent(requestGeneration)) {
+          _completedPrewarmGeneration = requestGeneration;
+        }
       }
     } catch (error, stackTrace) {
       debugPrint('Could not drain offline TTS prewarm requests: $error');

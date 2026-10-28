@@ -16,6 +16,16 @@
     ui()?.setModel(next.model || '配置模型');
     if (next.privacy) ui()?.setHistorySaving(next.privacy.saveLocalHistory !== false);
     void warmLocal();
+    prepareVisibleReply();
+  }
+  function prepareVisibleReply() {
+    if (!native || !ready || active || document.hidden ||
+        !document.querySelector('#screen-chat')?.classList?.contains('active')) return;
+    const row = ui()?.get?.(ui()?.getActiveId?.());
+    const reply = row?.messages?.at(-1);
+    if (reply?.role === 'assistant' && reply.status === 'complete' && reply.text) {
+      window.MiyinChatVoice?.prepareMessage(reply.text);
+    }
   }
   function warmLocal() {
     if (!native || !ready || status.providerId !== 'phone' || active ||
@@ -46,9 +56,9 @@
     });
     return warming;
   }
-  window.addEventListener('miyin:surface-visibility-change', () => { void warmLocal(); });
+  window.addEventListener('miyin:surface-visibility-change', () => { void warmLocal(); prepareVisibleReply(); });
   window.addEventListener('miyin:app-paused', () => { warmedAt = 0; });
-  window.addEventListener('miyin:app-resumed', () => { void warmLocal(); });
+  window.addEventListener('miyin:app-resumed', () => { void warmLocal(); prepareVisibleReply(); });
   async function configure(page = 'provider') {
     if (active) { notify('请先停止当前回答，再更改模型配置。'); return; }
     if(window.MiyinChatSettings){await window.MiyinChatSettings.open(page);return;}
@@ -131,7 +141,7 @@
       generation: {...current.generation, status: type, finishReason: limited ? 'length' : null},
       ...(limited ? {contextNotice:(current.contextNotice ? current.contextNotice+'\n' : '')+'回答达到本次长度上限，已保留内容。可点击“继续回答”接着写。'} : {}),
     });
-    window.MiyinChatVoice?.finish(type === 'complete');
+    window.MiyinChatVoice?.finish(type === 'complete', entry.text);
     persist(ui().getHistory(), true);
   }
   function continueAnswer(messageId) {

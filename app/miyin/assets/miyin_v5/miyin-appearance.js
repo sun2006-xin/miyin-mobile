@@ -174,8 +174,18 @@
     const controls=[...(scope.matches('button,summary,input,textarea,select')?[scope]:[]),...scope.querySelectorAll('button,summary,input,textarea,select')];
     for(const control of controls){
       if(control.closest(exceptions)||control.matches('.avatar-button,.profile-avatar'))continue;
-      if(control.matches('input,textarea,select')){if(!control.matches('[type=range],[type=checkbox],[type=radio],[type=file]'))control.classList.add('appearance-field');continue;}
+      if(control.matches('input,textarea,select')){
+        if(control.matches('#chat-input,#translation-input,#voice-input')){
+          control.classList.remove('appearance-field');
+          control.classList.add('appearance-inline-field');
+        }else if(!control.matches('[type=range],[type=checkbox],[type=radio],[type=file]'))control.classList.add('appearance-field');
+        continue;
+      }
       control.classList.add('appearance-interactive');
+      if(control.matches('.chat-web-source,.chat-web-link,.chat-source-citation')){
+        control.classList.remove('appearance-surface');
+        continue;
+      }
       if(control.matches('.mic-button,.face-entry,.back-translate,.record-open,.switch,.v4-toggle,.v6-dictionary-word')||control.closest('.v6-alphabet-index'))continue;
       if(control.matches('.destructive,.danger,.delete-record,[data-native-delete-history],[data-native-clear-history],[data-history-bulk-delete],[data-history-clear-category],[data-delete-record],[data-delete-conversation],[data-v6-language-model-action="delete"],[data-modal-action*="delete"],[data-modal-action*="clear"],[data-action*="clear"]')){control.classList.add('appearance-danger');continue;}
       control.classList.add('appearance-surface');

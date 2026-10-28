@@ -55,7 +55,7 @@ test('speech sentences drain serially and punctuation-free final tail is retaine
 });
 test('interrupt cancels generation and discards queued speech, ignoring stale completion', async () => {
   const h=harness();h.voice.open();await h.voice.beforeGeneration({conversationId:'c',messageId:'m'});
-  h.voice.delta('第一句。第二句。');await settle();const id=h.calls.find(row=>row.method==='voice.speak').params.sessionId;
+  h.voice.delta('第一句。');await settle();h.voice.delta('第二句。');await settle();const id=h.calls.find(row=>row.method==='voice.speak').params.sessionId;
   await h.voice.interrupt();h.emit('miyin:voice-event',{sessionId:id,type:'tts_done'});await settle();
   assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,1);
   assert.ok(h.calls.some(row=>row.method==='cancel'&&row.messageId==='m'));
@@ -149,4 +149,82 @@ test('an old speech failure cannot replace the state of a newly opened voice ses
   h.voice.open();await h.voice.read('New speech.','new');
   release();await settle();
   assert.equal(h.reading,'new');assert.equal(h.states.at(-1)[0],'speaking');
+});
+test('manual reading combines adjacent short sentences into one playback', async () => {
+  const h=harness(), text='第一句。第二句！第三句没有句号';await h.voice.read(text,'answer');await settle();
+  const speech=h.calls.filter(row=>row.method==='voice.speak');
+  assert.equal(speech.length,1);assert.equal(speech[0].params.text,text);
+});
+test('Chinese Melo reading starts with a small segment and bounds later preparation', async () => {
+  const h=harness(),text='这是一段用于连续朗读验证的中文内容，确保长回复不会等待整段合成。'.repeat(16);
+  await h.voice.read(text,'chinese');await settle();
+  assert(h.calls.find(row=>row.method==='voice.speak').params.text.length<=24);
+  for(let guard=0;guard<80&&h.reading;guard++) {
+    const current=h.calls.filter(row=>row.method==='voice.speak').at(-1);
+    h.emit('miyin:voice-event',{sessionId:current.params.sessionId,type:'tts_done'});await settle();
+  }
+  const spoken=h.calls.filter(row=>row.method==='voice.speak');
+  assert(spoken.every(row=>row.params.text.length<=64));
+  assert.equal(spoken.map(row=>row.params.text).join('').replace(/\s/g,''),text);
+  assert.equal(h.reading,null);
+});
+test('long manual reading prepares the next segment during playback and retains all text', async () => {
+  const h=harness(),text=Array.from({length:22},(_,i)=>`Sentence ${i+1} remains readable.`).join(' ');
+  await h.voice.read(text,'long');await settle();
+  const first=h.calls.find(row=>row.method==='voice.speak');
+  const prepared=h.calls.find(row=>row.method==='voice.prepareUtterance');
+  assert(prepared,'next segment must be prepared before the first completion');
+  assert(first.params.text.length<=120);assert(prepared.params.text.length<=240);
+  for(let guard=0;guard<30&&h.reading;guard++) {
+    const current=h.calls.filter(row=>row.method==='voice.speak').at(-1);
+    h.emit('miyin:voice-event',{sessionId:current.params.sessionId,type:'tts_done'});await settle();
+  }
+  const spoken=h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text).join(' ');
+  assert.equal(spoken.replace(/\s/g,''),text.replace(/\s/g,''));assert.equal(h.reading,null);
+  assert(h.calls.filter(row=>row.method==='voice.prepareUtterance').length<h.calls.filter(row=>row.method==='voice.speak').length);
+});
+test('a completed text reply prepares only the first bounded segment without playing audio', async () => {
+  const h=harness(),text='First sentence. '+('More complete sentences. '.repeat(30));
+  h.voice.finish(true,text);h.voice.prepareMessage(text);await settle();
+  const prepares=h.calls.filter(row=>row.method==='voice.prepareUtterance');
+  assert.equal(prepares.length,1);assert(prepares[0].params.text.length<=120);
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,0);
+});
+test('reading a completed reply does not cancel its in-flight first segment preparation', async () => {
+  let release;const pending=new Promise(resolve=>{release=resolve;});
+  const h=harness(method=>method==='voice.prepareUtterance'?pending:{}),text='First sentence. '+('More complete sentences. '.repeat(30));
+  h.voice.finish(true,text);await settle();
+  const prepared=h.calls.find(row=>row.method==='voice.prepareUtterance');
+  await h.voice.read(text,'prepared');await settle();
+  const spoken=h.calls.find(row=>row.method==='voice.speak');
+  assert.equal(spoken.params.text,prepared.params.text);
+  assert.equal(h.calls.filter(row=>row.method==='voice.stopSpeaking').length,0);
+  release();await settle();
+});
+test('prefetched segment completion after interrupt never starts another playback', async () => {
+  let release;const pending=new Promise(resolve=>{release=resolve;});
+  const h=harness(method=>method==='voice.prepareUtterance'?pending:{});
+  await h.voice.read('A complete first sentence. '.repeat(20),'long');await settle();
+  const current=h.calls.find(row=>row.method==='voice.speak').params.sessionId;
+  await h.voice.interrupt();release();await settle();
+  h.emit('miyin:voice-event',{sessionId:current,type:'tts_done'});await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,1);assert.equal(h.reading,null);
+});
+test('speech batching does not merge sentences routed to different TTS languages', async () => {
+  const h=harness();await h.voice.read('你好。Hello.','mixed');await settle();
+  const first=h.calls.find(row=>row.method==='voice.speak');assert.equal(first.params.languageTag,'zh-Hans');
+  h.emit('miyin:voice-event',{sessionId:first.params.sessionId,type:'tts_done'});await settle();
+  const second=h.calls.filter(row=>row.method==='voice.speak')[1];assert.equal(second.params.languageTag,'en');
+});
+
+test('formatting-only lines do not trigger an English model between Chinese speech', async () => {
+  const h=harness();await h.voice.read('你好。\n**\n继续交流。','formatting');await settle();
+  for(let i=0;i<8;i++){
+    const calls=h.calls.filter(row=>row.method==='voice.speak');
+    const call=calls[i];if(!call)break;
+    assert.equal(call.params.languageTag,'zh-Hans');
+    assert(/[\p{L}\p{N}]/u.test(call.params.text));
+    h.emit('miyin:voice-event',{sessionId:call.params.sessionId,type:'tts_done'});await settle();
+  }
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text).join('').replace(/\s/g,''),'你好。继续交流。');
 });

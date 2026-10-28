@@ -35,4 +35,28 @@ html[data-button-material=satin] #app .appearance-surface{box-shadow:inset 0 1px
 #app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal]) .mic-surface{opacity:0}
 #app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal]){border:1px solid currentColor;box-shadow:inset 1px 2px 3px #ffffffb3,inset -2px -3px 6px #0002,0 5px 14px #102a3a26}
 #app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal]) svg{color:inherit;filter:none}#app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal])::before{border-color:#ffffff70;border-radius:50%}
+
+/* A composer owns one surface; its editable text never gets an inner box. */
+html[data-button-material] #app :is(#chat-input,#translation-input,#voice-input),
+html[data-button-material] #app :is(#chat-input,#translation-input,#voice-input):focus-visible {
+  -webkit-appearance:none;appearance:none;border:0;outline:0;outline-offset:0;border-radius:0;background:transparent;box-shadow:none;
+}
+#app :is(.compose-card,.voice-input-capsule,.text-entry) { transition:border-color .16s ease,box-shadow .16s ease; }
+#app :is(.compose-card,.voice-input-capsule,.text-entry):focus-within {
+  border-color:var(--appearance-edge,var(--line-strong));
+  box-shadow:inset 0 1px 0 var(--appearance-highlight),0 3px 12px var(--appearance-shadow-soft);
+}
+
+/* Fixed optical and hit geometry in both orb and captions modes. */
+#app .voice-caption-toggle,
+#app .voice-overlay[data-display-mode="captions"] .voice-caption-toggle {
+  left:calc(50% - 22px);width:44px;height:44px;min-width:44px;min-height:44px;max-width:44px;max-height:44px;
+  flex:0 0 44px;aspect-ratio:1;padding:0;transform:none;border-radius:50%;line-height:1;
+}
+#app .voice-caption-toggle svg { width:20px;height:20px;min-width:20px;min-height:20px;flex:none; }
+#app .voice-caption-toggle { top:max(8px,calc(50% - 232px)); }
+#app .voice-overlay[data-display-mode="captions"] .voice-caption-toggle { top:auto;bottom:-18px; }
+#app .voice-overlay[data-display-mode="captions"] .ai-orb-renderer { top:calc(50% - 10px); }
+@media(max-height:690px){#app .voice-caption-toggle{top:max(6px,calc(50% - 158px))}}
+@media(prefers-reduced-motion:reduce){#app :is(.compose-card,.voice-input-capsule,.text-entry){transition:none}}
 #app .mic-button.shader-fallback .mic-surface{opacity:0}.v4-style-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.v4-mic-style-section{margin-top:22px}.v4-style-choice{min-width:0}.v4-style-heading{gap:12px}.v4-style-heading>div{min-width:0}.v4-style-heading small{white-space:normal;line-height:1.5}
