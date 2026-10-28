@@ -11,12 +11,12 @@
 
   const prefix = 'miyin.full.preview.v5.';
   const options = {
-    material: ['liquid', 'crystal', 'ceramic', 'metal', 'soft'],
+    material: ['liquid', 'crystal', 'ceramic', 'metal', 'soft', 'frost', 'pearl', 'satin'],
     feedback: ['bounce', 'press', 'glow', 'none'],
     typography: ['serif-head', 'sans', 'rounded']
   };
   const labels = {
-    material: { liquid: '凝露琉璃', crystal: '澄透玻璃', ceramic: '温润陶釉', metal: '柔光金属', soft: '云绒微光' },
+    material: { liquid: '凝露琉璃', crystal: '澄透玻璃', ceramic: '温润陶釉', metal: '柔光金属', soft: '云绒微光', frost: '冰砂雾玻', pearl: '贝母珠光', satin: '细织缎面' },
     feedback: { bounce: '轻弹回馈', press: '轻压回馈', glow: '柔光回馈', none: '简洁无动效' },
     typography: { 'serif-head': '思源宋体标题＋黑体正文', sans: '全黑体', rounded: '圆润黑体' }
   };
@@ -48,6 +48,7 @@
     themeLists[0].prepend(jade);
   }
   const captionRow = [...settingPanel.querySelectorAll('.setting-row')].find(row => row.textContent.includes('字幕文字大小'));
+  const micSection = settingPanel.querySelector('.v4-mic-style-section');
   settingPanel.replaceChildren();
   const entry = document.createElement('div');
   entry.className = 'setting-row';
@@ -100,6 +101,16 @@
       <button type="button" data-appearance-kind="typography" data-appearance-value="rounded"><strong class="rounded-sample">觅音外观</strong><small>圆润黑体</small></button>
     </div>
     <div class="appearance-live-preview" aria-label="按钮组合预览"><span>效果预览</span><button type="button">开始同传</button><button type="button">选择语言</button></div>`;
+  const materials = controls.querySelector('[aria-label="按钮材质"]');
+  for (const [id,name,hint] of [['frost','冰砂雾玻','柔雾透光'],['pearl','贝母珠光','温和层叠光泽'],['satin','细织缎面','细密纹理 · 哑光']]) {
+    const choice=document.createElement('button');choice.type='button';choice.dataset.appearanceKind='material';choice.dataset.appearanceValue=id;
+    const sample=document.createElement('i');sample.className='appearance-sample sample-'+id;
+    const strong=document.createElement('strong');strong.textContent=name;const small=document.createElement('small');small.textContent=hint;choice.append(sample,strong,small);materials.append(choice);
+  }
+  const micPage = document.createElement('section');
+  micPage.className = 'appearance-section appearance-page';
+  micPage.dataset.appearancePage = 'microphone';
+  if(micSection){micSection.querySelector('.v4-style-heading small').textContent='同步用于普通翻译与面对面对话';micPage.append(micSection);}
   controls.append(status);
   const hub = document.createElement('section');
   hub.className = 'appearance-hub appearance-page';
@@ -116,10 +127,15 @@
   orbHeading.innerHTML = '<h2>AI 球体</h2><span>材质、波形、配色自由组合</span>';
   orbPage.append(orbHeading);
   [...scroll.children].filter(child => child.matches('.orb-current-preview,.orb-style-group,.orb-style-note,#orb-appearance-status')).forEach(child => orbPage.append(child));
-  scroll.replaceChildren(hub, themeSection, controls, orbPage);
+  const micEntry = document.createElement('button');
+  micEntry.type = 'button';
+  micEntry.dataset.appearanceOpen = 'microphone';
+  micEntry.innerHTML = '<span><strong>语音按钮外观</strong><small>翻译与面对面对话 · 7 种质感</small></span><span aria-hidden="true">›</span>';
+  hub.querySelector('.appearance-hub-list').append(micEntry);
+  scroll.replaceChildren(hub, themeSection, controls, micPage, orbPage);
   const title = screen.querySelector('.orb-style-head h1');
   const backButton = screen.querySelector('[data-action="appearance-back"]');
-  const pageTitles = { hub: '觅音外观', themes: '界面主题', controls: '按钮与字体', orb: 'AI 球体' };
+  const pageTitles = { hub: '觅音外观', themes: '界面主题', controls: '按钮与字体', microphone: '语音按钮外观', orb: 'AI 球体' };
   let currentPage = 'hub';
   const updateHub = () => {
     const activeTheme = themeSection.querySelector('[data-theme-choice][aria-pressed="true"]');
@@ -149,6 +165,29 @@
     appearanceWasActive = active;
   });
 
+
+  const exceptions='.mode-wheel,.ai-orb-renderer,.v4-float-ball,.translation-attachment-conversation-stage,.translation-attachment-comparison-stage,.translation-attachment-compare-stage';
+  function registerSurfaces(scope){
+    if(!scope||scope.nodeType!==1)return;
+    const panelSelector='.setting-panel,.modal-card,.chat-config-provider-body,.chat-config-picker-models,.v6-resource-card,.v6-dictionary-entry-result,.v6-dictionary-search,.record-row,.history-recording-files,.video-setting,.subtitle-preview';
+    for(const panel of [...(scope.matches(panelSelector)?[scope]:[]),...scope.querySelectorAll(panelSelector)])panel.classList.add('appearance-panel');
+    const controls=[...(scope.matches('button,summary,input,textarea,select')?[scope]:[]),...scope.querySelectorAll('button,summary,input,textarea,select')];
+    for(const control of controls){
+      if(control.closest(exceptions)||control.matches('.avatar-button,.profile-avatar'))continue;
+      if(control.matches('input,textarea,select')){if(!control.matches('[type=range],[type=checkbox],[type=radio],[type=file]'))control.classList.add('appearance-field');continue;}
+      control.classList.add('appearance-interactive');
+      if(control.matches('.mic-button,.face-entry,.back-translate,.record-open,.switch,.v4-toggle,.v6-dictionary-word')||control.closest('.v6-alphabet-index'))continue;
+      if(control.matches('.destructive,.danger,.delete-record,[data-native-delete-history],[data-native-clear-history],[data-history-bulk-delete],[data-history-clear-category],[data-delete-record],[data-delete-conversation],[data-v6-language-model-action="delete"],[data-modal-action*="delete"],[data-modal-action*="clear"],[data-action*="clear"]')){control.classList.add('appearance-danger');continue;}
+      control.classList.add('appearance-surface');
+      if(control.matches('.confirm,.primary,.send-button,.chat-send,.video-start,.chat-config-primary,[data-action="send-chat"]'))control.classList.add('appearance-primary');
+    }
+  }
+  const addedNodes=new Set();let scheduled=false;
+  new MutationObserver(changes=>{
+    for(const change of changes)for(const n of change.addedNodes)if(n.nodeType===1)addedNodes.add(n);
+    if(scheduled||!addedNodes.size)return;scheduled=true;
+    queueMicrotask(()=>{scheduled=false;for(const n of addedNodes)if(n.isConnected)registerSurfaces(n);addedNodes.clear();});
+  }).observe(document.querySelector('#app'),{childList:true,subtree:true});
   // Resolve palette colors to ordinary rgba values for older Android WebViews.
   // CSS color-mix() is unavailable in WebView 97, including on the review OPPO.
   const colorCanvas = document.createElement('canvas');
@@ -191,15 +230,21 @@
       crystal: `linear-gradient(120deg,${s(surface, white, dark ? .85 : .62)},${s(surface, accent, .91)} 26%,${s(surface, accent, .78)} 55%,${s(surface, white, dark ? .91 : .75)} 82%)`,
       ceramic: `linear-gradient(160deg,${s(surface, white, .92)},${s(surface, accent, .92)})`,
       metal: `repeating-linear-gradient(112deg,rgba(255,255,255,.06) 0 1px,transparent 1px 3px),linear-gradient(112deg,${s(surface, white, .85)},${s(surface, muted, .74)} 36%,${s(surface, white, .92)} 62%,${s(surface, ink, .86)})`,
-      soft: s(surface, accent, .91)
+      soft: s(surface, accent, .91),
+      frost: `linear-gradient(145deg,${s(surface, white, .83)},${s(surface, accent, .94)})`,
+      pearl: `radial-gradient(ellipse at 15% 0%,${s(surface, white, .65)},transparent 65%),linear-gradient(120deg,${s(surface, accent, .86)},${s(surface, muted, .94)} 48%,${s(surface, white, .86)})`,
+      satin: `repeating-linear-gradient(35deg,rgba(255,255,255,.07) 0 1px,transparent 1px 4px),repeating-linear-gradient(125deg,rgba(0,0,0,.025) 0 1px,transparent 1px 4px),linear-gradient(140deg,${s(surface, accent, .90)},${s(surface, muted, .93)})`
     };
     root.style.setProperty('--appearance-button-bg', backgrounds[read('material')]);
+    root.style.setProperty('--appearance-selected-bg', `linear-gradient(${colorText([...accent.slice(0,3),.12])},${colorText([...accent.slice(0,3),.12])}),${backgrounds[read('material')]}`);
+    const decoration=getComputedStyle(document.querySelector('#app'),'::before').backgroundImage;
+    root.style.setProperty('--appearance-decoration-bg', decoration==='none'?'radial-gradient(ellipse at 95% 5%,var(--theme-glow-a,transparent),transparent 48%),radial-gradient(ellipse at 0% 90%,var(--theme-glow-b,transparent),transparent 45%)':decoration);
     const primary = blend(accent, surface, dark ? .50 : .97);
     const whiteContrast = (1.05) / (luminance(primary) + .05);
     const blackContrast = (luminance(primary) + .05) / .05;
     root.style.setProperty('--appearance-primary-ink', whiteContrast >= blackContrast ? '#ffffff' : '#102227');
     root.style.setProperty('--appearance-primary-bg', `linear-gradient(145deg,${s(primary, white, .92)},${colorText(primary)} 52%,${s(primary, black, .92)})`);
-    document.querySelectorAll('.setting-trigger,.value-control,.theme-choice,.orb-style-choice,.orb-wave-choice,.orb-palette-choice,.language-pill,.source-pills button,.subtitle-style,.video-start,.subtitle-record-toggle,.subtitle-record-files,.subtitle-language-pair button,.appearance-live-preview button,.appearance-hub-list button').forEach(button => button.classList.add('appearance-surface'));
+    registerSurfaces(document.querySelector('#app'));
   };
   new MutationObserver(syncPalette).observe(root, { attributes: true, attributeFilter: ['data-theme'] });
 
@@ -231,7 +276,7 @@
     sync();
     status.textContent = labels[kind][value] + '已应用';
   });
-  const pressable = 'button:not(.switch):not(:disabled)';
+  const pressable = '.appearance-interactive:not(:disabled)';
   document.addEventListener('pointerup', event => {
     if (read('feedback') !== 'bounce' || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const button = event.target.closest(pressable);

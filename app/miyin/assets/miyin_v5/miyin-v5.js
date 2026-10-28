@@ -540,14 +540,18 @@
   let priorFocus = null;
 
   const styleOptions = [
-    { id: "sea-glass", label: "海玻璃", hint: "你选中的蓝色" },
+    { id: "sea-glass", label: "海玻璃", hint: "深蓝折光" },
     { id: "mint-metallic", label: "薄荷金属", hint: "清透薄荷色" },
-    { id: "classic-mist", label: "经典雾蓝", hint: "旧版按钮外观" }
+    { id: "classic-mist", label: "经典雾蓝", hint: "细雾高光" },
+    { id: "warm-porcelain", label: "暖瓷琥珀", hint: "温润陶瓷" },
+    { id: "midnight-glass", label: "午夜蓝晶", hint: "深色玻璃" },
+    { id: "violet-prism", label: "紫晶流光", hint: "柔紫折光" },
+    { id: "graphite-metal", label: "石墨钛金", hint: "沉稳金属" }
   ];
   function setMicStyle(style, quiet = false) {
     if (!styleOptions.some(option => option.id === style)) return;
     $$(".mic-button").forEach(button => { button.dataset.v4MicStyle = style; });
-    $$("[data-v4-mic-style]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.v4MicStyle === style)));
+    $$(".v4-style-choice[data-v4-mic-style]").forEach(button => button.setAttribute("aria-pressed", String(button.dataset.v4MicStyle === style)));
     const label = $("#v4-mic-style-current");
     const selected = styleOptions.find(option => option.id === style);
     if (label) label.textContent = selected.label;
@@ -561,11 +565,8 @@
     if (!panel || !themeChoices) return;
     const section = document.createElement("section");
     section.className = "v4-mic-style-section";
-    section.innerHTML = '<div class="v4-style-heading"><div><b>语音按钮外观</b><small>单独选择按钮效果，不改变 V2 页面主题</small></div><span id="v4-mic-style-current">海玻璃</span></div><div class="v4-style-list" role="group" aria-label="选择语音按钮外观">' +
-      '<button class="v4-style-choice" type="button" data-v4-mic-style="sea-glass" aria-pressed="false"><span class="v4-style-sample sea-glass">' + icon.mic + '</span><strong>海玻璃</strong><small>你选中的蓝色</small></button>' +
-      '<button class="v4-style-choice" type="button" data-v4-mic-style="mint-metallic" aria-pressed="false"><span class="v4-style-sample mint-metallic">' + icon.mic + '</span><strong>薄荷金属</strong><small>清透薄荷色</small></button>' +
-      '<button class="v4-style-choice" type="button" data-v4-mic-style="classic-mist" aria-pressed="false"><span class="v4-style-sample classic-mist">' + icon.mic + '</span><strong>经典雾蓝</strong><small>旧版外观</small></button>' +
-      '</div>';
+    section.innerHTML = '<div class="v4-style-heading"><div><b>语音按钮外观</b><small>同步用于普通翻译与面对面对话</small></div><span id="v4-mic-style-current">海玻璃</span></div><div class="v4-style-list" role="group" aria-label="选择语音按钮外观">' +
+      styleOptions.map(option => '<button class="v4-style-choice" type="button" data-v4-mic-style="'+option.id+'" aria-pressed="false"><span class="v4-style-sample '+option.id+'">'+icon.mic+'</span><strong>'+option.label+'</strong><small>'+option.hint+'</small></button>').join('') + '</div>';
     themeChoices.insertAdjacentElement("afterend", section);
   }
   injectMicStyles();
@@ -866,7 +867,7 @@
     const floatToggle = target.closest("[data-v4-float-toggle]");
     if (floatToggle) { setFloatBall(!floatBallEnabled); return; }
 
-    const styleChoice = target.closest("[data-v4-mic-style]");
+    const styleChoice = target.closest(".v4-style-choice[data-v4-mic-style]");
     if (styleChoice) { setMicStyle(styleChoice.dataset.v4MicStyle); return; }
 
     const audioChoice = target.closest("[data-v4-audio]");

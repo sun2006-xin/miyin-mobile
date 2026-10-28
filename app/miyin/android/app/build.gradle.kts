@@ -11,6 +11,7 @@ dependencies {
 }
 
 android {
+    packaging { jniLibs { useLegacyPackaging = true; keepDebugSymbols += "**/libmiyin_llama.so" } }
     namespace = "com.miyin.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion

@@ -6,6 +6,8 @@
   let ready = false, status = {configured: false}, serial = 0, active = null;
   let saveTimer = 0, saveQueue = Promise.resolve(), pendingSnapshot = null;
   let importing = false, imported = null;
+  let webRequest = null;
+  let warming = null, warmedAt = 0;
   let nativeContextRows = [], nativeContextOffset = 0;
   const notify = text => ui()?.announce(text);
 
@@ -13,13 +15,47 @@
     status = next;
     ui()?.setModel(next.model || 'DeepSeek · 待配置');
     if (next.privacy) ui()?.setHistorySaving(next.privacy.saveLocalHistory !== false);
+    void warmLocal();
   }
+  function warmLocal() {
+    if (!native || !ready || status.providerId !== 'phone' || active ||
+        !document.querySelector('#screen-chat')?.classList?.contains('active')) return Promise.resolve();
+    if (warming) return warming;
+    if (Date.now() - warmedAt < 30000) return Promise.resolve();
+    let button = null, label = '';
+    warming = (async () => {
+      const local = await rpc('chat.local.status');
+      if (local.ready) { warmedAt = Date.now(); return; }
+      if (active || status.providerId !== 'phone') return;
+      button = document.querySelector('#screen-chat .model-select');
+      if (button?.dataset) {
+        label = button.textContent; button.textContent = '本机准备中⌄';
+        button.setAttribute('aria-busy', 'true');
+      }
+      await rpc('chat.local.prepare');
+      warmedAt = Date.now();
+    })().catch(() => {
+      // A speculative warm-up never blocks sending; the real request reports errors.
+      warmedAt = 0;
+    }).finally(() => {
+      if (button?.dataset) {
+        if (button.textContent === '本机准备中⌄') button.textContent = label;
+        button.removeAttribute('aria-busy');
+      }
+      warming = null;
+    });
+    return warming;
+  }
+  window.addEventListener('miyin:surface-visibility-change', () => { void warmLocal(); });
+  window.addEventListener('miyin:app-paused', () => { warmedAt = 0; });
+  window.addEventListener('miyin:app-resumed', () => { void warmLocal(); });
   async function configure(page = 'provider') {
     if (active) { notify('请先停止当前回答，再更改模型配置。'); return; }
+    if(window.MiyinChatSettings){await window.MiyinChatSettings.open(page);return;}
     try {
       const result = await rpc('chat.configure', {page});
       setStatus(result);
-      if (page === 'models' && result.settingsSaved && ui().getActiveId()) {
+      if (page !== 'privacy' && result.settingsSaved && ui().getActiveId()) {
         ui().pinModel(ui().getActiveId(), result.model);
       }
     }
@@ -61,8 +97,8 @@
     if (!native) return true;
     if (!ready) { notify('正在读取聊天记录，请稍候。'); return false; }
     if (!status.configured) { void configure(); return false; }
-    if (!status.privacy?.allowNetwork) {
-      notify('请先在 AI 隐私设置中允许发送至远程模型。');
+    if (status.providerId !== 'phone' && !status.privacy?.allowNetwork) {
+      notify('请先在 AI 隐私设置中允许发送至所选模型服务。');
       void configure('privacy'); return false;
     }
     if (active) { notify('请先等待或停止当前回答。'); return false; }
@@ -81,19 +117,34 @@
     if (active !== entry || message?.status !== 'pending') return;
     ui().update(entry.conversationId, entry.messageId, {text: entry.text || '正在生成回答…'});
   }
-  function finish(entry, type, notice) {
+  function finish(entry, type, notice, code) {
     flushText(entry);
     if (active !== entry) return;
     const current = ui().find(entry.conversationId, entry.messageId);
     active = null;
     if (current?.status !== 'pending') return;
-    const text = entry.text + (notice ? (entry.text ? '\n\n' : '') + notice : '');
+    const limited = code === 'output_limit' && !!entry.text;
+    if (limited) type = 'complete';
+    const text = entry.text + (!limited && notice ? (entry.text ? '\n\n' : '') + notice : '');
     ui().update(entry.conversationId, entry.messageId, {
       status: type, text: text || '模型未返回文字，请重试。',
-      generation: {...current.generation, status: type},
+      generation: {...current.generation, status: type, finishReason: limited ? 'length' : null},
+      ...(limited ? {contextNotice:(current.contextNotice ? current.contextNotice+'\n' : '')+'回答达到本次长度上限，已保留内容。可点击“继续回答”接着写。'} : {}),
     });
     window.MiyinChatVoice?.finish(type === 'complete');
     persist(ui().getHistory(), true);
+  }
+  function continueAnswer(messageId) {
+    const conversation = ui().get(ui().getActiveId()), message = conversation?.messages.at(-1);
+    if (!message || message.id !== messageId || message.generation?.finishReason !== 'length') {
+      notify('请在当前会话最新一条未完成的回答上继续。'); return;
+    }
+    if (status.privacy?.sendHistory === false) { notify('继续回答需要携带当前上下文，请先在隐私设置中开启。'); return; }
+    const pending = ui().getPending();
+    if (pending.files.length || pending.contexts.length) { notify('请先发送或移除待附加资料，再继续这条回答。'); return; }
+    if (!canSend(false, false, '继续回答')) return;
+    const tail = Array.from(message.text).slice(-600).join('');
+    ui().sendVoice('请继续上一条未完成的回答，从断点接着写。以下是该回答的末尾片段（不是完整回答）：\n\n'+tail);
   }
   async function start(conversationId, messageId) {
     const conversation = ui().get(conversationId);
@@ -102,6 +153,8 @@
     const entry = {conversationId, messageId, requestId, text: '', timer: 0};
     if (active) { notify('请先停止当前回答。'); return; }
     active = entry;
+    const initial = ui().find(conversationId, messageId);
+    ui().update(conversationId, messageId, {contextNotice:'', generation:{...initial.generation,finishReason:null}});
     await window.MiyinChatVoice?.beforeGeneration(entry);
     if (active !== entry) return;
     let messages;
@@ -118,9 +171,15 @@
       return;
     }
     try {
-      const result = await rpc('chat.start', {requestId, messages});
+      const searchQuery=conversation.messages.slice(0,index).filter(message=>message.role==='user').at(-1)?.text||'';
+      const result = await rpc('chat.start', {requestId, messages, conversationId,searchQuery});
       if (active !== entry) { await rpc('chat.cancel', {requestId}); return; }
       ui().pinModel(conversationId, result.model);
+      if (result.contextOmitted > 0) {
+        const note = '本轮使用最近的对话，较早的 ' + result.contextOmitted + ' 条消息未发送；完整记录仍保留。';
+        ui().update(conversationId, messageId, {contextNotice:note});
+        notify(note);
+      }
     } catch (error) {
       finish(entry, 'failed', error.message || '发送失败，请重试。');
     }
@@ -138,11 +197,50 @@
       entry.text += String(data.text || '');
       window.MiyinChatVoice?.delta(String(data.text || ''));
       if (!entry.timer) entry.timer = setTimeout(() => flushText(entry), 80);
+    } else if (data.type === 'progress') {
+      ui().update(entry.conversationId, entry.messageId, {text:String(data.text || '正在整理会话记忆…')});
+    } else if (data.type === 'sources') {
+      try {const sources=JSON.parse(data.text);if(Array.isArray(sources))ui().update(entry.conversationId,entry.messageId,{webSources:sources});} catch(_) {}
+    } else if (data.type === 'memory') {
+      ui().update(entry.conversationId, entry.messageId, {contextNotice:String(data.text || ''), memoryAvailable:true});
+    } else if (data.type === 'context') {
+      ui().update(entry.conversationId, entry.messageId, {contextNotice:String(data.text || ''), memoryAvailable:false});
     } else if (data.type === 'completed') finish(entry, 'complete');
-    else if (data.type === 'failed') finish(entry, 'failed', data.text || '回答中断，请重试。');
+    else if (data.type === 'failed') finish(entry, 'failed', data.text || '回答中断，请重试。', data.code);
   });
   document.addEventListener('click', event => {
     if (!native) return;
+    const webSource=event.target.closest('[data-chat-web-url]');
+    if(webSource){event.preventDefault();event.stopImmediatePropagation();void rpc('chat.openUrl',{url:webSource.dataset.chatWebUrl}).catch(error=>notify(error.message));return;}
+    const webOpen = event.target.closest('[data-modal-action="chat-web-open"]');
+    if (webOpen) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (active || importing) { notify('请先停止当前操作。'); return; }
+      ui().showWebImport(); return;
+    }
+    const webRead = event.target.closest('[data-modal-action="chat-web-read"]');
+    if (webRead) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      void readWebPage(); return;
+    }
+    const webCancel = event.target.closest('[data-modal-action="chat-web-cancel"]');
+    if (webCancel) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      cancelWebPage(); ui().closeModal(); return;
+    }
+    const memory = event.target.closest('[data-chat-memory], [data-modal-action="chat-memory-view"]');
+    if (memory) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      void showMemory(memory.dataset.chatMemory || ui().getActiveId()); return;
+    }
+    const clearMemory = event.target.closest('[data-modal-action="chat-memory-clear"]');
+    if (clearMemory) {
+      event.preventDefault(); event.stopImmediatePropagation();
+      if (active) { notify('请先停止当前回答，再清除记忆。'); return; }
+      const conversationId = clearMemory.dataset.value;
+      void rpc('chat.memory.clear', {conversationId}).then(() => showMemory(conversationId))
+        .catch(error => notify(error.message || '清除未完成。')); return;
+    }
     const category = event.target.closest('[data-modal-action="select-context-category"]');
     if (category?.dataset.value === 'translation') {
       event.preventDefault(); event.stopImmediatePropagation(); void nativeHistory(0); return;
@@ -196,6 +294,64 @@
     try { await rpc('chat.share', {text}); }
     catch (error) { notify(error.message || '分享未完成。'); }
   }
+  function cancelWebPage() {
+    const entry = webRequest;
+    if (!entry) return;
+    webRequest = null;
+    importing = false;
+    void rpc('chat.web.cancel', {requestId:entry.requestId}).catch(() => {});
+  }
+  async function readWebPage() {
+    if (importing || active) return;
+    if (ui().getPending().files.length >= 4) { notify('一次最多附加 4 个资料文件。'); return; }
+    const input = document.querySelector('#chat-web-url');
+    const url = input?.value.trim() || '';
+    try {
+      const value = new URL(url);
+      if (value.protocol !== 'https:' || value.username || value.password || url.length > 2048) throw new Error();
+    } catch (_) { notify('请填写完整的 HTTPS 网页链接。'); return; }
+    const entry = {requestId:'web-' + Date.now() + '-' + (++serial), conversationId:ui().getActiveId()};
+    webRequest = entry;
+    importing = true;
+    imported = null;
+    ui().showWebReading();
+    try {
+      const result = await rpc('chat.web.read', {url, allowOnce:true, requestId:entry.requestId});
+      if (webRequest !== entry || entry.conversationId !== ui().getActiveId()) return;
+      const text = '网页标题：' + result.title + '\n来源网址：' + result.url +
+        '\n网页标注发布时间：' + (result.publishedAt || '未知') + '\n读取时间：' + result.fetchedAt +
+        '\n读取范围：' + (result.truncated ? '仅正文前段，未读取完全文' : '提取到的静态正文，可能遗漏网页内容') +
+        '\n\n' + result.text;
+      if (!result.text || text.length > 10000) throw new Error('网页资料过长或没有正文，请复制需要的段落。');
+      imported = {id:entry.requestId, name:result.title || '网页资料', type:'text/plain',
+        extraction:result.truncated ? '公开网页 · 部分正文' : '公开网页 · 静态正文', text};
+      ui().previewAttachment(imported);
+    } catch (error) {
+      if (webRequest === entry && entry.conversationId === ui().getActiveId()) {
+        ui().showWebImport(url, error.message || '网页读取失败，可以复制正文后发送。');
+        notify(error.message || '网页读取失败，可以复制正文后发送。');
+      }
+    } finally {
+      if (webRequest === entry) { webRequest = null; importing = false; }
+    }
+  }
+  window.addEventListener('pagehide', cancelWebPage);
+  function watchWebDialog() {
+    const dialog = document.querySelector('#modal-scrim');
+    if (!dialog) return;
+    new MutationObserver(() => {
+      if (webRequest && !dialog.classList.contains('open')) cancelWebPage();
+    }).observe(dialog, {attributes:true, attributeFilter:['class']});
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchWebDialog, {once:true});
+  else watchWebDialog();
+  async function showMemory(conversationId) {
+    if (!conversationId) { notify('开始对话后可以查看本会话记忆。'); return; }
+    try {
+      const result = await rpc('chat.memory.get', {conversationId});
+      ui().showMemory(conversationId, result.memory);
+    } catch (error) { notify(error.message || '无法读取会话记忆。'); }
+  }
   async function nativeHistory(offset) {
     try {
       nativeContextRows = await rpc('history.list', {limit: 20, offset: Math.max(0, offset)});
@@ -223,7 +379,7 @@
     finally { importing = false; }
   }
   window.addEventListener('miyin:native-host-ready', () => { void initialize(); });
-  window.MiyinChat = Object.freeze({native, start, cancel, canSend, persist, pickAttachment, share,
+  window.MiyinChat = Object.freeze({native, start, cancel, continueAnswer, warmLocal, canSend, persist, pickAttachment, share,applyStatus:setStatus,
     saveHistoryPreference(value) {
       if (native && ready) void rpc('chat.privacy', {saveLocalHistory: !!value})
         .then(next => { status = next; }).catch(error => notify(error.message));

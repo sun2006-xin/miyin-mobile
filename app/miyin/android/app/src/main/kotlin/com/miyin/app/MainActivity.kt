@@ -14,6 +14,7 @@ import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
+    private var phoneLlm: PhoneLlmRuntime? = null
     private val performanceChannelName = "com.miyin.app/performance"
     private val translationChannelName = "com.miyin.app/translation"
     private val attachmentOcrChannelName = "com.miyin.app/attachment-ocr"
@@ -39,11 +40,25 @@ class MainActivity : FlutterActivity() {
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+        phoneLlm = PhoneLlmRuntime(this)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-local").setMethodCallHandler(phoneLlm)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-secrets")
             .setMethodCallHandler(MiyinChatSecrets(this))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-actions")
             .setMethodCallHandler { call, result ->
-                if (call.method != "shareText") {
+                if (call.method == "openUrl") {
+                    val value = call.arguments as? String
+                    val url = value?.let { runCatching { Uri.parse(it) }.getOrNull() }
+                    if (value == null || url == null || value.length > 4096 || url.scheme !in listOf("https", "http") ||
+                        url.host.isNullOrEmpty() || !url.userInfo.isNullOrEmpty() || value.any { it <= ' ' }) {
+                        result.error("invalid_url", "只支持普通网页链接。", null)
+                    } else try {
+                        startActivity(Intent(Intent.ACTION_VIEW, url).apply { addCategory(Intent.CATEGORY_BROWSABLE) })
+                        result.success(null)
+                    } catch (_: Exception) {
+                        result.error("browser_unavailable", "没有可用的浏览器。", null)
+                    }
+                } else if (call.method != "shareText") {
                     result.notImplemented()
                 } else {
                     val text = call.arguments as? String
@@ -300,6 +315,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        phoneLlm?.setForeground(true)
         MiyinFloatingService.setAppForeground(true)
         MiyinSubtitleOverlayService.setAppForeground(true)
         val restoreFloating = getSharedPreferences(MiyinFloatingService.PREFS_NAME, MODE_PRIVATE)
@@ -315,6 +331,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onPause() {
+        phoneLlm?.setForeground(false)
         MiyinFloatingService.setAppForeground(false)
         MiyinSubtitleOverlayService.setAppForeground(false)
         voiceHandler?.onActivityPaused()
@@ -322,7 +339,19 @@ class MainActivity : FlutterActivity() {
         super.onPause()
     }
 
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level == android.content.ComponentCallbacks2.TRIM_MEMORY_RUNNING_CRITICAL ||
+            level == android.content.ComponentCallbacks2.TRIM_MEMORY_COMPLETE) phoneLlm?.stop()
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        phoneLlm?.stop()
+    }
+
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        phoneLlm?.dispose(); phoneLlm = null
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             performanceChannelName,

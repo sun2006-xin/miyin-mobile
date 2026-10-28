@@ -28,18 +28,16 @@
     info: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></svg>',
     chevron: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>'
   };
-  const header = (backScreen, backLabel) => `
-    <header class="topbar">
-      <button class="top-icon" type="button" data-screen="${backScreen}" data-v6-nav-back aria-label="${backLabel}">${icons.arrow}</button>
-      <div class="top-brand"><strong>觅音</strong></div>
-      <button class="avatar-button" type="button" data-screen="settings" aria-label="用户与设置">${icons.user}</button>
+  const header = (backScreen, backLabel, title) => `
+    <header class="settings-head">
+      <button class="back-button" type="button" data-screen="${backScreen}" data-v6-nav-back aria-label="${backLabel}">${icons.arrow}</button>
+      <h1>${title}</h1><span class="chat-config-head-spacer"></span>
     </header>`;
 
   app.insertAdjacentHTML("beforeend", `
     <section class="screen v6-app-screen" id="screen-dictionary" aria-label="词典查词">
-      ${header("home", "返回翻译")}
+      ${header("home", "返回翻译", "词典")}
       <main class="v6-app-content">
-        <h1 class="v6-page-heading">词典</h1>
         <p class="v6-page-subtitle">输入中文或英语词条，觅音会自动匹配查询方式。</p>
         <label class="v6-dictionary-select-label" for="v6-dictionary-package">选择词典</label>
         <div class="v6-dictionary-select-wrap">
@@ -71,9 +69,8 @@
     </section>
 
     <section class="screen v6-app-screen" id="screen-resources" aria-label="离线资源">
-      ${header("settings", "返回上页")}
+      ${header("settings", "返回上页", "离线资源")}
       <main class="v6-app-content">
-        <h1 class="v6-page-heading">离线资源</h1>
         <p class="v6-page-subtitle">查看随安装包提供的语音与词典资源，以及本机翻译语言包状态。</p>
         <aside class="v6-resource-note" aria-label="资源状态说明">
           <span class="v6-empty-icon">${icons.info}</span>
@@ -251,6 +248,7 @@
       return pending;
     },
     handleSystemBack() {
+      if (window.MiyinChatSettings?.handleBack()) return true;
       const liveRecordPanel = document.querySelector("#video-record-list:not([hidden])");
       if (liveRecordPanel) {
         liveRecordPanel.querySelector("[data-video-record-close]")?.click();

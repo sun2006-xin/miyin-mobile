@@ -9,6 +9,7 @@
     <application
         android:label="觅音"
         android:name="${applicationName}"
+        android:networkSecurityConfig="@xml/miyin_network_security"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher">
         <activity

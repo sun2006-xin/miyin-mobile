@@ -1,7 +1,7 @@
 name: miyin_app
 description: "觅音独立手机应用"
 publish_to: 'none'
-version: 1.5.1+13
+version: 1.6.0-preview+37
 
 environment:
   sdk: ^3.13.2
@@ -13,6 +13,8 @@ dependencies:
   flutter:
     sdk: flutter
   image_picker: 1.2.4
+  html: 0.15.7
+  xml: 7.1.0
   path_provider: ^2.1.6
   record: 6.1.2
   sherpa_onnx: 1.13.8
@@ -38,3 +40,4 @@ flutter:
     - assets/voice/tts-melo-zh-en/
     - assets/voice/tts-supertonic3/
     - assets/dictionary/
+    - assets/chat-model/

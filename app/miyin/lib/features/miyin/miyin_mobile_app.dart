@@ -15,6 +15,8 @@ import '../../core/translation/translation_service.dart';
 import '../chat/chat_host.dart';
 import '../chat/deepseek_client.dart';
 import '../chat/deepseek_settings.dart';
+import '../chat/service_key_sheet.dart';
+import '../chat/cloud_service.dart';
 import 'attachment_source_picker.dart';
 import 'avatar_image_picker.dart';
 import 'live_audio_archive.dart';
@@ -285,9 +287,15 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
               settingsSaved = await showDialog<bool>(
                 context: _navigatorKey.currentContext!,
                 barrierDismissible: false,
-                builder: (_) => DeepSeekSettings(host: _chat,
-                  page: ['models', 'provider', 'privacy'].contains(page)
-                    ? page as String : 'models'),
+                builder: (_) {
+                  final params = request['params'] is Map ? Map<String,Object?>.from(request['params'] as Map) : <String,Object?>{};
+                  if(page == 'key') {
+                    final service = params['service'] as String? ?? 'deepseek';
+                    final endpoint = CloudService.endpointFor(service,params['endpoint'] as String? ?? '');
+                    return ServiceKeySheet(host:_chat,service:service,endpoint:endpoint,colors:params['colors'] is Map ? Map<String,Object?>.from(params['colors'] as Map) : {});
+                  }
+                  return DeepSeekSettings(host: _chat,page: ['models','provider','privacy'].contains(page) ? page as String : 'models');
+                },
               ) == true;
             }
             result = {..._chat.status, 'settingsSaved': settingsSaved};

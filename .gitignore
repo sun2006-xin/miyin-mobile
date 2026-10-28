@@ -17,3 +17,10 @@ local.properties
 *.jks
 *.keystore
 key.properties
+# Local delivery, device diagnostics and downloaded experiment assets.
+/output/
+/.playwright-cli/
+/archive/
+app/miyin/assets/voice/asr-en-20m/
+app/miyin/assets/voice/asr-en-66m/
+app/miyin/assets/voice/asr-whisper-tiny/

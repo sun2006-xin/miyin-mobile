@@ -1,0 +1,38 @@
+/* Shared semantic states. Existing geometry is kept; canvases have their own skin. */
+#app .chat-config-view:not(.is-picker){background:var(--appearance-decoration-bg,none),var(--page)}
+#app .appearance-panel{background:var(--appearance-button-bg,var(--surface));border:1px solid var(--appearance-edge,var(--line));box-shadow:inset 0 1px 0 var(--appearance-highlight),0 3px 9px var(--appearance-shadow-soft)}
+html[data-button-material] #app #screen-video :is(.video-setting,.subtitle-preview){background:var(--appearance-button-bg,var(--surface))}
+html[data-button-material] #app #screen-video .v4-audio-choice[aria-pressed=true]{background:var(--appearance-selected-bg)}
+html[data-theme^="palette-material-"] #app .appearance-panel{border-color:var(--material-edge);backdrop-filter:var(--material-backdrop);-webkit-backdrop-filter:var(--material-backdrop)}
+#app .chat-config-view .settings-head{background:transparent}
+#app .chat-config-notice{background:var(--appearance-button-bg,var(--surface));box-shadow:inset 0 1px 0 var(--appearance-highlight)}
+html[data-button-material] #app .appearance-interactive{transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+html[data-button-material] #app .appearance-primary{color:var(--appearance-primary-ink)!important;background:var(--appearance-primary-bg)!important;border-color:var(--accent)!important}
+html[data-button-material] #app .appearance-danger{color:var(--danger)!important;border:1px solid var(--danger);background:var(--surface);box-shadow:inset 0 1px 0 var(--appearance-highlight);border-radius:12px}
+html[data-button-material] #app .appearance-surface:is([aria-pressed=true],[aria-checked=true],[aria-selected=true],.is-selected){border-color:var(--accent);background:var(--appearance-selected-bg);color:var(--title)}
+html[data-button-material] #app .appearance-field{border-color:var(--appearance-input-edge);color:var(--ink);background:var(--appearance-raised)}
+html[data-button-material] #app .appearance-field:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+html[data-button-material] #app .appearance-interactive:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+html[data-press-feedback=bounce] #app .appearance-interactive:active:not(:disabled){transform:scale(.965)!important}
+html[data-press-feedback=bounce] #app .appearance-interactive.appearance-rebound{animation:appearance-bounce .30s cubic-bezier(.22,1.4,.33,1)}
+html[data-press-feedback=press] #app .appearance-interactive:active:not(:disabled){transform:translateY(1px) scale(.985)!important;box-shadow:inset 0 2px 7px var(--appearance-shadow)!important}
+html[data-press-feedback=glow] #app .appearance-interactive:active:not(:disabled){transform:none!important;box-shadow:0 0 0 3px var(--appearance-accent-glow),0 0 16px var(--appearance-accent-glow)!important}
+html[data-press-feedback=none] #app .appearance-interactive:active,html[data-press-feedback=none] #app .appearance-interactive.appearance-rebound{transform:none!important;animation:none!important}
+@media(prefers-reduced-motion:reduce){html[data-press-feedback] #app .appearance-interactive:active:not(:disabled),html[data-press-feedback] #app .appearance-interactive.appearance-rebound{transform:none!important;animation:none!important}#app .appearance-interactive{transition:none!important}#app .mic-button.is-listening{animation:none!important}}
+html[data-button-material=frost] #app .appearance-surface{box-shadow:inset 0 1px 2px var(--appearance-highlight),0 3px 9px var(--appearance-shadow-soft);backdrop-filter:blur(10px)}
+html[data-button-material=pearl] #app .appearance-surface{box-shadow:inset 0 2px 2px var(--appearance-highlight),inset 0 -2px 3px var(--appearance-wash),0 4px 12px var(--appearance-shadow-soft)}
+html[data-button-material=satin] #app .appearance-surface{box-shadow:inset 0 1px 1px var(--appearance-highlight),0 2px 6px var(--appearance-shadow-soft)}
+.sample-frost{background:linear-gradient(145deg,#f7ffff,#b8d2db);box-shadow:inset 0 1px 2px #fff,0 3px 8px #527f8633}.sample-pearl{background:linear-gradient(120deg,#ecf9fa,#dfd4e7 40%,#f9eddb 65%,#cdebe5);box-shadow:inset 0 2px 2px #fff,0 3px 8px #80697d33}.sample-satin{background:repeating-linear-gradient(35deg,#c3ced6 0 1px,#e2e8ed 1px 4px);box-shadow:inset 0 1px 1px #fff}
+#app{--translation-mic-size:88px}#app #screen-home .mic-button,#app #screen-face .mic-button{width:var(--translation-mic-size);height:var(--translation-mic-size);min-width:var(--translation-mic-size);min-height:var(--translation-mic-size);aspect-ratio:1;margin:0}#app :is(#screen-home,#screen-face) .mic-button svg{width:30px;height:30px}
+@media(max-width:370px){#app{--translation-mic-size:80px}}
+#app .mic-button[data-v4-mic-style=sea-glass]{background:radial-gradient(circle at 38% 27%,#eafaff,#7fd4e8 28%,#1f6f9c 62%,#071a2b);color:#071a2b}
+#app .mic-button[data-v4-mic-style=mint-metallic]{background:radial-gradient(circle at 38% 25%,#ecfffa,#a9efe0 24%,#43cbb5 56%,#0d9488);color:#064e48}
+#app .mic-button[data-v4-mic-style=classic-mist]{background:radial-gradient(circle at 36% 25%,#f2fcff 0 5%,#d0e9f0 14%,#8eb7c9 37%,#426d84 69%,#203f55 100%);color:#183b50}
+#app .mic-button[data-v4-mic-style=warm-porcelain],.v4-style-sample.warm-porcelain{background:radial-gradient(circle at 34% 22%,#fffdf7,#f3e5ce 45%,#bd7945);color:#623a24}
+#app .mic-button[data-v4-mic-style=midnight-glass],.v4-style-sample.midnight-glass{background:radial-gradient(circle at 35% 24%,#a9d0ed,#254f83 38%,#081a35 83%);color:#eef7ff}
+#app .mic-button[data-v4-mic-style=violet-prism],.v4-style-sample.violet-prism{background:radial-gradient(circle at 34% 24%,#f7edff,#c6b4eb 40%,#7752aa 82%);color:#302147}
+#app .mic-button[data-v4-mic-style=graphite-metal],.v4-style-sample.graphite-metal{background:conic-gradient(from 25deg,#d6dfe5,#515d68,#bac6cf,#3b4752,#d6dfe5);color:#10202d}
+#app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal]) .mic-surface{opacity:0}
+#app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal]){border:1px solid currentColor;box-shadow:inset 1px 2px 3px #ffffffb3,inset -2px -3px 6px #0002,0 5px 14px #102a3a26}
+#app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal]) svg{color:inherit;filter:none}#app .mic-button:is([data-v4-mic-style=warm-porcelain],[data-v4-mic-style=midnight-glass],[data-v4-mic-style=violet-prism],[data-v4-mic-style=graphite-metal])::before{border-color:#ffffff70;border-radius:50%}
+#app .mic-button.shader-fallback .mic-surface{opacity:0}.v4-style-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.v4-mic-style-section{margin-top:22px}.v4-style-choice{min-width:0}.v4-style-heading{gap:12px}.v4-style-heading>div{min-width:0}.v4-style-heading small{white-space:normal;line-height:1.5}

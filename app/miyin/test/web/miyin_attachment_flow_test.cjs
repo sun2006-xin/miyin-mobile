@@ -67,6 +67,24 @@ class AttachmentFakeElement {
   closest() { return null; }
 }
 
+class FakeImage {
+  complete = true;
+  naturalWidth = 640;
+  naturalHeight = 480;
+}
+function createCanvas() {
+  const context = {
+    drawImage() {}, getImageData(_x, _y, w, h) { return { data: new Uint8ClampedArray(w * h * 4).fill(255) }; },
+    putImageData() {}, measureText(text) { return { width: text.length * (parseFloat(this.font) || 12) * .5 }; },
+    save() {}, beginPath() {}, rect() {}, clip() {}, fillText() {}, restore() {},
+  };
+  return { getContext() { return context; }, toDataURL() { return 'data:image/jpeg;base64,AQ=='; } };
+}
+function findDescendant(node, className) {
+  if (node.className === className) return node;
+  for (const child of node.children || []) { const found = findDescendant(child, className); if (found) return found; }
+}
+
 async function runImageAttachmentFlow(selection, _legacyAction, options = {}) {
   const modal = new AttachmentFakeElement();
   const modalTitle = new AttachmentFakeElement();
@@ -124,11 +142,14 @@ async function runImageAttachmentFlow(selection, _legacyAction, options = {}) {
     documentElement: { dataset: { nativeHost: 'true' } },
     querySelector: selector => elements.get(selector) || null,
     addEventListener: (_type, listener) => listeners.push(listener),
-    createElement: () => new AttachmentFakeElement(),
+    createElement: tag => tag === 'canvas' ? createCanvas() : new AttachmentFakeElement(),
+    createTextNode: text => Object.assign(new AttachmentFakeElement(), { textContent: text }),
   };
   const window = {
+    addEventListener() {}, dispatchEvent() {},
     MiyinNativeBridge: {
       request: async (method, args) => {
+        if (method === 'translation.downloadModel') throw Object.assign(new Error('离线语言包暂不可用'), { code: 'model_missing' });
         if (method === 'attachment.recognizeImage') return selectionQueue.shift() || null;
         if (method === 'translation.supportedLanguages') {
           return [
@@ -148,7 +169,7 @@ async function runImageAttachmentFlow(selection, _legacyAction, options = {}) {
       },
     },
   };
-  vm.runInNewContext(attachments, { document, window, Element: AttachmentFakeElement });
+  vm.runInNewContext(attachments, { document, window, Element: AttachmentFakeElement, Image: FakeImage, Uint8ClampedArray, Event });
   const invoke = action => {
     const button = new AttachmentFakeElement();
     button.dataset.translationAttachmentAction = action;
@@ -170,8 +191,8 @@ async function runImageAttachmentFlow(selection, _legacyAction, options = {}) {
     const before = transcript.children.length;
     selectionQueue.push(nextSelection);
     invoke('photo');
-    await waitFor(() => transcript.children.length > before || pendingTranslations.length > 0 || modalTitle.textContent.includes('失败'), 'automatic image translation did not finish');
-    if (!options.deferTranslations) await waitFor(() => transcript.children.length > before || modalTitle.textContent.includes('失败'), 'automatic image translation did not append a card');
+    await waitFor(() => transcript.children.length > before || pendingTranslations.length > 0 || (modalTitle.textContent.includes('失败') || modalTitle.textContent.includes('无法')), 'automatic image translation did not finish');
+    if (!options.deferTranslations) await waitFor(() => transcript.children.length > before || (modalTitle.textContent.includes('失败') || modalTitle.textContent.includes('无法')), 'automatic image translation did not append a card');
   };
   invoke('photo');
   await new Promise(resolve => setImmediate(resolve));
@@ -193,8 +214,8 @@ async function runImageAttachmentFlow(selection, _legacyAction, options = {}) {
       pendingTranslations,
     };
   }
-  if (options.deferTranslations) await waitFor(() => pendingTranslations.length > 0 || modalTitle.textContent.includes('失败'), 'automatic translation did not start');
-  else await waitFor(() => transcript.children.length > 0 || modalTitle.textContent.includes('失败') || modalTitle.textContent.includes('没有识别') || modalTitle.textContent.includes('过多'), 'automatic image translation did not finish');
+  if (options.deferTranslations) await waitFor(() => pendingTranslations.length > 0 || (modalTitle.textContent.includes('失败') || modalTitle.textContent.includes('无法')), 'automatic translation did not start');
+  else await waitFor(() => transcript.children.length > 0 || (modalTitle.textContent.includes('失败') || modalTitle.textContent.includes('无法')) || modalTitle.textContent.includes('没有识别') || modalTitle.textContent.includes('过多'), 'automatic image translation did not finish');
   return {
     modal, modalTitle, modalCopy, modalOptions, transcript, blockList, imageTextEditor,
     translationRequests,
@@ -255,9 +276,11 @@ async function runArticleAttachmentFlow(articleText, options = {}) {
     documentElement: { dataset: { nativeHost: 'true' } },
     querySelector: selector => elements.get(selector) || null,
     addEventListener: (_type, listener) => listeners.push(listener),
-    createElement: () => new AttachmentFakeElement(),
+    createElement: tag => tag === 'canvas' ? createCanvas() : new AttachmentFakeElement(),
+    createTextNode: text => Object.assign(new AttachmentFakeElement(), { textContent: text }),
   };
   const window = {
+    addEventListener() {}, dispatchEvent() {},
     MiyinNativeBridge: {
       request: async (method, args) => {
         if (method === 'translation.supportedLanguages') {
@@ -284,7 +307,7 @@ async function runArticleAttachmentFlow(articleText, options = {}) {
       },
     },
   };
-  vm.runInNewContext(attachments, { document, window, Element: AttachmentFakeElement });
+  vm.runInNewContext(attachments, { document, window, Element: AttachmentFakeElement, Image: FakeImage, Uint8ClampedArray, Event });
   const invoke = (action, button = new AttachmentFakeElement()) => {
     button.dataset.translationAttachmentAction = action;
     actionButtons.set(action, button);
@@ -361,7 +384,7 @@ test('camera and gallery actions show progress and automatically translate on-de
   assert.doesNotMatch(attachments, /recognizeImage[\s\S]{0,180}path\s*:/);
 });
 
-test('image translation appends the source photo and uses only safe OCR geometry for overlays', () => {
+test('image translation preserves source photo and composes translated pixels from bounded OCR regions', () => {
   assert.match(attachments, /previewDataUrl/);
   assert.match(attachments, /MAX_IMAGE_PREVIEW_LENGTH/);
   assert.match(attachments, /translation-attachment-block-list/);
@@ -370,7 +393,7 @@ test('image translation appends the source photo and uses only safe OCR geometry
   assert.match(attachments, /image_ocr_geometry_missing/);
   assert.match(attachments, /translation-attachment-conversation-card translation-attachment-image-card/);
   assert.match(attachments, /appendConversationCard\(card(?:,\s*expectedRevision)?\)/);
-  assert.match(attachments, /geometrySupportsOverlay\(rows\)/);
+  assert.match(attachments, /composeTranslatedImage\(imageRecognition\.previewDataUrl, rows\)/);
   assert.match(attachments, /row\.left\s*\*\s*100/);
   assert.match(attachments, /row\.top\s*\*\s*100/);
   assert.match(attachments, /row\.translatedText/);
@@ -379,18 +402,18 @@ test('image translation appends the source photo and uses only safe OCR geometry
   assert.match(attachments, /识别区域过密或彼此重叠/);
 });
 
-test('image OCR without complete coordinates automatically keeps the photo and falls back to translated text below it', () => {
-  const recognizer = attachments.match(/async function recognizeImage\(kind\) \{([\s\S]*?)\n  \}/);
+test('image OCR without complete coordinates refuses image generation and offers a clear retry path', () => {
+  const recognizer = attachments.match(/async function recognizeImage\(kind, capturedImage\) \{([\s\S]*?)\n  \}/);
   assert.ok(recognizer, 'image recognizer must exist');
   assert.doesNotMatch(recognizer[1], /openImageTextReview|openImageReview/);
   assert.match(attachments, /geometryComplete\s*=/);
   assert.match(attachments, /data-translation-attachment-image-text/);
-  assert.match(attachments, /sourceBlocks\s*=\s*hasGeometry/);
-  assert.match(attachments, /没有完整可靠的位置坐标/);
+  assert.match(attachments, /if \(!hasGeometry\)/);
+  assert.match(attachments, /showImageFailure\(kind, "无法生成译图", "未取得文字在图片中的可靠位置/);
   assert.match(attachments, /hasGeometry:\s*false/);
 });
 
-test('image with usable bounds appears in the translation conversation with positioned translated labels', async () => {
+test('image with usable bounds appears as translated pixels with separate zoom and comparison controls', async () => {
   const ui = await runImageAttachmentFlow({
     canceled: false,
     name: 'street.jpg',
@@ -407,25 +430,26 @@ test('image with usable bounds appears in the translation conversation with posi
   const card = ui.transcript.children[0];
   assert.match(card.className, /translation-attachment-image-card/);
   assert.ok(card.children.some(child => child.className === 'translation-attachment-conversation-figure'));
-  const quickActions = card.children.find(child => child.className === 'translation-attachment-view-toggle' && child.children.length === 1);
-  assert.equal(quickActions.children[0].textContent, '查看大图');
-  const controls = card.children.find(child => child.className === 'translation-attachment-view-toggle' && child.children.length === 2);
-  const figure = card.children.find(child => child.className === 'translation-attachment-conversation-figure');
-  const stage = figure.children[0];
-  assert.equal(stage.children[0].src, 'data:image/jpeg;base64,AA==');
-  assert.equal(stage.children[1].className, 'translation-attachment-conversation-labels');
-  assert.equal(stage.children[1].children[0].textContent, '译文：Station');
+  const controls = findDescendant(card, 'translation-attachment-view-toggle');
+  assert.deepEqual(controls.children.map(child => child.textContent), ['原图', '译图', '对照']);
+  const stage = findDescendant(card, 'translation-attachment-conversation-stage');
+  assert.equal(stage.children[0].src, 'data:image/jpeg;base64,AQ==');
+  assert.equal(stage.children[0].dataset.originalSrc, 'data:image/jpeg;base64,AA==');
+  assert.equal(stage.children[1].dataset.translationAttachmentAction, 'view-image');
   controls.children[0].handlers.get('click')[0]();
   assert.equal(stage.dataset.imageMode, 'original');
+  assert.equal(stage.children[0].src, 'data:image/jpeg;base64,AA==');
   controls.children[1].handlers.get('click')[0]();
   assert.equal(stage.dataset.imageMode, 'translated');
-  const comparison = card.children.find(child => child.className === 'translation-attachment-conversation-pairs');
+  assert.equal(stage.children[0].src, 'data:image/jpeg;base64,AQ==');
+  const comparison = findDescendant(card, 'translation-attachment-conversation-pairs');
+  assert.equal(comparison.children[1].children[3].textContent, '译文：Station');
   comparison.children[1].handlers.get('click')[0]();
-  assert.equal(stage.children[1].children[0].classList.contains('is-selected'), true);
+  assert.equal(card.dataset.selectedComparisonIndex, '0');
   assert.equal(ui.modal.classList.contains('open'), false);
 });
 
-test('failed image translation keeps the source photo, explains the failure, and offers retry', async () => {
+test('failed image translation explains the failure and offers selection retry without claiming a translated image', async () => {
   const ui = await runImageAttachmentFlow({
     canceled: false,
     name: 'receipt.jpg',
@@ -435,12 +459,11 @@ test('failed image translation keeps the source photo, explains the failure, and
     height: 480,
     blocks: [{ text: 'Total', left: 0.1, top: 0.1, right: 0.8, bottom: 0.2 }],
   }, null, { failTranslation: true });
-  assert.equal(ui.transcript.children.length, 1);
-  const card = ui.transcript.children[0];
-  assert.equal(card.children.find(child => child.className === 'translation-attachment-card-header').children[0].textContent, '图片翻译未完成');
-  assert.ok(card.children.some(child => child.className === 'translation-attachment-conversation-figure'));
-  assert.match(card.children.find(child => child.className === 'translation-attachment-card-notice').textContent, /原图和识别文字已保留/);
-  assert.ok(card.children.find(child => child.className === 'translation-attachment-card-actions').children.some(child => child.dataset.translationAttachmentAction === 'retry-image-result'));
+  assert.equal(ui.transcript.children.length, 0);
+  assert.equal(ui.modalTitle.textContent, '无法完成图片翻译');
+  assert.match(ui.modalCopy.textContent, /当前翻译方向的离线语言包尚未下载/);
+  assert.equal(ui.modal.dataset.retryImageKind, 'image');
+
 });
 
 test('image import shows a cancelable progress state and does not append a late result after cancellation', async () => {
@@ -506,7 +529,7 @@ test('normalized OCR bounds may use the exact zero and one edges when rectangle 
   }, 'translate-image');
 
   const stage = ui.transcript.children[0].children.find(child => child.className === 'translation-attachment-conversation-figure').children[0];
-  assert.equal(stage.children[1].className, 'translation-attachment-conversation-labels');
+  assert.equal(stage.children[0].dataset.translatedSrc, 'data:image/jpeg;base64,AQ==');
 });
 
 test('image edit references retain only the eight newest source images', async () => {
@@ -538,7 +561,7 @@ test('image edit references retain only the eight newest source images', async (
   assert.match(ui.modalOptions.innerHTML, /image-2\.jpg/, 'the next-oldest image should remain editable within the eight-item limit');
 });
 
-test('non-finite, out-of-range, unordered, and non-numeric OCR bounds fall back below the original photo', async () => {
+test('non-finite, out-of-range, unordered, and non-numeric OCR bounds cannot generate a translated image', async () => {
   const invalidBounds = [
     { left: NaN, top: 0.1, right: 0.8, bottom: 0.2 },
     { left: 0.1, top: Infinity, right: 0.8, bottom: 0.2 },
@@ -562,12 +585,10 @@ test('non-finite, out-of-range, unordered, and non-numeric OCR bounds fall back 
       blocks: [{ text: 'Keep this text', ...bounds }],
     }, 'translate-image-text');
 
-    const card = ui.transcript.children[0];
-    const stage = card.children.find(child => child.className === 'translation-attachment-conversation-figure').children[0];
-    assert.equal(stage.children.length, 1, `unexpected overlay for ${JSON.stringify(bounds)}`);
-    assert.match(card.children.find(child => child.className === 'translation-attachment-card-notice').textContent, /没有完整可靠的文字位置/);
-    const comparisons = card.children.find(child => child.className === 'translation-attachment-conversation-pairs');
-    assert.equal(comparisons.children[1].children[1].textContent, 'Keep this text');
+    assert.equal(ui.transcript.children.length, 0, `unsafe bounds must not create a translated image: ${JSON.stringify(bounds)}`);
+    assert.equal(ui.modalTitle.textContent, '无法生成译图');
+    assert.match(ui.modalCopy.textContent, /可靠位置/);
+
   }
 });
 
@@ -593,7 +614,7 @@ test('canceling an in-flight image translation prevents a late conversation card
   assert.equal(ui.transcript.children.length, 0);
 });
 
-test('overlapping OCR regions keep the photo but move translations below it instead of overlaying', async () => {
+test('overlapping OCR regions preserve source pixels and retain complete translation pairs', async () => {
   const ui = await runImageAttachmentFlow({
     canceled: false,
     name: 'crowded-signs.jpg',
@@ -612,13 +633,14 @@ test('overlapping OCR regions keep the photo but move translations below it inst
   assert.equal(ui.transcript.children.length, 1);
   const card = ui.transcript.children[0];
   const stage = card.children.find(child => child.className === 'translation-attachment-conversation-figure').children[0];
-  assert.equal(stage.children.length, 1, 'overlapping OCR boxes must not place text on the photo');
-  assert.match(card.children.find(child => child.className === 'translation-attachment-card-notice').textContent, /识别区域过密或彼此重叠/);
-  const comparisons = card.children.find(child => child.className === 'translation-attachment-conversation-pairs');
-  assert.equal(comparisons.children.length - 1, 2, 'both OCR text pairs should remain available below the photo');
+  assert.equal(stage.children[0].src, 'data:image/jpeg;base64,AQ==');
+  assert.match(findDescendant(card, 'translation-attachment-card-notice').textContent, /区域重叠未覆盖原图/);
+  const comparisons = findDescendant(card, 'translation-attachment-conversation-pairs');
+  assert.equal(comparisons.children.length - 1, 2, 'both original/translated text pairs remain available');
+
 });
 
-test('image text without usable bounds still translates and appears under the original photo', async () => {
+test('image text without usable bounds reports why an in-place translated image cannot be generated', async () => {
   const ui = await runImageAttachmentFlow({
     canceled: false,
     name: 'street.jpg',
@@ -634,18 +656,15 @@ test('image text without usable bounds still translates and appears under the or
     ],
   }, 'translate-image-text');
 
-  assert.equal(ui.transcript.children.length, 1);
-  const card = ui.transcript.children[0];
-  assert.match(card.className, /translation-attachment-image-card/);
-  const stage = card.children.find(child => child.className === 'translation-attachment-conversation-figure').children[0];
-  assert.equal(stage.children.length, 1, 'no position overlay should be rendered for missing geometry');
-  assert.match(card.children.find(child => child.className === 'translation-attachment-card-notice').textContent, /没有完整可靠的文字位置/);
-  assert.equal(card.children.find(child => child.className === 'translation-attachment-conversation-pairs').children.length, 3);
+  assert.equal(ui.transcript.children.length, 0);
+  assert.equal(ui.modalTitle.textContent, '无法生成译图');
+  assert.match(ui.modalCopy.textContent, /可靠位置/);
+
 });
 
 test('OCR caps native and Dart-visible blocks and tells users when blocks were omitted', () => {
   assert.match(nativeOcr, /MAX_OCR_BLOCK_COUNT\s*=\s*80/);
-  assert.match(nativeOcr, /val allBlocks\s*=\s*recognized\.textBlocks\.mapNotNull/);
+  assert.match(nativeOcr, /val allBlocks\s*=\s*recognized\.textBlocks\.flatMap/);
   assert.match(nativeOcr, /val blocks\s*=\s*allBlocks\.take\(MAX_OCR_BLOCK_COUNT\)/);
   assert.match(nativeOcr, /val recognizedText\s*=\s*blocks\.joinToString\("\\n"\)/);
   assert.match(nativeOcr, /"recognizedText"\s+to\s+recognizedText/);
@@ -663,133 +682,15 @@ test('OCR caps native and Dart-visible blocks and tells users when blocks were o
 });
 
 test('image import automatically translates at most 80 OCR blocks and displays the omitted count', async () => {
-  class FakeClassList {
-    values = new Set();
-    add(value) { this.values.add(value); }
-    remove(...values) { values.forEach(value => this.values.delete(value)); }
-    contains(value) { return this.values.has(value); }
-    toggle(value, force) {
-      const enabled = force === undefined ? !this.values.has(value) : Boolean(force);
-      if (enabled) this.values.add(value);
-      else this.values.delete(value);
-      return enabled;
-    }
-  }
-  class FakeElement {
-    constructor() {
-      this.dataset = {};
-      this.children = [];
-      this.classList = new FakeClassList();
-      this.style = {};
-      this.handlers = new Map();
-      this.textContent = '';
-      this.innerHTML = '';
-      this.scrollTop = 0;
-      this.scrollHeight = 0;
-    }
-    append(...children) { this.children.push(...children); }
-    appendChild(child) { this.children.push(child); return child; }
-    insertBefore(child, before) {
-      const index = this.children.indexOf(before);
-      if (index < 0) this.children.push(child);
-      else this.children.splice(index, 0, child);
-      return child;
-    }
-    setAttribute() {}
-    removeAttribute() {}
-    addEventListener(type, listener) {
-      const values = this.handlers.get(type) || [];
-      values.push(listener);
-      this.handlers.set(type, values);
-    }
-    closest() { return null; }
-  }
-
-  const modal = new FakeElement();
-  const modalTitle = new FakeElement();
-  const modalCopy = new FakeElement();
-  const modalOptions = new FakeElement();
-  const modalFooter = new FakeElement();
-  const blockList = new FakeElement();
-  const status = new FakeElement();
-  modal.dataset = {};
-  modal.querySelector = selector => selector === '[data-translation-attachment-status]' ? status : selector === '[data-translation-attachment-block-list]' ? blockList : null;
-  const elements = new Map([
-    ['#modal-scrim', modal],
-    ['#modal-title', modalTitle],
-    ['#modal-copy', modalCopy],
-    ['#modal-options', modalOptions],
-    ['#modal-footer', modalFooter],
-    ['#app', new FakeElement()],
-    ['#home-transcript', new FakeElement()],
-  ]);
-  const listeners = [];
-  const document = {
-    documentElement: { dataset: { nativeHost: 'true' } },
-    querySelector: selector => elements.get(selector) || null,
-    addEventListener: (_type, listener) => listeners.push(listener),
-    createElement: () => new FakeElement(),
-  };
   const blocks = Array.from({ length: 105 }, (_, index) => ({
-    text: `block ${index}`,
-    left: 0.1,
-    top: 0.1,
-    right: 0.9,
-    bottom: 0.2,
+    text: `block ${index}`, left: .1, top: .1, right: .9, bottom: .2,
   }));
-  const window = {
-    MiyinNativeBridge: {
-      request: async method => {
-        assert.equal(method, 'attachment.recognizeImage');
-        return {
-          canceled: false,
-          name: 'dense.jpg',
-          recognizedText: blocks.map(block => block.text).join('\n'),
-          previewDataUrl: 'data:image/jpeg;base64,AA==',
-          width: 640,
-          height: 480,
-          totalBlockCount: blocks.length,
-          omittedBlockCount: 0,
-          blocks,
-        };
-      },
-    },
-  };
-  const translationRequests = [];
-  window.MiyinNativeBridge.request = async (method, args) => {
-    if (method === 'attachment.recognizeImage') {
-      return {
-        canceled: false,
-        name: 'dense.jpg',
-        recognizedText: blocks.map(block => block.text).join('\n'),
-        previewDataUrl: 'data:image/jpeg;base64,AA==',
-        width: 640,
-        height: 480,
-        totalBlockCount: blocks.length,
-        omittedBlockCount: 0,
-        blocks,
-      };
-    }
-    if (method === 'translation.supportedLanguages') return [{ tag: 'zh-Hans', name: '简体中文' }, { tag: 'en', name: 'English' }];
-    if (method === 'translation.preview') { translationRequests.push(args.text); return { translatedText: `译文：${args.text}` }; }
-    throw new Error(`Unexpected RPC: ${method}`);
-  };
-  vm.runInNewContext(attachments, { document, window, Element: FakeElement });
-
-  const actionButton = new FakeElement();
-  actionButton.dataset.translationAttachmentAction = 'photo';
-  const target = new FakeElement();
-  target.closest = selector => selector === '[data-translation-attachment-action]' ? actionButton : null;
-  listeners[0]({
-    target,
-    preventDefault() {},
-    stopImmediatePropagation() {},
-  });
-  await waitFor(() => modal.classList.contains('open') === false, 'automatic OCR translation did not close the progress dialog');
-
-  const card = elements.get('#home-transcript').children[0];
-  assert.equal(translationRequests.length, 80);
-  assert.match(card.children.find(child => child.className === 'translation-attachment-card-notice').textContent, /另有 25 处未纳入翻译/);
+  const ui = await runImageAttachmentFlow({ canceled: false, name: 'dense.jpg',
+    recognizedText: blocks.map(block => block.text).join('\n'), previewDataUrl: 'data:image/jpeg;base64,AA==',
+    width: 640, height: 480, totalBlockCount: blocks.length, omittedBlockCount: 0, blocks });
+  const card = ui.transcript.children[0];
+  assert.equal(ui.translationRequests.length, 80);
+  assert.match(findDescendant(card, 'translation-attachment-card-notice').textContent, /另有 25 处未纳入翻译/);
 });
 
 test('article import is limited to pasted text and local UTF-8 TXT or Markdown', () => {

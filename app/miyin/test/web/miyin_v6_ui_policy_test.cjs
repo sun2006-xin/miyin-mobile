@@ -378,7 +378,7 @@ test('settings/resource return keeps its original destination and system back cl
     assertMatches(source, /if \(destination === "settings"\) settingsReturnRestorePending = true/);
     assertMatches(source, /consumeSettingsReturnRestore\(\)/);
     assertDoesNotMatch(source, /isSettingsOwnedRoute/);
-    const backHandler = source.match(/handleSystemBack\(\)\s*\{([\s\S]*?)\n\s*\}\n\s*\};/);
+    const backHandler = source.match(/handleSystemBack\(\)\s*\{([\s\S]*?)\n\s*\}\r?\n\s*\};/);
     assert.ok(backHandler, 'system back handler must exist');
     assert.ok(backHandler[1].indexOf('#modal-scrim.open') < backHandler[1].indexOf('navigateBackFromResourceArea'));
   }
@@ -425,7 +425,7 @@ test('profile avatar opens settings from headers and stays circular and centered
   assertMatches(appShell, /save\("profile-avatar"/);
   assertMatches(appShell, /\.avatar-image \{ position:absolute;inset:0;display:none;width:100%;height:100%;border-radius:50%;object-fit:cover;object-position:center;clip-path:circle\(50%\); \}/);
   assertMatches(appShell, /\$\$\("\.profile-avatar, \.avatar-button"\)\.forEach/);
-  assertMatches(v6Ui, /class="avatar-button"[^>]*data-screen="settings" aria-label="用户与设置"/);
+  assertMatches(v6Ui, /<header class="settings-head">[\s\S]*?class="back-button"[\s\S]*?data-v6-nav-back/);
   assertMatches(previewUi, /class="avatar-button"[^>]*data-screen="settings" aria-label="用户与设置"/);
   assertMatches(appShell, /class="avatar-button"[^>]*data-screen="settings" aria-label="用户与设置"/);
   assertDoesNotMatch(appShell, /header-avatar|avatar-settings/);
@@ -514,7 +514,7 @@ test('offline translation resources list every installed language model independ
 });
 
 test('dictionary selects a package and automatically routes Chinese or English lookup with bounded A-Z browsing', () => {
-  assertMatches(v6Ui, /<h1 class="v6-page-heading">词典<\/h1>/);
+  assertMatches(v6Ui, /header\("home", "返回翻译", "词典"\)/);
   assertMatches(v6Ui, /data-v6-dictionary-package/);
   assertMatches(v6Ui, /简体中文—日语词典 · 尚未接入/);
   assertMatches(v6Ui, /简体中文—俄语词典 · 尚未接入/);

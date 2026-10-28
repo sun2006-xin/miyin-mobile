@@ -60,10 +60,15 @@ class _Client implements HttpClient {
   _Client(_Response response) : request = _Request(response);
   final _Request request;
   bool closed = false;
+  Uri? opened;
   @override
   Duration? connectionTimeout;
   @override
-  Future<HttpClientRequest> openUrl(String method, Uri url) async => request;
+  Future<HttpClientRequest> openUrl(String method, Uri url) async {
+    opened = url;
+    return request;
+  }
+
   @override
   void close({bool force = false}) {
     closed = true;
@@ -89,6 +94,71 @@ void main() {
       })}\r\n\r\n';
   DeepSeekClient service(_Client client) =>
       DeepSeekClient(apiKey: 'unit-test-only', client: client);
+  test('Claude Messages stream and system field use native protocol', () async {
+    final client = _Client(
+      _Response([
+        utf8.encode(
+          'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"你好"}}\n\n'
+          'event: message_stop\ndata: {"type":"message_stop"}\n\n',
+        ),
+      ]),
+    );
+    final result = await DeepSeekClient(
+      apiKey: 'test-only',
+      client: client,
+      anthropic: true,
+      deepSeekOptions: false,
+      baseUrl: 'https://api.anthropic.com/v1',
+    ).complete('account-claude', messages).join();
+    expect(result, '你好');
+    expect(client.opened?.path, '/v1/messages');
+    final body = jsonDecode(client.request.body) as Map;
+    expect(body['messages'], messages);
+    expect(body['system'], contains('account-claude'));
+    expect(body.containsKey('thinking'), false);
+  });
+  test('default chat preserves translation questions, history and sampling defaults', () async {
+    final turns = [
+      {'role': 'user', 'content': '俄语我喜欢你怎么说？'},
+      {'role': 'assistant', 'content': '我无法提供涉及敏感话题的翻译。'},
+      {'role': 'user', 'content': '我只是让你翻译俄文，我喜欢你。请解释语气区别。'},
+    ];
+    final client = _Client(
+      _Response([utf8.encode('${frame('ok')}data: [DONE]\n')]),
+    );
+    await service(client).complete('actual-model-v3', turns).join();
+    final body = jsonDecode(client.request.body) as Map;
+    final sent = body['messages'] as List;
+    expect(sent.skip(1).toList(), turns);
+    expect(sent.first['content'], contains('actual-model-v3'));
+    expect(sent.first['content'], isNot(contains('只给译文')));
+    expect(body.containsKey('temperature'), false);
+  });
+  test(
+    'phone task instructions and sampling reach the inference request',
+    () async {
+      final client = _Client(
+        _Response([utf8.encode('${frame('ok')}data: [DONE]\n')]),
+      );
+      await DeepSeekClient(
+        apiKey: 'test-only',
+        client: client,
+        deepSeekOptions: false,
+        systemPrompt: 'local task instructions',
+        temperature: 0.2,
+        templateThinking: false,
+        maxOutputTokens: 512,
+      ).complete('phone', messages).join();
+      final body = jsonDecode(client.request.body) as Map;
+      expect(body['temperature'], 0.2);
+      expect(body['chat_template_kwargs'], {'enable_thinking': false});
+      expect(
+        (body['messages'] as List).first['content'],
+        'local task instructions',
+      );
+      expect(body['max_tokens'], 512);
+    },
+  );
   test(
     'fragmented UTF-8 and heartbeats are reconstructed, then DONE closes',
     () async {
@@ -155,4 +225,29 @@ void main() {
     service(client).cancel();
     expect(client.closed, true);
   });
+  test(
+    'compatible services use their own base path without DeepSeek parameters',
+    () async {
+      final client = _Client(
+        _Response([utf8.encode('${frame('ok')}data: [DONE]\n')]),
+      );
+      final adapter = DeepSeekClient(
+        apiKey: 'test-other-key',
+        client: client,
+        baseUrl: 'https://one.example/compatible-mode/v1',
+        serviceName: '测试服务',
+        deepSeekOptions: false,
+      );
+      expect(await adapter.complete('vendor/model', messages).join(), 'ok');
+      expect(
+        client.opened.toString(),
+        'https://one.example/compatible-mode/v1/chat/completions',
+      );
+      expect(
+        (jsonDecode(client.request.body) as Map).containsKey('thinking'),
+        false,
+      );
+      expect(client.request.followRedirects, false);
+    },
+  );
 }

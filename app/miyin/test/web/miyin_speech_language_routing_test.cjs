@@ -50,15 +50,15 @@ test('distinctive Japanese, Korean, Thai, Greek, and Hebrew scripts are recogniz
 
 test('multilingual speech without a reliable label stays unknown except for a distinctive script', () => {
   assert.match(appShell, /function speechLanguageFromEvent\(event,text,lastKnownTag=null\)[\s\S]*?if\(event\?\.recognitionMode==="multilingual"\)return null/);
-  assert.match(appShell, /const distinctiveTag=MiyinV5Core\.detectDistinctiveScriptLanguageTag\(text\)/);
-  assert.match(appShell, /function speechLanguageFromEvent\(event,text,lastKnownTag=null\)\{const distinctiveTag=[\s\S]*?if\(distinctiveTag\)return distinctiveTag;const supplied=/);
+  assert.match(appShell, /const distinctiveTag=MiyinV5Core\.detectDistinctiveScriptLanguageTag\(value\)/);
+  assert.match(appShell, /function speechLanguageFromEvent\(event,text,lastKnownTag=null\)\{const pair=[\s\S]*?const distinctiveTag=[\s\S]*?if\(distinctiveTag\)return distinctiveTag;[\s\S]*?const supplied=/);
   assert.match(appShell, /distinctiveLanguage&&!\(\[selectedPair\.sourceTag,selectedPair\.targetTag\]\.includes\(distinctiveLanguage\)\)/);
   assert.match(appShell, /sourceTag=speechLanguageFromEvent\(event,rawText,lastFaceRecognitionLanguageTag\)/);
   assert.match(appShell, /if\(!sourceTag\)[\s\S]*?无法可靠判断语种/);
 });
 
 test('distinctive scripts override a contradictory ASR language label', () => {
-  assert.match(appShell, /function speechLanguageFromEvent\(event,text,lastKnownTag=null\)\{const distinctiveTag=MiyinV5Core\.detectDistinctiveScriptLanguageTag\(text\);if\(distinctiveTag\)return distinctiveTag;const supplied=MiyinV5Core\.normalizeSpeechLanguageTag\(event\?\.languageTag\)/);
+  assert.match(appShell, /function speechLanguageFromEvent\(event,text,lastKnownTag=null\)\{const pair=[\s\S]*?const distinctiveTag=MiyinV5Core\.detectDistinctiveScriptLanguageTag\(value\);if\(distinctiveTag\)return distinctiveTag;[\s\S]*?const supplied=MiyinV5Core\.normalizeSpeechLanguageTag\(event\?\.languageTag\)/);
 });
 
 test('speech source language survives the recognition input event and controls the final translation direction', () => {
