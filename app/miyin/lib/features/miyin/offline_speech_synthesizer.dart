@@ -294,6 +294,36 @@ final class MiyinOfflineSpeechSynthesizer {
     if (!prepareOnly &&
         key == _preparedAudioKey &&
         _preparedAudioFile?.existsSync() == true) {
+      if (onAudio != null) {
+        final wave = await _preparedAudioFile!.readAsBytes();
+        final header = ByteData.sublistView(wave);
+        final rate = header.getUint32(24, Endian.little);
+        for (var offset = 44; offset < wave.length; offset += 65536) {
+          if (!_speechRequests.isCurrent(requestGeneration)) {
+            throw PlatformException(
+              code: 'tts_synthesis_cancelled',
+              message: '朗读已取消。',
+            );
+          }
+          await onAudio(
+            Uint8List.sublistView(
+              wave,
+              offset,
+              math.min(offset + 65536, wave.length),
+            ),
+            rate,
+            requestGeneration,
+          );
+        }
+        debugPrint(
+          '[MiyinTTS] preparedPcmHit requestToPcmReadyMs=${requestClock.elapsedMilliseconds} audioDurationMs=${(wave.length - 44) * 1000 ~/ (rate * 2)}',
+        );
+        return {
+          'status': 'ready',
+          'streamed': true,
+          'requestGeneration': requestGeneration,
+        };
+      }
       final directory = await getTemporaryDirectory();
       final output = File(
         '${directory.path}${Platform.pathSeparator}miyin-tts-${DateTime.now().microsecondsSinceEpoch}.wav',
@@ -395,9 +425,12 @@ final class MiyinOfflineSpeechSynthesizer {
         requestClock.stop();
         debugPrint(
           '[MiyinTTS] provider=${useMultilingual ? 'supertonic' : 'melo'} '
+          'sessionId=$sessionId '
           'requestedProvider=$provider language=$languageTag textChars=${text.runes.length} '
           'workerReadyMs=${workerReadyClock.elapsedMilliseconds} '
           'synthesisMs=${response['synthesisMs'] ?? 'n/a'} '
+          'audioDurationMs=${response['audioDurationMs'] ?? 'n/a'} '
+          'rtf=${response['synthesisMs'] is num && response['audioDurationMs'] is num && (response['audioDurationMs'] as num) > 0 ? ((response['synthesisMs'] as num) / (response['audioDurationMs'] as num)).toStringAsFixed(3) : 'n/a'} '
           'wavWriteMs=${response['wavWriteMs'] ?? 'n/a'} '
           'requestToWavReadyMs=${requestClock.elapsedMilliseconds}',
         );
@@ -1169,6 +1202,7 @@ void _supertonicTtsWorkerMain(Map<String, Object?> initialization) {
       replyTo.send({
         'ok': true,
         'sampleRate': audio.sampleRate,
+        'audioDurationMs': audio.samples.length * 1000 ~/ audio.sampleRate,
         'synthesisMs': synthesisClock.elapsedMilliseconds,
         'wavWriteMs': writeClock.elapsedMilliseconds,
       });
@@ -1271,6 +1305,7 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
       replyTo.send({
         'ok': true,
         'synthesisMs': synthesisClock.elapsedMilliseconds,
+        'audioDurationMs': audio.samples.length * 1000 ~/ audio.sampleRate,
         'wavWriteMs': writeClock.elapsedMilliseconds,
       });
     } catch (error) {

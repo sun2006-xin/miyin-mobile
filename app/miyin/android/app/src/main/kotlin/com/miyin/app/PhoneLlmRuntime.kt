@@ -3,6 +3,8 @@ package com.miyin.app
 import android.app.Activity
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
+import android.util.Log
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.File
@@ -21,6 +23,7 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
     @Volatile private var process: Process? = null
     @Volatile private var apiKey: String? = null
     @Volatile private var ready = false
+    private var launches = 0
     private val handler = Handler(Looper.getMainLooper())
     private val retention = ModelKeepAlive(object : ModelKeepAlive.Scheduler {
         override fun postDelayed(task: Runnable, delayMillis: Long) { handler.postDelayed(task, delayMillis) }
@@ -45,11 +48,17 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
         if (call.method != "prepare") { result.notImplemented(); return }
         if (android.os.Build.VERSION.SDK_INT < 28) { result.error("local_model", "手机内置聊天模型需要 Android 9 或以上版本。你仍可配置云端模型。", null); return }
         val ticket = epoch.get()
+        val requestedAt = SystemClock.elapsedRealtime()
         worker.execute {
             try {
+                val enteredAt = SystemClock.elapsedRealtime()
                 fun checkActive() { check(ticket == epoch.get()) { "canceled" } }
                 checkActive()
-                if (process?.isAlive != true || !health()) {
+                // A busy loopback health probe is not evidence that an already
+                // loaded process should be destroyed. Only cold/unready starts
+                // need the health handshake; subsequent turns retain its cache.
+                val reused = ready && process?.isAlive == true
+                if (!reused) {
                     ready = false; process?.destroy(); process = null
                     directory.mkdirs()
                     val model = File(directory,"model.gguf")
@@ -74,6 +83,7 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                     apiKey = key
                     val child = ProcessBuilder(executable.absolutePath,"-m",model.absolutePath,"-c",contextTokens.toString(),"-t","4","--host","127.0.0.1","--port","11438","-np","1","--api-key",key,"--log-disable")
                         .redirectErrorStream(true).redirectOutput(File(directory,"runtime.log")).start()
+                    launches++
                     process = child
                     try {
                         var ready = false
@@ -82,10 +92,12 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                     } catch (error: Exception) { child.destroy(); if (process === child) process = null; throw error }
                 }
                 ready = true
+                val elapsed = SystemClock.elapsedRealtime() - requestedAt
+                Log.d("MiyinPhoneLlm", "prepare reused=$reused launches=$launches queueMs=${enteredAt-requestedAt} totalMs=$elapsed")
                 val key = apiKey ?: error("canceled")
                 activity.runOnUiThread {
                     if (ticket != epoch.get()) result.error("local_model", "本机模型已释放，请重试。", null)
-                    else result.success(mapOf("endpoint" to "http://127.0.0.1:11438/v1", "key" to key, "contextTokens" to contextTokens))
+                    else result.success(mapOf("endpoint" to "http://127.0.0.1:11438/v1", "key" to key, "contextTokens" to contextTokens,"reused" to reused,"prepareMs" to elapsed))
                 }
             } catch (error: Exception) {
                 val code = error.message.orEmpty()

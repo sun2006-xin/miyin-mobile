@@ -6,6 +6,37 @@ import 'package:miyin_app/features/miyin/streaming_speech_playback.dart';
 
 void main() {
   test(
+    'one group forwards 24k PCM as bounded 44100 chunks and drains its tail',
+    () async {
+      final calls = <String>[], output = BytesBuilder();
+      final player = MiyinStreamingSpeechPlayback(
+        sessionId: 'segment',
+        groupId: 'answer',
+        isCurrent: (_) => true,
+        invoke: (method, args) async {
+          calls.add(method);
+          if (method == 'beginAudioStream') {
+            expect(args['groupId'], 'answer');
+            expect(args['sampleRate'], 44100);
+          }
+          if (method == 'appendAudioStream') {
+            final pcm = args['pcm'] as Uint8List;
+            expect(pcm.length, lessThanOrEqualTo(65536));
+            output.add(pcm);
+          }
+          return {'status': 'speaking'};
+        },
+      );
+      final input = Uint8List(100006);
+      await player.add(Uint8List.sublistView(input, 0, 64000), 24000, 1);
+      await player.add(Uint8List.sublistView(input, 64000), 24000, 1);
+      await player.finish();
+      expect(output.length ~/ 2, 50003 * 44100 ~/ 24000);
+      expect(calls.where((m) => m == 'beginAudioStream').length, 1);
+      expect(calls.last, 'finishAudioStream');
+    },
+  );
+  test(
     'native paused cancellation on begin never appends or reopens late audio',
     () async {
       final calls = <String>[];
@@ -17,9 +48,9 @@ void main() {
           return {'status': 'cancelled'};
         },
       );
-      await player.add(Uint8List(32), 24000, 1);
+      await player.add(Uint8List(32), 44100, 1);
       expect(await player.started, {'status': 'cancelled'});
-      await player.add(Uint8List(32), 24000, 1);
+      await player.add(Uint8List(32), 44100, 1);
       await player.finish();
       expect(calls, ['beginAudioStream']);
     },
@@ -34,9 +65,9 @@ void main() {
         return {'status': method == 'beginAudioStream' ? 'ready' : 'cancelled'};
       },
     );
-    await player.add(Uint8List(32), 24000, 1);
+    await player.add(Uint8List(32), 44100, 1);
     expect(await player.started, {'status': 'cancelled'});
-    await player.add(Uint8List(32), 24000, 1);
+    await player.add(Uint8List(32), 44100, 1);
     await player.finish();
     expect(calls, ['beginAudioStream', 'appendAudioStream']);
   });
@@ -52,10 +83,10 @@ void main() {
           return {'status': 'speaking'};
         },
       );
-      await player.add(Uint8List(32), 24000, 1);
+      await player.add(Uint8List(32), 44100, 1);
       expect(await player.started, {'status': 'speaking'});
       expect(calls, ['beginAudioStream', 'appendAudioStream']);
-      await player.add(Uint8List(16), 24000, 1);
+      await player.add(Uint8List(16), 44100, 1);
       await player.finish();
       expect(calls, [
         'beginAudioStream',
@@ -77,7 +108,7 @@ void main() {
       },
     );
     current = false;
-    await player.add(Uint8List(32), 24000, 1);
+    await player.add(Uint8List(32), 44100, 1);
     await player.finish();
     expect(calls, isEmpty);
     expect(await player.started, {'status': 'cancelled'});
@@ -94,7 +125,7 @@ void main() {
         return method == 'beginAudioStream' ? gate.future : null;
       },
     );
-    final adding = player.add(Uint8List(32), 24000, 1);
+    final adding = player.add(Uint8List(32), 44100, 1);
     await Future<void>.delayed(Duration.zero);
     current = false;
     gate.complete(null);
@@ -115,10 +146,10 @@ void main() {
           return null;
         },
       );
-      await player.add(Uint8List(32), 24000, 1);
+      await player.add(Uint8List(32), 44100, 1);
       await player.started;
       await player.fail(StateError('generation failed'), StackTrace.current);
-      await player.add(Uint8List(32), 24000, 1);
+      await player.add(Uint8List(32), 44100, 1);
       await player.finish();
       expect(calls, [
         'beginAudioStream',

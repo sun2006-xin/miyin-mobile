@@ -33,6 +33,29 @@ test('opening voice does not start a microphone or contact a model', () => {
   assert.equal(h.calls[0].params.languageTag,'zh-Hans');assert.equal(h.voice.isOpen,true);
 });
 
+test('one answer queues the next segment after buffering without ending the shared track', async () => {
+  const h=harness();await h.voice.read('这是测试连续朗读的完整中文句子。'.repeat(9),'continuous');await settle();
+  const first=h.calls.find(row=>row.method==='voice.speak');const group=first.params.groupId;
+  assert(group);h.emit('miyin:voice-event',{sessionId:first.params.sessionId,type:'tts_buffered'});await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,2);
+  for(let i=1;i<20;i++) {
+    const speech=h.calls.filter(row=>row.method==='voice.speak')[i];if(!speech)break;
+    assert.equal(speech.params.groupId,group);
+    h.emit('miyin:voice-event',{sessionId:speech.params.sessionId,type:'tts_buffered'});await settle();
+  }
+  assert.equal(h.reading,'continuous');
+  assert.equal(h.calls.filter(row=>row.method==='voice.finishSpeech').length,1);
+  h.emit('miyin:voice-event',{sessionId:group,type:'tts_done'});await settle();assert.equal(h.reading,null);
+});
+
+test('late buffered events cannot enqueue more speech after interrupt', async () => {
+  const h=harness();await h.voice.read('连续朗读测试。'.repeat(20),'stop');await settle();
+  const first=h.calls.find(row=>row.method==='voice.speak');await h.voice.interrupt();
+  h.emit('miyin:voice-event',{sessionId:first.params.sessionId,type:'tts_buffered'});
+  h.emit('miyin:voice-event',{sessionId:first.params.groupId,type:'tts_done'});await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,1);assert.equal(h.reading,null);
+});
+
 test('generic voice warmup cannot replace an exact prepared reply with another language', async () => {
   const h=harness();h.voice.prepareMessage('Hello yesterday.');await settle();h.voice.open();
   assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,1);
@@ -197,17 +220,19 @@ test('Chinese Melo reading starts with a small segment and bounds later preparat
   assert.equal(spoken.map(row=>row.params.text).join('').replace(/\s/g,''),text);
   assert.equal(h.reading,null);
 });
-test('long manual reading prepares the next segment during playback and retains all text', async () => {
+test('long manual reading streams the next segment after buffering and retains all text', async () => {
   const h=harness(),text=Array.from({length:22},(_,i)=>`Sentence ${i+1} remains readable.`).join(' ');
   await h.voice.read(text,'long');await settle();
   const first=h.calls.find(row=>row.method==='voice.speak');
-  const prepared=h.calls.find(row=>row.method==='voice.prepareUtterance');
-  assert(prepared,'next segment must be prepared before the first completion');
-  assert(first.params.text.length<=120);assert(prepared.params.text.length<=240);
-  for(let guard=0;guard<30&&h.reading;guard++) {
-    const current=h.calls.filter(row=>row.method==='voice.speak').at(-1);
-    h.emit('miyin:voice-event',{sessionId:current.params.sessionId,type:'tts_done'});await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,0);
+  assert(first.params.text.length<=120);
+  for(let guard=0;guard<30;guard++) {
+    const current=h.calls.filter(row=>row.method==='voice.speak')[guard];if(!current)break;
+    assert(current.params.text.length<=240);
+    h.emit('miyin:voice-event',{sessionId:current.params.sessionId,type:'tts_buffered'});await settle();
   }
+  assert.equal(h.reading,'long');
+  h.emit('miyin:voice-event',{sessionId:first.params.groupId,type:'tts_done'});await settle();
   const spoken=h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text).join(' ');
   assert.equal(spoken.replace(/\s/g,''),text.replace(/\s/g,''));assert.equal(h.reading,null);
   assert(h.calls.filter(row=>row.method==='voice.prepareUtterance').length<h.calls.filter(row=>row.method==='voice.speak').length);
@@ -230,9 +255,9 @@ test('reading a completed reply does not cancel its in-flight first segment prep
   assert.equal(h.calls.filter(row=>row.method==='voice.stopSpeaking').length,0);
   release();await settle();
 });
-test('prefetched segment completion after interrupt never starts another playback', async () => {
+test('a pending streaming admission after interrupt never starts another playback', async () => {
   let release;const pending=new Promise(resolve=>{release=resolve;});
-  const h=harness(method=>method==='voice.prepareUtterance'?pending:{});
+  const h=harness(method=>method==='voice.speak'?pending:{});
   await h.voice.read('A complete first sentence. '.repeat(20),'long');await settle();
   const current=h.calls.find(row=>row.method==='voice.speak').params.sessionId;
   await h.voice.interrupt();release();await settle();

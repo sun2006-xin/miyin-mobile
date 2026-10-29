@@ -61,6 +61,7 @@ final class TranslationRpcRouter {
     'voice.prepareUtterance',
     'voice.speak',
     'voice.stopSpeaking',
+    'voice.finishSpeech',
     'voice.offlineTtsStatus',
     'voice.multilingualTtsStatus',
     'voice.downloadMultilingualTts',
@@ -396,6 +397,9 @@ final class TranslationRpcRouter {
           }
           final playback = MiyinStreamingSpeechPlayback(
             sessionId: sessionId,
+            groupId: params['groupId'] is String
+                ? _readSpeechSessionId(params['groupId'])
+                : null,
             invoke: (method, arguments) =>
                 _voiceChannel.invokeMethod<Object?>(method, arguments),
             isCurrent: synthesizer.isCurrentSynthesisRequest,
@@ -417,7 +421,14 @@ final class TranslationRpcRouter {
                 await synthesizer.discardAudioFile(audio['path']);
                 playback.completeCached({'status': 'cancelled'});
               } else if (audio['streamed'] == true) {
-                await playback.finish();
+                try {
+                  await playback.finish();
+                } finally {
+                  // PCM normally has no WAV, but future backends may also
+                  // create a temporary result file. The prepared cache itself
+                  // is never returned as this path.
+                  await synthesizer.discardAudioFile(audio['path']);
+                }
               } else {
                 try {
                   final result = await _voiceChannel.invokeMethod<Object?>(
@@ -466,6 +477,10 @@ final class TranslationRpcRouter {
       case 'voice.stopSpeaking':
         MiyinOfflineSpeechSynthesizer.instance.cancelPending();
         return _voiceChannel.invokeMethod<Object?>('stopSpeaking');
+      case 'voice.finishSpeech':
+        return _voiceChannel.invokeMethod<Object?>('endAudioGroup', {
+          'sessionId': _readSpeechSessionId(params['groupId']),
+        });
       case 'voice.offlineTtsStatus':
         return MiyinOfflineSpeechSynthesizer.instance.status();
       case 'voice.multilingualTtsStatus':

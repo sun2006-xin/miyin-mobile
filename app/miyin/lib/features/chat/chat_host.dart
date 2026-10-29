@@ -820,7 +820,22 @@ final class ChatHost {
         : null;
     final requestMessages = prepared?.messages ?? messages;
     final ChatClient client = isPhone
-        ? PhoneLlmClient(thinking: thinking)
+        ? PhoneLlmClient(
+            thinking: thinking,
+            onReasoning: () {
+              if (!_closed && _activeId == id) {
+                unawaited(
+                  onEvent({
+                    'requestId': id,
+                    'type': 'progress',
+                    'text': '正在深度思考，可关闭深度思考以更快回答…',
+                  }).catchError((Object _) {
+                    if (_activeId == id) cancel();
+                  }),
+                );
+              }
+            },
+          )
         : isLocal
         ? OllamaClient(thinking: thinking, windowTokens: localContextWindow)
         : cloudClient(provider, keyFor(provider)!, endpointFor(provider));
@@ -877,7 +892,7 @@ final class ChatHost {
 
     try {
       if (_activeId != id || _closed) return;
-      if (phone) await emit('progress', '正在准备手机内置模型，首次使用需校验资源…');
+      if (phone) await emit('progress', '正在处理本机对话…');
       if (conversationId != null) {
         void ensureActive() {
           if (_closed || _activeId != id)

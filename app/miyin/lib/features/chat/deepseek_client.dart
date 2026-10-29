@@ -29,6 +29,7 @@ final class DeepSeekClient implements ChatClient {
     this.templateThinking,
     this.temperature,
     this.systemPrompt,
+    this.onReasoning,
   }) : _http = client ?? HttpClient() {
     _http.connectionTimeout = const Duration(seconds: 20);
   }
@@ -40,6 +41,7 @@ final class DeepSeekClient implements ChatClient {
   final bool? templateThinking;
   final double? temperature;
   final String? systemPrompt;
+  final void Function()? onReasoning;
   final HttpClient _http;
   bool _canceled = false;
 
@@ -221,6 +223,11 @@ final class DeepSeekClient implements ChatClient {
           if (choices is! List || choices.isEmpty) continue;
           final choice = choices.first as Map;
           final delta = choice['delta'];
+          if (delta is Map &&
+              delta['reasoning_content'] is String &&
+              (delta['reasoning_content'] as String).isNotEmpty) {
+            onReasoning?.call();
+          }
           final text = delta is Map ? delta['content'] : null;
           if (text is String && text.isNotEmpty) {
             total += text.length;

@@ -12,6 +12,7 @@
   let turn = null, buffer = '', queue = [], ttsId = null, speaking = false, finished = false;
   let timer = 0, lastReadId = null, playbackStarted = false, hasSpoken = false, preparation = null;
   let voiceWarmAt = 0, voiceWarmKey = '';
+  let speechGroup = null, groupEnding = false;
   function state(value, mic = false) { if (opened) ui().state(value, mic); }
   function language(text) {
     const selected = load('ai-tts-language', 'auto');
@@ -76,9 +77,6 @@
       if (preparation === job) preparation=null;
     });
   }
-  function prepareNext() {
-    if (playbackStarted && ttsId && queue.length) prepare(queue[0]);
-  }
   function prepareMessage(text) {
     if (ttsId || speaking || opened || window.MiyinChat.isGenerating) return;
     const first=speechChunks(text)[0];if (first) prepare(first);
@@ -89,10 +87,12 @@
     playbackStarted = false; hasSpoken = false; preparation = null;
     clearTimeout(timer); timer = 0;
     const old = ttsId;
+    const oldGroup = speechGroup;
+    speechGroup = null;groupEnding = false;
     ttsId = null;
     lastReadId = null;
     chat().setReading(null);
-    if (old) { try { await rpc('voice.stopSpeaking'); } catch (_) {} }
+    if (old || oldGroup) { try { await rpc('voice.stopSpeaking'); } catch (_) {} }
   }
   async function cancelMic() {
     const old = micId;
@@ -169,18 +169,25 @@
       }
     }
     void drain();
-    prepareNext();
   }
   async function drain() {
     if (speaking || ttsId) return;
     if (!queue.length) {
-      if (finished) { lastReadId = null; chat().setReading(null); }
-      if (finished && opened) state('paused');
+      if (finished && speechGroup && !groupEnding) {
+        groupEnding=true;
+        const group=speechGroup;
+        try {await rpc('voice.finishSpeech',{groupId:group});}
+        catch (error) {if(speechGroup===group) {void stopSpeech();state('error');notify(error.message||'朗读结束失败。');}}
+      } else if (finished && !speechGroup) {
+        lastReadId = null; chat().setReading(null);
+        if (opened) state('paused');
+      }
       return;
     }
     const text = queue.shift(), generation = epoch;
     preparation = null;playbackStarted = false;hasSpoken = true;
     const id = 'chat-tts-' + Date.now() + '-' + (++sequence);
+    if (!speechGroup) {speechGroup='chat-audio-'+Date.now()+'-'+(++sequence);groupEnding=false;}
     ttsId = id; speaking = true;
     state('speaking');
     timer = setTimeout(() => {
@@ -188,10 +195,10 @@
       void stopSpeech(); state('error'); notify('朗读超时，文字已保留，可以重新点按朗读。');
     }, 60000);
     try {
-      const result = await rpc('voice.speak', {sessionId:id,...speechParams(text),streamAudio:true});
+      const result = await rpc('voice.speak', {sessionId:id,groupId:speechGroup,...speechParams(text),streamAudio:true});
       if (epoch !== generation || ttsId !== id) return;
       if (result?.status === 'cancelled') {await stopSpeech();state('paused');return;}
-      playbackStarted = true;prepareNext();
+      playbackStarted = true;
     } catch (error) {
       if (epoch !== generation || ttsId !== id) return;
       const session = lifecycle, stopping = stopSpeech(), stoppedEpoch = epoch;
@@ -215,7 +222,7 @@
   }
   async function read(text, id) {
     if (window.MiyinChat.isGenerating) { notify('请先停止当前回答，再朗读其他消息。'); return; }
-    if (lastReadId === id && (ttsId || queue.length)) { await stopSpeech(); notify('已停止朗读'); return; }
+    if (lastReadId === id && (ttsId || queue.length || speechGroup)) { await stopSpeech(); notify('已停止朗读'); return; }
     const session = ++lifecycle;
     await cancelMic();
     if (session !== lifecycle) return;
@@ -227,6 +234,17 @@
   }
   window.addEventListener('miyin:voice-event', event => {
     const data = event.detail || {};
+    if (speechGroup && data.sessionId === speechGroup) {
+      if (data.type === 'tts_done') {
+        clearTimeout(timer);timer=0;ttsId=null;speaking=false;playbackStarted=false;
+        speechGroup=null;groupEnding=false;lastReadId=null;chat().setReading(null);
+        if(opened) state('paused');
+      } else if (data.type === 'tts_error' || data.type === 'tts_stopped') {
+        void stopSpeech();state(data.type==='tts_error'?'error':'paused');
+        if(data.type==='tts_error') notify(data.message||'朗读失败，文字已保留。');
+      }
+      return;
+    }
     if (data.sessionId === micId && micId) {
       if (data.type === 'recognition_partial') ui().draft(data.text || '');
       if (data.type === 'recognition_processing') state('processing');
@@ -243,11 +261,15 @@
       }
     }
     if (ttsId && data.sessionId === ttsId) {
-      if (['tts_done', 'tts_stopped', 'tts_error'].includes(data.type)) {
+      if (['tts_buffered', 'tts_done', 'tts_stopped', 'tts_error'].includes(data.type)) {
         clearTimeout(timer); timer = 0; ttsId = null; speaking = false; playbackStarted = false;
         if (data.type === 'tts_error') {
           void stopSpeech(); state('error'); notify(data.message || '朗读失败，文字已保留。');
-        } else void drain();
+        } else {
+          // Legacy non-group completion remains supported by older hosts.
+          if(data.type==='tts_done' && finished && !queue.length) {speechGroup=null;groupEnding=false;}
+          void drain();
+        }
       }
     }
   });

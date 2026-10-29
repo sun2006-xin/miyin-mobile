@@ -94,6 +94,32 @@ void main() {
       })}\r\n\r\n';
   DeepSeekClient service(_Client client) =>
       DeepSeekClient(apiKey: 'unit-test-only', client: client);
+  test(
+    'reasoning reports activity without becoming answer or spoken text',
+    () async {
+      var reasoningEvents = 0;
+      final reasoning =
+          'data: ${jsonEncode({
+            'choices': [
+              {
+                'delta': {'reasoning_content': 'internal reasoning'},
+              },
+            ],
+          })}\n\n';
+      final client = _Client(
+        _Response([utf8.encode('$reasoning${frame('回答')}data: [DONE]\n')]),
+      );
+      final adapter = DeepSeekClient(
+        apiKey: 'test-only',
+        client: client,
+        onReasoning: () {
+          reasoningEvents++;
+        },
+      );
+      expect(await adapter.complete('local', messages).join(), '回答');
+      expect(reasoningEvents, 1);
+    },
+  );
   test('Claude Messages stream and system field use native protocol', () async {
     final client = _Client(
       _Response([
