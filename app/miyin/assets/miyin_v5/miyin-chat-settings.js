@@ -72,6 +72,7 @@
     const positions=new Map([...view.querySelectorAll('[data-model-service]')].map(n=>[n.dataset.modelService,n.scrollTop]));
     const focused=document.activeElement,modelFocus=focused?.dataset.modelId,serviceFocus=focused?.dataset.serviceId;
     const root=shell(page==='picker'?'选择 AI 模型':page==='privacy'?'隐私设置':'模型设置',page==='picker');
+    view.classList.toggle('is-privacy',page==='privacy');
     if(page==='picker')picker(root);else if(page==='privacy')privacy(root);else config(root);
     view.querySelector('.chat-config-scroll').scrollTop=scroll;
     view.querySelectorAll('[data-model-service]').forEach(n=>n.scrollTop=positions.get(n.dataset.modelService)||0);

@@ -15,6 +15,8 @@ import io.flutter.plugin.common.MethodChannel
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicInteger
 
 /** Local synthesized audio playback bridge for the WebView UI. */
 internal class MiyinVoiceMethodHandler(
@@ -29,6 +31,16 @@ internal class MiyinVoiceMethodHandler(
     private var pendingPlaybackResult: MethodChannel.Result? = null
     private var prepareTimeout: Runnable? = null
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val streamWriter = Executors.newSingleThreadExecutor()
+    @Volatile private var isActivityPaused = true
+    @Volatile private var activeStream: PcmStream? = null
+    private class PcmStream(val id: String, val track: AudioTrack, val sampleRate: Int) {
+        val queuedBytes = AtomicInteger(0)
+        var framesWritten = 0L
+        var accepting = true
+        var firstChunk = true
+        val createdAt = SystemClock.elapsedRealtime()
+    }
 
     override fun onListen(arguments: Any?, events: EventChannel.EventSink?) {
         eventSink = events
@@ -42,6 +54,10 @@ internal class MiyinVoiceMethodHandler(
         try {
             when (call.method) {
                 "playAudio" -> playAudio(call, result)
+                "beginAudioStream" -> beginAudioStream(call, result)
+                "appendAudioStream" -> appendAudioStream(call, result)
+                "finishAudioStream" -> finishAudioStream(call, result)
+                "abortAudioStream" -> abortAudioStream(call, result)
                 "stopSpeaking" -> stopSpeaking(result)
                 "offlineTtsStatus" -> offlineTtsStatus(result)
                 else -> result.notImplemented()
@@ -57,12 +73,116 @@ internal class MiyinVoiceMethodHandler(
     }
 
     fun onActivityPaused() {
+        isActivityPaused = true
         stopPlayback(emitStopped = true, completePending = true)
     }
 
+    fun onActivityResumed() {
+        isActivityPaused = false
+    }
+
     fun dispose() {
+        isActivityPaused = true
         stopPlayback(emitStopped = false, completePending = false)
+        streamWriter.shutdownNow()
         eventSink = null
+    }
+
+    private fun beginAudioStream(call: MethodCall, result: MethodChannel.Result) {
+        val id = readSessionId(call, result) ?: return
+        if (isActivityPaused) {
+            result.success(mapOf("status" to "cancelled", "sessionId" to id)); return
+        }
+        val rate = call.argument<Int>("sampleRate") ?: 0
+        if (rate !in 8000..48000) {
+            result.error("invalid_pcm_rate", "语音采样率无效。", null); return
+        }
+        stopPlayback(emitStopped = true, completePending = true)
+        val minimum = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_MONO, AudioFormat.ENCODING_PCM_16BIT)
+        val track = AudioTrack.Builder()
+            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH).build())
+            .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT)
+                .setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_MONO).build())
+            .setBufferSizeInBytes(maxOf(minimum, rate / 5 * 2))
+            .setTransferMode(AudioTrack.MODE_STREAM).build()
+        if (track.state != AudioTrack.STATE_INITIALIZED) {
+            track.release(); result.error("tts_playback_failed", "无法启动流式语音。", null); return
+        }
+        audioTrack = track; activePlaybackId = id
+        activeStream = PcmStream(id, track, rate)
+        track.play()
+        result.success(mapOf("status" to "ready", "sessionId" to id))
+    }
+
+    private fun appendAudioStream(call: MethodCall, result: MethodChannel.Result) {
+        val id = readSessionId(call, result) ?: return
+        val stream = activeStream
+        if (isActivityPaused || stream == null || stream.id != id || !stream.accepting) {
+            result.success(mapOf("status" to "cancelled")); return
+        }
+        val bytes = call.argument<ByteArray>("pcm")
+        if (bytes == null || bytes.isEmpty() || bytes.size % 2 != 0 || bytes.size > 65536) {
+            result.error("invalid_pcm_chunk", "流式语音数据无效。", null); return
+        }
+        if (stream.queuedBytes.addAndGet(bytes.size) > MAX_STREAM_QUEUE_BYTES) {
+            stream.queuedBytes.addAndGet(-bytes.size)
+            result.error("tts_buffer_full", "语音缓冲已满，请缩短内容重试。", null); return
+        }
+        streamWriter.execute {
+            try {
+                var offset = 0
+                while (activeStream === stream && offset < bytes.size) {
+                    val written = stream.track.write(bytes, offset, minOf(8192, bytes.size - offset), AudioTrack.WRITE_BLOCKING)
+                    if (written <= 0) throw IllegalStateException("PCM write failed: $written")
+                    offset += written; stream.framesWritten += written / 2
+                    if (stream.firstChunk) {
+                        stream.firstChunk = false
+                        Log.d(TAG, "stream firstPcmWriteMs=${SystemClock.elapsedRealtime() - stream.createdAt} sessionId=$id")
+                        emitVoiceEvent("tts_started", id)
+                    }
+                }
+            } catch (error: Exception) {
+                mainHandler.post {
+                    if (activeStream === stream) finishPlayback("tts_error", id, "流式语音播放失败。")
+                }
+            } finally { stream.queuedBytes.addAndGet(-bytes.size) }
+        }
+        // The PCM writer is separate from the UI thread. Return once accepted so
+        // Dart can queue the next synthesis without waiting for playback to end.
+        result.success(mapOf("status" to "speaking", "sessionId" to id))
+    }
+
+    private fun finishAudioStream(call: MethodCall, result: MethodChannel.Result) {
+        val id = readSessionId(call, result) ?: return
+        val stream = activeStream
+        if (stream == null || stream.id != id) { result.success(mapOf("status" to "cancelled")); return }
+        stream.accepting = false
+        streamWriter.execute {
+            val frames = stream.framesWritten
+            mainHandler.post {
+                if (activeStream !== stream) return@post
+                val poll = object : Runnable {
+                    override fun run() {
+                        if (activeStream !== stream) return
+                        val played = stream.track.playbackHeadPosition.toLong() and 0xffffffffL
+                        if (played >= frames) finishPlayback("tts_done", id)
+                        else { fastCompletion = this; mainHandler.postDelayed(this, 40L) }
+                    }
+                }
+                fastCompletion = poll; mainHandler.post(poll)
+            }
+        }
+        result.success(mapOf("status" to "finishing", "sessionId" to id))
+    }
+
+    private fun abortAudioStream(call: MethodCall, result: MethodChannel.Result) {
+        val id = readSessionId(call, result) ?: return
+        if (activeStream?.id == id) {
+            if (call.argument<Boolean>("failed") == true) finishPlayback("tts_error", id, "语音生成中断，请重新朗读。")
+            else stopPlayback(emitStopped = true, completePending = true)
+        }
+        result.success(mapOf("status" to "stopped"))
     }
 
     private fun playAudio(call: MethodCall, result: MethodChannel.Result) {
@@ -84,6 +204,11 @@ internal class MiyinVoiceMethodHandler(
             result.error("invalid_audio_path", "离线语音文件不在应用缓存目录中。", null)
             return
         }
+        if (isActivityPaused) {
+            audioFile.delete()
+            result.success(mapOf("status" to "cancelled", "sessionId" to sessionId))
+            return
+        }
 
         stopPlayback(emitStopped = true, completePending = true)
         if (tryFastPcmPlayback(audioFile, sessionId, result, nativeRequestAtMs)) return
@@ -102,6 +227,10 @@ internal class MiyinVoiceMethodHandler(
             player.setDataSource(audioFile.path)
             player.setOnPreparedListener { prepared ->
                 if (mediaPlayer !== prepared) return@setOnPreparedListener
+                if (isActivityPaused) {
+                    stopPlayback(emitStopped = true, completePending = true)
+                    return@setOnPreparedListener
+                }
                 clearPrepareTimeout()
                 try {
                     prepared.start()
@@ -247,6 +376,7 @@ internal class MiyinVoiceMethodHandler(
     }
 
     private fun stopPlayback(emitStopped: Boolean, completePending: Boolean) {
+        activeStream = null
         clearPrepareTimeout()
         clearFastCompletion()
         val sessionId = activePlaybackId
@@ -272,6 +402,7 @@ internal class MiyinVoiceMethodHandler(
     }
 
     private fun finishPlayback(type: String, sessionId: String, message: String? = null) {
+        activeStream = null
         clearPrepareTimeout()
         clearFastCompletion()
         val player = mediaPlayer
@@ -350,6 +481,7 @@ internal class MiyinVoiceMethodHandler(
         const val MAX_SESSION_ID_LENGTH = 96
         const val PLAYBACK_PREPARE_TIMEOUT_MS = 12_000L
         const val MAX_FAST_WAV_BYTES = 2_000_000
+        const val MAX_STREAM_QUEUE_BYTES = 8 * 1024 * 1024
         const val TTS_MODEL_BYTES = 177_392_565L
     }
 }

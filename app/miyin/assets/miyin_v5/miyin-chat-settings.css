@@ -9,3 +9,29 @@
 .chat-config-provider>summary{padding:12px 16px;border-radius:18px}.chat-config-provider[open]>summary{margin-bottom:10px}
 .chat-config-check{width:23px;height:23px;border:1px solid var(--line-strong);border-radius:7px;display:grid;place-items:center;flex:none;color:var(--accent)}.chat-config-model[aria-checked=true] .chat-config-check{border-color:var(--accent)}
 .chat-config-search{display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:98px}.chat-search-selector{position:relative;flex:none}.chat-search-select{min-height:46px;padding:10px 14px;border-radius:14px;font-size:14px}.chat-search-menu{position:absolute;bottom:calc(100% + 8px);right:0;min-width:150px;padding:6px;border-radius:16px;z-index:10;display:grid;gap:4px}.chat-search-menu[hidden]{display:none!important}.chat-search-menu .chat-config-mode{width:100%;text-align:left;margin:0}.chat-search-menu [aria-selected=true]{border-color:var(--accent)!important;color:var(--accent)}
+
+/* Privacy is a compact settings list, with the same resolved material as
+   other controls. Keep the switch and menu targets large enough to operate. */
+#app .chat-config-view.is-privacy .chat-config-scroll{gap:10px;padding-top:6px}
+#app .chat-config-view.is-privacy .chat-config-toggle,
+#app .chat-config-view.is-privacy .chat-config-search{
+  min-height:72px;padding:12px 14px;gap:14px;border-radius:18px;
+  border:1px solid var(--appearance-edge,var(--line-strong));
+  background:var(--appearance-button-bg,var(--surface-2));
+  box-shadow:inset 0 1px 0 var(--appearance-highlight),0 3px 9px var(--appearance-shadow-soft);
+}
+#app .chat-config-view.is-privacy .chat-config-copy{gap:4px}
+#app .chat-config-view.is-privacy .chat-config-copy strong,
+#app .chat-config-view.is-privacy .chat-config-search>strong{font-size:14px;font-weight:600}
+#app .chat-config-view.is-privacy .chat-config-copy small{font-size:11px;line-height:1.45}
+#app .chat-config-view.is-privacy .chat-search-select{
+  min-height:44px;padding:9px 12px;border-radius:13px;font-size:13px;
+  border:1px solid var(--appearance-input-edge,var(--line-strong));
+  background:var(--appearance-selected-bg,var(--selected));color:var(--title);
+}
+#app .chat-config-view.is-privacy .chat-search-menu{
+  border:1px solid var(--appearance-edge,var(--line-strong));
+  background:var(--appearance-raised,var(--surface));
+  box-shadow:inset 0 1px 0 var(--appearance-highlight),0 8px 20px var(--appearance-shadow-soft);
+}
+#app .chat-config-view.is-privacy .chat-search-menu .chat-config-mode{font-size:13px;min-height:44px;border-radius:11px}

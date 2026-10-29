@@ -29,7 +29,20 @@ function harness(request) {
     leave(){activeScreen=false;this.emit('miyin:surface-visibility-change');}};
 }
 test('opening voice does not start a microphone or contact a model', () => {
-  const h=harness(); h.voice.open(); assert.equal(h.calls.length,0); assert.equal(h.voice.isOpen,true);
+  const h=harness(); h.voice.open(); assert.equal(h.calls.length,1); assert.equal(h.calls[0].method,'voice.prepare');
+  assert.equal(h.calls[0].params.languageTag,'zh-Hans');assert.equal(h.voice.isOpen,true);
+});
+
+test('generic voice warmup cannot replace an exact prepared reply with another language', async () => {
+  const h=harness();h.voice.prepareMessage('Hello yesterday.');await settle();h.voice.open();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,1);
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepare').length,0);
+});
+
+test('automatic warmup follows the visible reply language', () => {
+  const h=harness();h.window.MiyinChatUI.getActiveId=()=> 'en';
+  h.window.MiyinChatUI.get=()=>({messages:[{role:'assistant',status:'complete',text:'Hello yesterday.'}]});
+  h.voice.open();assert.equal(h.calls[0].params.languageTag,'en');
 });
 test('microphone uses local chat mode and shutdown cancels the exact session', async () => {
   const h=harness();h.voice.open();await h.voice.toggleMicrophone();
@@ -52,6 +65,14 @@ test('speech sentences drain serially and punctuation-free final tail is retaine
   const first=h.calls.filter(row=>row.method==='voice.speak');assert.equal(first.length,1);assert.equal(first[0].params.text,'第一句。');
   h.emit('miyin:voice-event',{sessionId:first[0].params.sessionId,type:'tts_done'});await settle();
   const second=h.calls.filter(row=>row.method==='voice.speak');assert.equal(second.length,2);assert.equal(second[1].params.text,'第二句没有句号');
+});
+
+test('incoming Chinese starts speaking a phrase before the model finishes a sentence', async () => {
+  const h=harness();h.voice.open();await h.voice.beforeGeneration({conversationId:'c',messageId:'m'});
+  h.voice.delta('这是正在逐字输出的一段聊天内容还没有句号');await settle();
+  const speech=h.calls.find(row=>row.method==='voice.speak');
+  assert(speech);assert.equal(speech.params.text,'这是正在逐字输出的一段聊');
+  assert.equal(speech.params.streamAudio,true);
 });
 test('interrupt cancels generation and discards queued speech, ignoring stale completion', async () => {
   const h=harness();h.voice.open();await h.voice.beforeGeneration({conversationId:'c',messageId:'m'});
@@ -137,6 +158,14 @@ test('app pause prevents an awaiting manual read from starting playback', async 
   h.emit('miyin:app-paused');release();await reading;
   assert.equal(h.reading,null);
   assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,1);
+});
+
+test('native paused playback cancellation clears reading without starting the next segment', async () => {
+  const h=harness(method=>method==='voice.speak'?{status:'cancelled'}:{});
+  await h.voice.read('First sentence. '.repeat(35),'cancelled');await settle();
+  assert.equal(h.reading,null);assert.equal(h.timers.size,0);
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,1);
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,0);
 });
 test('an old speech failure cannot replace the state of a newly opened voice session', async () => {
   let release, speaks=0;const pending=new Promise(resolve=>{release=resolve;});

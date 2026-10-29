@@ -315,6 +315,7 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        voiceHandler?.onActivityResumed()
         phoneLlm?.setForeground(true)
         MiyinFloatingService.setAppForeground(true)
         MiyinSubtitleOverlayService.setAppForeground(true)

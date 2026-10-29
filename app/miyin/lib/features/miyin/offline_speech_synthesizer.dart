@@ -151,6 +151,8 @@ final class MiyinOfflineSpeechSynthesizer {
     required double speed,
     int speakerId = 0,
     String provider = 'melo',
+    Future<void> Function(Uint8List pcm, int sampleRate, int generation)?
+    onAudio,
   }) {
     // A newer speak request supersedes an older synthesis that has not reached
     // the native player yet. stopSpeaking invalidates this same gate.
@@ -188,6 +190,7 @@ final class MiyinOfflineSpeechSynthesizer {
         provider: provider,
         requestGeneration: requestGeneration,
         requestClock: requestClock,
+        onAudio: onAudio,
       ),
     );
   }
@@ -246,6 +249,8 @@ final class MiyinOfflineSpeechSynthesizer {
     required Stopwatch requestClock,
     bool prepareOnly = false,
     int? prepareGeneration,
+    Future<void> Function(Uint8List pcm, int sampleRate, int generation)?
+    onAudio,
   }) async {
     await _speechInitializationReady.future;
     if (prepareOnly &&
@@ -351,8 +356,28 @@ final class MiyinOfflineSpeechSynthesizer {
           'speed': speed,
           if (useMultilingual) 'speakerId': speakerId,
           if (useMultilingual) 'language': languageTag,
+          'streamAudio': onAudio != null,
         });
-        final response = await reply.first.timeout(const Duration(minutes: 4));
+        Object? response;
+        var streamedChunks = 0;
+        await for (final message in reply.timeout(const Duration(minutes: 4))) {
+          if (message is Map && message['type'] == 'audio' && onAudio != null) {
+            if (!_speechRequests.isCurrent(requestGeneration)) continue;
+            final pcm = message['pcm'];
+            final sampleRate = message['sampleRate'];
+            if (pcm is TransferableTypedData && sampleRate is int) {
+              await onAudio(
+                pcm.materialize().asUint8List(),
+                sampleRate,
+                requestGeneration,
+              );
+              streamedChunks++;
+            }
+          } else {
+            response = message;
+            break;
+          }
+        }
         if (response is! Map || response['ok'] != true) {
           throw PlatformException(
             code: 'tts_synthesis_failed',
@@ -384,14 +409,16 @@ final class MiyinOfflineSpeechSynthesizer {
           final previous = _preparedAudioFile;
           _preparedAudioFile = output;
           _preparedAudioKey = key;
-          if (previous != null && previous.path != output.path)
+          if (previous != null && previous.path != output.path) {
             await _deleteOutput(previous);
+          }
           return {'status': 'ready'};
         }
         return {
           'status': 'ready',
           'path': output.path,
           'requestGeneration': requestGeneration,
+          'streamed': streamedChunks > 0,
           'sampleRate': response['sampleRate'] is int
               ? response['sampleRate'] as int
               : _sampleRate,
@@ -1105,6 +1132,8 @@ void _supertonicTtsWorkerMain(Map<String, Object?> initialization) {
     }
     try {
       final synthesisClock = Stopwatch()..start();
+      var streamedBytes = 0;
+      var streamOverflow = false;
       final audio = tts.generateWithConfig(
         text: raw['text'] as String,
         config: sherpa.OfflineTtsGenerationConfig(
@@ -1113,13 +1142,29 @@ void _supertonicTtsWorkerMain(Map<String, Object?> initialization) {
           numSteps: 5,
           extra: {'lang': raw['language'] as String},
         ),
+        onProgress: raw['streamAudio'] == true
+            ? (samples, progress) {
+                streamedBytes += samples.length * 2;
+                if (streamedBytes > 16 * 1024 * 1024) {
+                  streamOverflow = true;
+                  return 0;
+                }
+                _sendAudioChunk(replyTo, samples, tts.sampleRate);
+                return 1;
+              }
+            : null,
       );
+      if (streamOverflow) {
+        throw StateError('Streaming speech exceeded the bounded PCM buffer.');
+      }
       if (audio.samples.isEmpty || audio.sampleRate <= 0) {
         throw StateError('The multilingual TTS model returned no audio.');
       }
       synthesisClock.stop();
       final writeClock = Stopwatch()..start();
-      _writePcm16Wave(raw['path'] as String, audio.samples, audio.sampleRate);
+      if (raw['streamAudio'] != true || streamedBytes == 0) {
+        _writePcm16Wave(raw['path'] as String, audio.samples, audio.sampleRate);
+      }
       writeClock.stop();
       replyTo.send({
         'ok': true,
@@ -1191,17 +1236,37 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
     }
     try {
       final synthesisClock = Stopwatch()..start();
-      final audio = tts.generate(
+      var streamedBytes = 0;
+      var streamOverflow = false;
+      final audio = tts.generateWithConfig(
         text: raw['text'] as String,
-        sid: 0,
-        speed: raw['speed'] as double,
+        config: sherpa.OfflineTtsGenerationConfig(
+          sid: 0,
+          speed: raw['speed'] as double,
+        ),
+        onProgress: raw['streamAudio'] == true
+            ? (samples, progress) {
+                streamedBytes += samples.length * 2;
+                if (streamedBytes > 16 * 1024 * 1024) {
+                  streamOverflow = true;
+                  return 0;
+                }
+                _sendAudioChunk(replyTo, samples, tts.sampleRate);
+                return 1;
+              }
+            : null,
       );
+      if (streamOverflow) {
+        throw StateError('Streaming speech exceeded the bounded PCM buffer.');
+      }
       if (audio.samples.isEmpty || audio.sampleRate <= 0) {
         throw StateError('The TTS model returned no audio samples.');
       }
       synthesisClock.stop();
       final writeClock = Stopwatch()..start();
-      _writePcm16Wave(raw['path'] as String, audio.samples, audio.sampleRate);
+      if (raw['streamAudio'] != true || streamedBytes == 0) {
+        _writePcm16Wave(raw['path'] as String, audio.samples, audio.sampleRate);
+      }
       writeClock.stop();
       replyTo.send({
         'ok': true,
@@ -1223,4 +1288,25 @@ void _writePcm16Wave(String path, Float32List samples, int sampleRate) {
     MiyinOfflineSpeechSynthesizer.encodePcm16Wave(samples, sampleRate),
     flush: true,
   );
+}
+
+void _sendAudioChunk(SendPort reply, Float32List samples, int sampleRate) {
+  if (samples.isEmpty) return;
+  final wave = MiyinOfflineSpeechSynthesizer.encodePcm16Wave(
+    samples,
+    sampleRate,
+  );
+  for (var offset = 44; offset < wave.length; offset += 65536) {
+    reply.send({
+      'type': 'audio',
+      'sampleRate': sampleRate,
+      'pcm': TransferableTypedData.fromList([
+        Uint8List.sublistView(
+          wave,
+          offset,
+          math.min(offset + 65536, wave.length),
+        ),
+      ]),
+    });
+  }
 }

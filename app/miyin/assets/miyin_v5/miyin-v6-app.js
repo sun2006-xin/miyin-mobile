@@ -52,19 +52,29 @@
           <input id="v6-dictionary-input" type="search" autocomplete="off" placeholder="输入中文或英语词条…" aria-label="输入中文或英语词条">
           <button type="submit" aria-label="查询词典">${icons.search}</button>
         </form>
-        <p class="v6-result-label" id="v6-dictionary-result-label" role="status" aria-live="polite">输入中文或英语词条开始查询</p>
-        <p class="v6-dictionary-empty" id="v6-dictionary-empty-copy">中英词典在本机运行。英语词头支持 A–Z 分页浏览；日语和俄语词典尚未接入。</p>
-        <div class="v6-dictionary-senses" data-v6-dictionary-senses aria-live="polite" hidden></div>
+        <div class="v6-dictionary-workspace">
         <div class="v6-dictionary-browser" aria-label="按首字母浏览词典">
-          <div class="v6-dictionary-list">
+          <div class="v6-dictionary-list appearance-panel">
             <div class="v6-dictionary-columns"><span>英语词头</span><span>音标</span></div>
+            <div class="v6-dictionary-scroll" tabindex="0" role="region" aria-label="词条列表，可在区域内滚动">
             <div data-v6-dictionary-browse-items aria-live="polite"><p class="v6-dictionary-empty">正在读取 A 开头词条…</p></div>
             <button class="v6-dictionary-load-more" type="button" data-v6-dictionary-load-more hidden>加载更多</button>
+            </div>
           </div>
           <nav class="v6-alphabet-index" data-v6-alphabet-index aria-label="选择英文字母"></nav>
         </div>
+        <section class="v6-dictionary-reader appearance-panel" aria-label="所选词条释义">
+          <p class="v6-result-label" id="v6-dictionary-result-label" role="status" aria-live="polite">点选词条，在这里查看词义与例句</p>
+          <div class="v6-dictionary-definition-scroll" tabindex="0" role="region" aria-label="词义与例句，可在区域内滚动">
+            <p class="v6-dictionary-empty" id="v6-dictionary-empty-copy">在上方列表中浏览，或输入中文、英语查词。选词后，列表位置会保留。</p>
+            <div class="v6-dictionary-senses" data-v6-dictionary-senses aria-live="polite" hidden></div>
+          </div>
+        </section>
+        </div>
+        <details class="v6-dictionary-data-note"><summary>数据与音标说明</summary>
         <p class="v6-structure-note"><strong>音标说明</strong>　英语词条显示可匹配的美式 IPA；没有对应数据时标注“音标数据暂缺”。</p>
         <p class="v6-structure-note"><strong>数据说明</strong>　词条由 Chinese Open Wordnet 与 Princeton WordNet 3.0 对齐生成；中文为同义词对应项，英文定义和例句保留来源原文。</p>
+        </details>
       </main>
     </section>
 
@@ -83,9 +93,9 @@
             <div class="v6-resource-list v6-installed-model-list" data-v6-installed-translation-models aria-live="polite">
               <div class="v6-resource-loading" role="status">正在读取本机已下载的语言包…</div>
             </div>
-            <details class="v6-translation-add-model">
-              <summary>下载新的语言组合</summary>
-              <div class="v6-translation-language-picker" data-v6-translation-picker>
+            <details class="v6-translation-add-model appearance-panel">
+              <summary>下载新的语言组合<span aria-hidden="true">${icons.chevron}</span></summary>
+              <div class="v6-translation-language-picker v6-translation-resource-picker" data-v6-translation-picker>
                 <label class="v6-translation-language-field"><span>源语言</span><select data-v6-translation-source aria-label="下载翻译源语言" disabled><option>正在读取…</option></select></label>
                 <button class="v6-translation-swap" type="button" data-v6-translation-swap aria-label="交换源语言和目标语言" title="交换语言">⇄</button>
                 <label class="v6-translation-language-field"><span>目标语言</span><select data-v6-translation-target aria-label="下载翻译目标语言" disabled><option>正在读取…</option></select></label>
@@ -131,6 +141,8 @@
   const dictionarySenses = document.querySelector("[data-v6-dictionary-senses]");
   const dictionaryBrowseItems = document.querySelector("[data-v6-dictionary-browse-items]");
   const dictionaryLoadMore = document.querySelector("[data-v6-dictionary-load-more]");
+  const dictionaryListScroll = document.querySelector(".v6-dictionary-scroll");
+  const dictionaryDefinitionScroll = document.querySelector(".v6-dictionary-definition-scroll");
   const dictionaryAlphabetIndex = document.querySelector("[data-v6-alphabet-index]");
   const dictionaryBackButton = document.querySelector("#screen-dictionary .top-icon");
   const resourceBack = document.querySelector("#screen-resources .top-icon");
@@ -156,6 +168,81 @@
   let dictionaryBrowseOffset = 0;
   const dictionaryPageSize = 24;
   let dictionaryPackage = "en-zh";
+  const themedSelectControls = [];
+  let openSelectMenu = null;
+  const closeSelectMenu = (restoreFocus = false) => {
+    if (!openSelectMenu) return;
+    const {menu, trigger} = openSelectMenu;
+    menu.remove(); trigger.setAttribute("aria-expanded", "false");
+    openSelectMenu = null;
+    if (restoreFocus) trigger.focus({preventScroll:true});
+  };
+  const syncThemedSelects = () => themedSelectControls.forEach(({select, trigger}) => {
+    trigger.querySelector("span").textContent = select.selectedOptions[0]?.textContent || "请选择";
+    trigger.disabled = select.disabled;
+  });
+  const focusSelectOption = button => {
+    if (!button || !openSelectMenu) return;
+    const menu = openSelectMenu.menu;
+    button.focus({preventScroll:true});
+    if (button.offsetTop < menu.scrollTop) menu.scrollTop = button.offsetTop;
+    else if (button.offsetTop + button.offsetHeight > menu.scrollTop + menu.clientHeight) menu.scrollTop = button.offsetTop + button.offsetHeight - menu.clientHeight;
+  };
+  const installThemedSelect = select => {
+    if (!select) return;
+    const trigger = document.createElement("button");
+    trigger.type = "button"; trigger.className = "v6-select-trigger";
+    trigger.setAttribute("aria-label", select.getAttribute("aria-label") || "选择语言");
+    trigger.setAttribute("aria-haspopup", "listbox"); trigger.setAttribute("aria-expanded", "false");
+    trigger.innerHTML = "<span></span>" + icons.chevron;
+    select.hidden = true; select.insertAdjacentElement("afterend", trigger);
+    select.parentElement.classList.add("has-themed-select");
+    themedSelectControls.push({select, trigger});
+    const show = () => {
+      const wasOpen = openSelectMenu?.trigger === trigger;
+      closeSelectMenu(); if (wasOpen || select.disabled) return;
+      const menu = document.createElement("div"); menu.className = "v6-select-popover appearance-panel";
+      menu.setAttribute("role", "listbox"); menu.setAttribute("aria-label", trigger.getAttribute("aria-label"));
+      for (const option of select.options) {
+        const button = document.createElement("button"); button.type = "button"; button.setAttribute("role", "option");
+        button.setAttribute("aria-selected", String(option.selected)); button.disabled = option.disabled;
+        button.textContent = option.textContent; button.dataset.value = option.value;
+        button.addEventListener("click", event => {
+          event.preventDefault(); select.value = option.value;
+          select.dispatchEvent(new Event("change", {bubbles:true})); syncThemedSelects(); closeSelectMenu(true);
+        });
+        menu.append(button);
+      }
+      app.append(menu); openSelectMenu = {menu, trigger}; trigger.setAttribute("aria-expanded", "true");
+      const rect = trigger.getBoundingClientRect(), width = Math.min(innerWidth - 32, Math.max(220, rect.width));
+      menu.style.width = width + "px";
+      menu.style.left = Math.max(16, Math.min(rect.left, innerWidth - width - 16)) + "px";
+      menu.style.maxHeight = Math.max(100, Math.min(320, innerHeight - 100)) + "px";
+      const height = menu.getBoundingClientRect().height;
+      menu.style.top = Math.max(16, Math.min(rect.bottom + 6, innerHeight - height - 16)) + "px";
+      const chosen = menu.querySelector('[aria-selected="true"]:not(:disabled)') || menu.querySelector("button:not(:disabled)");
+      focusSelectOption(chosen);
+    };
+    trigger.addEventListener("click", event => {event.preventDefault(); show();});
+    trigger.addEventListener("keydown", event => {if (["ArrowDown", "ArrowUp"].includes(event.key)) {event.preventDefault();show();}});
+    select.addEventListener("change", syncThemedSelects);
+    new MutationObserver(syncThemedSelects).observe(select, {childList:true, subtree:true, attributes:true, attributeFilter:["disabled", "selected"]});
+  };
+  document.addEventListener("click", event => {
+    if (openSelectMenu && !openSelectMenu.menu.contains(event.target) && !openSelectMenu.trigger.contains(event.target)) closeSelectMenu();
+  });
+  document.addEventListener("keydown", event => {
+    if (!openSelectMenu) return;
+    if (event.key === "Escape") {event.preventDefault();event.stopImmediatePropagation();closeSelectMenu(true);return;}
+    if (["ArrowDown", "ArrowUp", "Home", "End"].includes(event.key)) {
+      event.preventDefault();
+      const buttons = [...openSelectMenu.menu.querySelectorAll("button:not(:disabled)")], index = buttons.indexOf(document.activeElement);
+      focusSelectOption(buttons[event.key === "Home" ? 0 : event.key === "End" ? buttons.length-1 : (index + (event.key === "ArrowDown" ? 1 : -1) + buttons.length) % buttons.length]);
+    }
+    if (event.key === "Tab") closeSelectMenu();
+  }, true);
+  window.addEventListener("resize", () => closeSelectMenu());
+  window.addEventListener("miyin:surface-visibility-change", () => closeSelectMenu());
 
   const modeMenuMarkup = '<button class="v6-mode-pill" type="button" data-v6-action="toggle-mode-menu" aria-haspopup="menu" aria-expanded="false">句子⌄</button><div class="v6-mode-menu" role="menu" aria-label="选择翻译方式"><button type="button" role="menuitemradio" aria-checked="true" data-v6-mode-choice="sentence">句子翻译</button><button type="button" role="menuitemradio" aria-checked="false" data-v6-mode-choice="dictionary">单词 / 短语查词</button></div>';
   const homeModeHost = document.createElement("div");
@@ -248,6 +335,7 @@
       return pending;
     },
     handleSystemBack() {
+      if (openSelectMenu) { closeSelectMenu(true); return true; }
       if (window.MiyinChatSettings?.handleBack()) return true;
       const liveRecordPanel = document.querySelector("#video-record-list:not([hidden])");
       if (liveRecordPanel) {
@@ -588,6 +676,7 @@
     if (!translationSourceSelect || !translationTargetSelect) return;
     write("resource-source-tag", translationSourceSelect.value);
     write("resource-target-tag", translationTargetSelect.value);
+    syncThemedSelects();
     void refreshSelectedTranslationModel();
   };
   translationSourceSelect?.addEventListener("change", handleTranslationLanguageChange);
@@ -925,9 +1014,11 @@
       dictionaryBrowseLetter = letter;
       dictionaryBrowseOffset = 0;
       dictionaryBrowseItems.replaceChildren();
+      if (dictionaryListScroll) dictionaryListScroll.scrollTop = 0;
       renderDictionaryAlphabetIndex();
     }
     const revision = ++dictionaryBrowseRevision;
+    if (dictionaryLoadMore) dictionaryLoadMore.disabled = true;
     if (!isNativeHost() || !window.MiyinNativeBridge) {
       dictionaryBrowseItems.innerHTML = '<p class="v6-dictionary-empty">请在觅音 App 中浏览本机词典。</p>';
       if (dictionaryLoadMore) dictionaryLoadMore.hidden = true;
@@ -952,6 +1043,7 @@
         button.type = "button";
         button.className = "v6-dictionary-word";
         button.dataset.v6DictionaryWord = word;
+        button.setAttribute("aria-pressed", String(word === dictionaryInput.value.trim()));
         const name = document.createElement("span");
         name.textContent = word;
         const phonetic = document.createElement("span");
@@ -973,6 +1065,8 @@
       if (revision !== dictionaryBrowseRevision) return;
       dictionaryBrowseItems.innerHTML = '<p class="v6-dictionary-empty">词条列表暂时无法读取：' + escapeHtml(error?.message || "请稍后重试") + '</p>';
       if (dictionaryLoadMore) dictionaryLoadMore.hidden = true;
+    } finally {
+      if (revision === dictionaryBrowseRevision && dictionaryLoadMore) dictionaryLoadMore.disabled = false;
     }
   };
   const retryDictionaryBrowseWhenNativeHostReady = () => {
@@ -1007,6 +1101,9 @@
     const wordButton = event.target.closest("[data-v6-dictionary-word]");
     if (!wordButton) return;
     dictionaryInput.value = wordButton.dataset.v6DictionaryWord;
+    dictionaryBrowseItems.querySelectorAll("[data-v6-dictionary-word]").forEach(button => {
+      button.setAttribute("aria-pressed", String(button === wordButton));
+    });
     dictionaryForm?.requestSubmit();
   });
   dictionaryLoadMore?.addEventListener("click", () => void loadDictionaryBrowsePage(dictionaryBrowseLetter, false));
@@ -1044,6 +1141,7 @@
       const result = await window.MiyinNativeBridge.request(lookupMethod, { query });
       if (requestRevision !== dictionaryRequestRevision) return;
       renderDictionaryLookup(result);
+      if (dictionaryDefinitionScroll) dictionaryDefinitionScroll.scrollTop = 0;
     } catch (error) {
       if (requestRevision !== dictionaryRequestRevision) return;
       if (resultLabel) resultLabel.textContent = "本机词典暂时无法读取";
@@ -1057,6 +1155,8 @@
   }, true);
 
   window.addEventListener("miyin:open-dictionary-page", openDictionaryPage);
+  [dictionaryPackageSelect, translationSourceSelect, translationTargetSelect].forEach(installThemedSelect);
+  syncThemedSelects();
   window.addEventListener("miyin:open-offline-resources", () => navigate("resources"));
 
   document.addEventListener("click", event => {

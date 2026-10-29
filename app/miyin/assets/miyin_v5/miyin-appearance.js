@@ -5,6 +5,15 @@
   const scroll = screen?.querySelector('.orb-style-scroll');
   if (!screen || !settingsCard || !scroll) return;
 
+  // A quiet context line identifies the current workspace while keeping the
+  // established history / brand / profile positions intact.
+  for (const [id,label] of [['home','翻译'],['face','面对面对话'],['chat','AI 对话'],['video','同传字幕']]) {
+    const brand=document.querySelector('#screen-'+id+' .top-brand');
+    if(brand&&!brand.querySelector('.top-context')){
+      const context=document.createElement('small');context.className='top-context';context.textContent=label;brand.append(context);
+    }
+  }
+
   const videoStatus = document.querySelector('#video-status');
   const videoActions = document.querySelector('#screen-video .subtitle-head-actions');
   if (videoStatus && videoActions) videoActions.prepend(videoStatus);
@@ -18,7 +27,7 @@
   const labels = {
     material: { liquid: '凝露琉璃', crystal: '澄透玻璃', ceramic: '温润陶釉', metal: '柔光金属', soft: '云绒微光', frost: '冰砂雾玻', pearl: '贝母珠光', satin: '细织缎面' },
     feedback: { bounce: '轻弹回馈', press: '轻压回馈', glow: '柔光回馈', none: '简洁无动效' },
-    typography: { 'serif-head': '思源宋体标题＋黑体正文', sans: '全黑体', rounded: '圆润黑体' }
+    typography: { 'serif-head': '思源宋体标题＋黑体正文', sans: '全黑体', rounded: '寒蝉圆黑体' }
   };
   const storageKey = { material: 'button-material', feedback: 'press-feedback', typography: 'appearance-typography' };
   const defaults = { material: 'liquid', feedback: 'bounce', typography: 'serif-head' };
@@ -98,7 +107,7 @@
     <div class="appearance-choice-grid appearance-font-grid" role="group" aria-label="界面字体">
       <button type="button" data-appearance-kind="typography" data-appearance-value="serif-head"><strong class="serif-sample">觅音外观</strong><small>思源宋体标题＋黑体正文</small></button>
       <button type="button" data-appearance-kind="typography" data-appearance-value="sans"><strong>觅音外观</strong><small>全黑体</small></button>
-      <button type="button" data-appearance-kind="typography" data-appearance-value="rounded"><strong class="rounded-sample">觅音外观</strong><small>圆润黑体</small></button>
+      <button type="button" data-appearance-kind="typography" data-appearance-value="rounded"><strong class="rounded-sample">觅音外观</strong><small>寒蝉圆黑体 · 已内置</small></button>
     </div>
     <div class="appearance-live-preview" aria-label="按钮组合预览"><span>效果预览</span><button type="button">开始同传</button><button type="button">选择语言</button></div>`;
   const materials = controls.querySelector('[aria-label="按钮材质"]');

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/services.dart';
@@ -12,6 +13,7 @@ import 'multilingual_tts_model_store.dart';
 import 'offline_english_chinese_dictionary.dart';
 import 'offline_speech_recognizer.dart';
 import 'offline_speech_synthesizer.dart';
+import 'streaming_speech_playback.dart';
 import 'translation_attachment_ocr.dart';
 
 const _voiceChannel = MethodChannel('com.miyin.app/voice');
@@ -385,6 +387,55 @@ final class TranslationRpcRouter {
         final speakerId = _readTtsSpeakerId(params['speakerId']);
         final provider = _readTtsProvider(params['provider']);
         final synthesizer = MiyinOfflineSpeechSynthesizer.instance;
+        if (params['streamAudio'] == true) {
+          if (text.length > 800) {
+            throw const TranslationFailure(
+              'speech_text_too_long',
+              '请分段朗读较长内容。',
+            );
+          }
+          final playback = MiyinStreamingSpeechPlayback(
+            sessionId: sessionId,
+            invoke: (method, arguments) =>
+                _voiceChannel.invokeMethod<Object?>(method, arguments),
+            isCurrent: synthesizer.isCurrentSynthesisRequest,
+          );
+          unawaited(() async {
+            try {
+              final audio = await synthesizer.synthesize(
+                sessionId: sessionId,
+                languageTag: languageTag,
+                text: text,
+                speed: speed,
+                speakerId: speakerId,
+                provider: provider,
+                onAudio: playback.add,
+              );
+              if (!synthesizer.isCurrentSynthesisRequest(
+                audio['requestGeneration'],
+              )) {
+                await synthesizer.discardAudioFile(audio['path']);
+                playback.completeCached({'status': 'cancelled'});
+              } else if (audio['streamed'] == true) {
+                await playback.finish();
+              } else {
+                try {
+                  final result = await _voiceChannel.invokeMethod<Object?>(
+                    'playAudio',
+                    {'sessionId': sessionId, 'path': audio['path']},
+                  );
+                  playback.completeCached(result);
+                } catch (_) {
+                  await synthesizer.discardAudioFile(audio['path']);
+                  rethrow;
+                }
+              }
+            } catch (error, stack) {
+              await playback.fail(error, stack);
+            }
+          }());
+          return playback.started;
+        }
         final audio = await synthesizer.synthesize(
           sessionId: sessionId,
           languageTag: languageTag,

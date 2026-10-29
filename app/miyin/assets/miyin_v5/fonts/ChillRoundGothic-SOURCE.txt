@@ -1,0 +1,15 @@
+Chill Round Gothic / 寒蝉圆黑体
+Copyright 2023 The ChillRoundGothic Project Authors
+Font metadata also credits Adobe (Source Han Sans, 2014-2021).
+
+Upstream: https://github.com/Warren2060/ChillRoundGothic
+Pinned revision: 53505f0818983d2fcdda00dc66e051ad13e81ffb
+License: SIL Open Font License 1.1; complete unmodified text in ChillRoundGothic-OFL.txt.
+The font binaries are unmodified. CSS family aliases only identify them within the app.
+
+Regular: ttf/ChillRoundGothic_Regular.ttf
+SHA-256: b73776f591bae1b64a949ff9b527614919bfff7c6987367e68e57ad0af6468cc
+Bold: ttf/ChillRoundGothic_Bold.ttf
+SHA-256: dee7faf4ad8ad99720b3ffd045f3bfe4f22b8168f7cc70812aca6d1d95529dae
+
+Bundled locally for the optional rounded typography setting. No font download is required at runtime.

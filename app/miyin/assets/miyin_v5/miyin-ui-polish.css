@@ -59,4 +59,43 @@ html[data-button-material] #app :is(#chat-input,#translation-input,#voice-input)
 #app .voice-overlay[data-display-mode="captions"] .ai-orb-renderer { top:calc(50% - 10px); }
 @media(max-height:690px){#app .voice-caption-toggle{top:max(6px,calc(50% - 158px))}}
 @media(prefers-reduced-motion:reduce){#app :is(.compose-card,.voice-input-capsule,.text-entry){transition:none}}
+
+/* Reserve separate rows for the control, sphere and status. Absolute positions
+   tied to half the viewport used to collide when captions or the keyboard opened. */
+#app .voice-orb-row{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:44px auto auto;align-content:center;justify-items:center;gap:28px;touch-action:pan-y}
+#app .voice-orb-row .voice-caption-toggle{position:relative;grid-row:1;left:auto;top:auto;bottom:auto;transform:none;align-self:center}
+#app .voice-orb-row .voice-orb-slot{grid-row:2;width:100%;min-width:0;display:grid;place-items:center}
+#app .voice-orb-row .ai-orb-renderer{position:relative;grid-row:2;left:auto;top:auto;transform:none;flex:none}
+#app .voice-orb-row .voice-state-label{position:relative;grid-row:3;left:auto;top:auto;bottom:auto;transform:none;margin:0;max-width:calc(100% - 24px);white-space:normal;line-height:1.5}
+#app .voice-orb-row .voice-hint{display:none}
+#app .voice-overlay[data-display-mode="captions"] .voice-orb-row{flex:0 0 230px;grid-template-rows:auto 108px 44px;gap:16px;align-content:center;padding-top:8px}
+#app .voice-overlay[data-display-mode="captions"] .voice-orb-row .voice-state-label{grid-row:1;top:auto;bottom:auto;left:auto}
+#app .voice-overlay[data-display-mode="captions"] .voice-orb-row .ai-orb-renderer{grid-row:2;top:auto;left:auto;width:108px}
+#app .voice-overlay[data-display-mode="captions"] .voice-orb-row .voice-caption-toggle{grid-row:3;top:auto;bottom:auto;left:auto}
+#app .voice-overlay[data-display-mode="captions"] .voice-transcript{padding-top:18px}
+@media(max-height:690px){
+  #app .voice-orb-row{gap:16px}
+  #app .voice-orb-row .ai-orb-renderer{width:min(48vw,max(54px,calc(100vh - 290px)),160px)}
+  #app .voice-overlay[data-display-mode="captions"] .voice-orb-row{flex-basis:182px;grid-template-rows:auto 76px 44px;gap:10px;padding-top:6px}
+  #app .voice-overlay[data-display-mode="captions"] .voice-orb-row .ai-orb-renderer{width:76px}
+}
+@media(max-height:420px){
+  #app .voice-overlay[data-display-mode="captions"] .voice-orb-row{flex-basis:140px;grid-template-rows:auto 54px 44px;gap:6px;padding-top:0}
+  #app .voice-overlay[data-display-mode="captions"] .voice-orb-row .ai-orb-renderer{width:54px}
+}
+
+/* One restrained header treatment across workspaces, using the active palette. */
+#app :is(.topbar,.voice-topbar){position:relative;background:linear-gradient(180deg,var(--appearance-raised,var(--surface)),transparent);border-bottom:0;box-shadow:inset 0 1px 0 var(--appearance-highlight)}
+#app :is(.topbar,.voice-topbar)::after{content:"";position:absolute;left:18px;right:18px;bottom:0;height:1px;background:linear-gradient(90deg,transparent,var(--appearance-edge,var(--line)),transparent);pointer-events:none}
+#app :is(.top-brand,.voice-top-title){display:grid;justify-items:center;gap:3px;line-height:1.15}
+#app :is(.top-brand,.voice-top-title) strong{letter-spacing:.08em}
+#app .top-context,#app .voice-top-title small{margin:0;color:var(--muted);font-size:9px;font-weight:450;letter-spacing:.10em;line-height:1.2}
+/* The shell clips its children but must never become a second, programmatically
+   scrollable viewport when a field is focused or a nested list is revealed. */
+@supports(overflow:clip){#app{overflow:clip}}
+/* Low-specificity defaults protect newly added controls without flattening
+   deliberate circle, pill or component-specific corner treatments. */
+:where(#app .appearance-surface){border-radius:14px}
+:where(#app .appearance-panel){border-radius:18px}
+:where(#app .appearance-field){border-radius:12px}
 #app .mic-button.shader-fallback .mic-surface{opacity:0}.v4-style-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.v4-mic-style-section{margin-top:22px}.v4-style-choice{min-width:0}.v4-style-heading{gap:12px}.v4-style-heading>div{min-width:0}.v4-style-heading small{white-space:normal;line-height:1.5}

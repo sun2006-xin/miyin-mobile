@@ -33,14 +33,16 @@ test('inline links and citations stay inline without raised material boxes',asyn
  }
 });
 test('caption toggle stays round, centered and visible in both modes and short viewports',async()=>{
- await page.evaluate(()=>MiyinVoiceUI.open());
+ await page.evaluate(()=>{MiyinVoiceUI.open();document.querySelector('.voice-state-label').textContent='点麦克风继续 · 也可直接输入';});
  for(const width of [320,390])for(const height of [844,480,360]){
   await page.setViewportSize({width,height});
   for(const mode of ['orb','captions']){
    await page.evaluate(mode=>document.querySelector('#voice-overlay').dataset.displayMode=mode,mode);await page.waitForTimeout(450);
-   const data=await page.locator('.voice-caption-toggle').evaluate(n=>{const r=n.getBoundingClientRect();const s=[...n.querySelectorAll('svg')].find(s=>getComputedStyle(s).display!=='none').getBoundingClientRect();return{w:r.width,h:r.height,cx:r.x+r.width/2,top:r.top,bottom:r.bottom,sw:s.width,sh:s.height};});
+   const data=await page.locator('.voice-caption-toggle').evaluate(n=>{const r=n.getBoundingClientRect();const s=[...n.querySelectorAll('svg')].find(s=>getComputedStyle(s).display!=='none').getBoundingClientRect();return{w:r.width,h:r.height,cx:r.x+r.width/2,top:r.top,bottom:r.bottom,sw:s.width,sh:s.height,orb:(()=>{const b=document.querySelector('.voice-orb-row .ai-orb-renderer').getBoundingClientRect();return{top:b.top,bottom:b.bottom}})(),label:(()=>{const b=document.querySelector('.voice-state-label').getBoundingClientRect();return{top:b.top,bottom:b.bottom}})()};});
    assert.equal(data.w,44);assert.equal(data.h,44);assert.equal(data.sw,data.sh);assert(data.sw>=18);
    assert(Math.abs(data.cx-width/2)<1);assert(data.top>=0&&data.bottom<=height);
+   if(mode==='orb'){assert(data.orb.top-data.bottom>=12,JSON.stringify(data));assert(data.label.top-data.orb.bottom>=12,JSON.stringify(data));}
+   else {assert(data.orb.top-data.label.bottom>=4,JSON.stringify(data));assert(data.top-data.orb.bottom>=4,JSON.stringify(data));}
    const target=page.locator('.voice-caption-toggle');await target.hover();await page.mouse.down();
    const pressed=await target.evaluate(n=>{const r=n.getBoundingClientRect();return{cx:r.x+r.width/2,ratio:r.width/r.height};});
    assert(Math.abs(pressed.cx-width/2)<1);assert(Math.abs(pressed.ratio-1)<.01);await page.mouse.up();

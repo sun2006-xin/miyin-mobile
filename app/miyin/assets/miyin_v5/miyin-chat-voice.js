@@ -11,6 +11,7 @@
   let opened = false, micId = null, micBusy = false, sequence = 0, epoch = 0, lifecycle = 0;
   let turn = null, buffer = '', queue = [], ttsId = null, speaking = false, finished = false;
   let timer = 0, lastReadId = null, playbackStarted = false, hasSpoken = false, preparation = null;
+  let voiceWarmAt = 0, voiceWarmKey = '';
   function state(value, mic = false) { if (opened) ui().state(value, mic); }
   function language(text) {
     const selected = load('ai-tts-language', 'auto');
@@ -23,6 +24,21 @@
   function speechParams(text) {
     return {text, languageTag:language(text), provider:load('tts-provider', 'melo'),
       speed:Number(load('tts-speed', 1)), speakerId:Number(load('tts-speaker', 0))};
+  }
+  function warmVoice() {
+    // A visible reply already prepares the exact first utterance. A generic
+    // warm-up queued afterwards must not unload that reply's language worker.
+    if (preparation?.generation === epoch) return;
+    const selected = load('ai-tts-language', 'auto');
+    const row=chat()?.get?.(chat()?.getActiveId?.());
+    const reply=row?.messages?.at(-1);
+    const params={languageTag:selected === 'auto' ? (reply?.text ? language(reply.text) : 'zh-Hans') : selected,
+      provider:load('tts-provider','melo'),speakerId:Number(load('tts-speaker',0))};
+    const key=JSON.stringify(params);
+    if (Date.now() - voiceWarmAt < 30000 && voiceWarmKey === key) return;
+    voiceWarmAt = Date.now();voiceWarmKey=key;
+    void rpc('voice.prepare', params)
+      .catch(() => {voiceWarmAt=0;});
   }
   // Combine adjacent sentences instead of paying synthesis startup after every
   // full stop. Keep a short first segment and bounded, word-aligned successors.
@@ -129,8 +145,17 @@
     if (!final) {
       const boundaries=buffer.matchAll(/[。！？!?\n]|\.(?:\s|$)/gu);
       for (const match of boundaries) cut=match.index+match[0].length;
-      if (!cut && buffer.length >= 240) {
-        const space=buffer.lastIndexOf(' ',220);cut=space>60?space+1:200;
+      // Start a bounded phrase while text is still arriving instead of waiting
+      // for a final full stop. Keep English words together.
+      const chinese = language(buffer) === 'zh-Hans';
+      const phraseLimit = chinese ? (hasSpoken ? 32 : 12) : (hasSpoken ? 120 : 48);
+      if (!cut && Array.from(buffer).length >= phraseLimit) {
+        if (chinese) cut=Array.from(buffer).slice(0,phraseLimit).join('').length;
+        else {
+          const space=buffer.lastIndexOf(' ',phraseLimit);
+          if (space>phraseLimit/2) cut=space+1;
+          else if (buffer.length>=240) cut=200;
+        }
       }
     }
     if (cut) {
@@ -163,8 +188,9 @@
       void stopSpeech(); state('error'); notify('朗读超时，文字已保留，可以重新点按朗读。');
     }, 60000);
     try {
-      await rpc('voice.speak', {sessionId:id,...speechParams(text)});
+      const result = await rpc('voice.speak', {sessionId:id,...speechParams(text),streamAudio:true});
       if (epoch !== generation || ttsId !== id) return;
+      if (result?.status === 'cancelled') {await stopSpeech();state('paused');return;}
       playbackStarted = true;prepareNext();
     } catch (error) {
       if (epoch !== generation || ttsId !== id) return;
@@ -234,6 +260,7 @@
   window.addEventListener('miyin:app-paused', suspend);
   window.addEventListener('miyin:surface-visibility-change', () => {
     if (!document.querySelector('#screen-chat')?.classList.contains('active')) suspend();
+    else if (!document.hidden && !ttsId && !window.MiyinChat.isGenerating) warmVoice();
   });
   document.addEventListener('click', event => {
     const action = event.target.closest('[data-v5-voice-action]');
@@ -258,7 +285,7 @@
   }, true);
   window.addEventListener('miyin:chat-attachments-changed', () => { if (opened) ui().refreshFiles(); });
   window.MiyinChatVoice = Object.freeze({
-    open() { if (!opened) lifecycle++; opened = true; ui().open(); state('paused'); },
+    open() { if (!opened) lifecycle++; opened = true; ui().open(); state('paused'); warmVoice(); },
     get isOpen() { return opened; }, toggleMicrophone, submit, interrupt, shutdown, read, prepareMessage,
     async beforeGeneration(entry) {
       const session = lifecycle;
