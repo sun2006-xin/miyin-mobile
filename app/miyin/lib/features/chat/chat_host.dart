@@ -735,7 +735,19 @@ final class ChatHost {
         return {'saved': true};
       case 'chat.memory.get':
         final memory = await _readMemory(_conversationId(params));
-        return {'memory': memory?.toJson()};
+        return {
+          'memory': memory?.toJson(),
+          'context': {
+            'providerId': provider,
+            'model': selectedModel,
+            'summarySupported': isLocal,
+            'privacy': {
+              'sendHistory': sendHistory,
+              'saveLocalHistory': saveLocalHistory,
+              'useMemory': useMemory,
+            },
+          },
+        };
       case 'chat.memory.clear':
         if (_active != null)
           throw const ChatFailure('busy', '请先停止当前回答，再清除会话记忆。');
@@ -760,7 +772,7 @@ final class ChatHost {
     }
     if ((!isPhone && !isLocal && keyFor(provider) == null) ||
         selectedModel == null) {
-      throw const ChatFailure('unconfigured', '请在模型设置中配置 DeepSeek 后再发送。');
+      throw const ChatFailure('unconfigured', '请先在模型设置中完成所选服务配置并选择模型，再发送消息。');
     }
     if (_active != null) throw const ChatFailure('busy', '请先等待或停止当前回答。');
     final id = params['requestId'];

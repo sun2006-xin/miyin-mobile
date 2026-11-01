@@ -11,6 +11,32 @@ before(async()=>{
  await page.evaluate(()=>{document.querySelectorAll('.screen').forEach(n=>n.classList.remove('active'));document.querySelector('#screen-chat').classList.add('active');MiyinChatUI.replaceHistory([{id:'visual-test',updatedAt:Date.now(),messages:[{id:'visual-answer',role:'assistant',status:'complete',createdAt:Date.now(),text:'来源[网页1]，也可以查看[原网页](https://flutter.cn)。',webSources:[{title:'Flutter 官方文档与开发者网站，包含完整入门和各种平台的应用开发指南',url:'https://flutter.cn/',kind:'pageExcerpt'},{title:'这是另一项很长的来源标题，用于检查标题和摘要字号是否清楚且不堆叠',url:'https://example.com/',kind:'searchSnippet'}]}]}]);});
 });
 after(async()=>{await browser?.close();await new Promise(r=>server?.close(r));});
+
+test('memory dialog shows actual phone capability and stays bounded at narrow widths',async()=>{
+ for(const width of [320,390,1024]){
+  await page.setViewportSize({width,height:844});
+  await page.evaluate(()=>MiyinChatUI.showMemory('visual-test',null,{providerId:'phone',model:'phone-model',summarySupported:false,privacy:{sendHistory:true,saveLocalHistory:true,useMemory:true}}));
+  assert.match(await page.locator('#modal-copy').innerText(),/暂不自动整理摘要/);
+  assert.equal(await page.locator('[data-modal-action="chat-memory-clear"]').count(),0);
+  const box=await page.locator('.chat-memory-content').boundingBox();assert(box.width<=width-24);
+  if(process.env.MIYIN_QA_CAPTURE){await page.waitForTimeout(300);await fs.mkdir(process.env.MIYIN_QA_CAPTURE,{recursive:true});await page.screenshot({path:path.join(process.env.MIYIN_QA_CAPTURE,`memory-${width}.png`)});}
+  assert.equal(await page.locator('.chat-memory-content').evaluate(n=>getComputedStyle(n).fontFamily),await page.locator('#modal-copy').evaluate(n=>getComputedStyle(n).fontFamily));
+  await page.locator('#modal-footer [data-modal-action="close"]').click();
+  assert.equal(await page.locator('#modal-scrim').evaluate(n=>n.classList.contains('open')),false);
+ }
+});
+
+test('old summaries retain readable plain text and a working clear action',async()=>{
+ await page.setViewportSize({width:390,height:844});
+ await page.evaluate(()=>MiyinChatUI.showMemory('visual-test',{model:'old-model',summary:'<script>BAD</script>\n'+'摘要内容。'.repeat(200),sourceQuotes:'关键原文',updatedAt:123},{providerId:'phone',model:'phone-model',summarySupported:false,privacy:{sendHistory:true,saveLocalHistory:true}}));
+ assert.match(await page.locator('#modal-copy').innerText(),/当前模型不使用下方摘要/);
+ assert.match(await page.locator('.chat-memory-content').inputValue(),/old-model/);
+ assert.equal(await page.locator('#modal-options script').count(),0);
+ assert.equal(await page.locator('[data-modal-action="chat-memory-clear"]').getAttribute('data-value'),'visual-test');
+ const bounds=await page.locator('.chat-memory-content').evaluate(n=>({client:n.clientHeight,scroll:n.scrollHeight,radius:parseFloat(getComputedStyle(n).borderRadius)}));
+ assert(bounds.scroll>bounds.client);assert(bounds.radius>=12);
+ await page.locator('#modal-footer [data-modal-action="close"]').click();
+});
 test('composer fields have one rounded parent surface without a rectangular fill or focus outline',async()=>{
  for(const material of ['liquid','crystal','ceramic','metal','soft','frost','pearl','satin']){
   await page.evaluate(material=>document.querySelector(`[data-appearance-kind=material][data-appearance-value=${material}]`).click(),material);

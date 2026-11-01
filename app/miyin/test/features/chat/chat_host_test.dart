@@ -320,6 +320,91 @@ void main() {
       await host.close();
     },
   );
+  test(
+    'missing cloud configuration gives a provider-neutral setup instruction',
+    () async {
+      for (final service in [
+        'deepseek',
+        'dashscope',
+        'siliconflow',
+        'openai',
+        'anthropic',
+        'custom',
+      ]) {
+        final host = open();
+        host.provider = service;
+        host.allowNetwork = true;
+        try {
+          expect(
+            () => host.start({}),
+            throwsA(
+              isA<ChatFailure>()
+                  .having((error) => error.code, 'code', 'unconfigured')
+                  .having(
+                    (error) => error.message,
+                    'message for $service',
+                    '请先在模型设置中完成所选服务配置并选择模型，再发送消息。',
+                  ),
+            ),
+          );
+          expect(host.provider, service);
+          expect(host.keyFor(service), isNull);
+        } finally {
+          await host.close();
+        }
+      }
+    },
+  );
+  test(
+    'missing local model gives the same setup instruction without requiring a cloud key',
+    () async {
+      final host = open();
+      host.provider = 'ollama';
+      host.localModel = '';
+      host.allowNetwork = true;
+      try {
+        expect(
+          () => host.start({}),
+          throwsA(
+            isA<ChatFailure>()
+                .having((error) => error.code, 'code', 'unconfigured')
+                .having(
+                  (error) => error.message,
+                  'message',
+                  '请先在模型设置中完成所选服务配置并选择模型，再发送消息。',
+                ),
+          ),
+        );
+        expect(host.provider, 'ollama');
+        expect(host.localModel, isEmpty);
+        expect(host.allowNetwork, isTrue);
+      } finally {
+        await host.close();
+      }
+    },
+  );
+  test('memory inspection reports current provider capability and privacy', () async {
+    final host = open();
+    await host.loadConfiguration();
+    try {
+      for (final provider in ['phone', 'ollama', 'deepseek']) {
+        host.provider = provider;
+        final result = await host.handle('chat.memory.get', {'conversationId': 'capability'});
+        final context = result['context'] as Map;
+        expect(context['providerId'], provider);
+        expect(context['summarySupported'], provider == 'ollama');
+        expect(context['model'], host.selectedModel);
+      }
+      await host.savePrivacy({'sendHistory': false, 'saveLocalHistory': false, 'useMemory': false});
+      final result = await host.handle('chat.memory.get', {'conversationId': 'capability'});
+      expect((result['context'] as Map)['privacy'], {
+        'sendHistory': false, 'saveLocalHistory': false, 'useMemory': false,
+      });
+      expect(result['memory'], isNull);
+    } finally {
+      await host.close();
+    }
+  });
   test('conversation summaries survive reopen and remain isolated', () async {
     final host = open();
     await host.loadConfiguration();

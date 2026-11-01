@@ -359,7 +359,7 @@
     if (!conversationId) { notify('开始对话后可以查看本会话记忆。'); return; }
     try {
       const result = await rpc('chat.memory.get', {conversationId});
-      ui().showMemory(conversationId, result.memory);
+      ui().showMemory(conversationId, result.memory, result.context);
     } catch (error) { notify(error.message || '无法读取会话记忆。'); }
   }
   async function nativeHistory(offset) {

@@ -6,6 +6,35 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../assets/miyin_v5/miyin-chat-context.js'), 'utf8');
 function api() { const window = {}; vm.runInNewContext(source, {window}); return window.MiyinChatContext; }
 
+test('memory presentation distinguishes phone, cloud and automatic summary capability', () => {
+  const view=api().memoryPresentation;
+  const context={providerId:'phone',model:'phone-model',summarySupported:false,privacy:{sendHistory:true,useMemory:true,saveLocalHistory:true}};
+  assert.match(view(null,context).description,/近期原文/);
+  assert.match(view(null,context).description,/暂不自动整理摘要/);
+  assert.match(view(null,{...context,providerId:'deepseek'}).description,/云端模型/);
+  const local={...context,providerId:'ollama',summarySupported:true};
+  assert.match(view(null,local).description,/接近上下文预算时/);
+  assert.match(view(null,{...local,privacy:{...local.privacy,useMemory:false}}).description,/自动整理已关闭/);
+  assert.match(view(null,{...local,privacy:{...local.privacy,sendHistory:false}}).description,/不引用较早对话或摘要/);
+  assert.match(view(null,{...local,privacy:{...local.privacy,saveLocalHistory:false}}).description,/历史保存：已关闭/);
+});
+
+test('saved summaries remain inspectable without claiming the current model uses them', () => {
+  const memory={model:'old-computer-model',summary:'旧摘要',sourceQuotes:'原文',updatedAt:123};
+  const view=api().memoryPresentation(memory,{providerId:'phone',model:'phone-model',summarySupported:false,privacy:{sendHistory:true,saveLocalHistory:true}});
+  assert.match(view.description,/当前模型不使用下方摘要/);
+  assert.match(view.content,/old-computer-model/);assert.match(view.content,/旧摘要/);
+  assert.match(view.content,/原文/);assert.equal(view.hasSummary,true);
+  const local={providerId:'ollama',model:'different-model',summarySupported:true,privacy:{sendHistory:true,useMemory:true,saveLocalHistory:true}};
+  assert.match(api().memoryPresentation(memory,local).description,/来自其他模型/);
+  for(const flag of ['sendHistory','useMemory']) {
+    assert.match(api().memoryPresentation(memory,{...local,privacy:{...local.privacy,[flag]:false}}).description,/当前模型不使用下方摘要/);
+  }
+  const unknown=api().memoryPresentation(null,{});
+  assert.match(unknown.description,/尚未取得当前模型的上下文状态/);
+  assert.doesNotMatch(unknown.description,/会自动/);
+});
+
 test('plain prompt does not gain unrelated context', () => {
   assert.equal(api().assemble({text: '你好'}), '你好');
 });
