@@ -58,12 +58,18 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                 // loaded process should be destroyed. Only cold/unready starts
                 // need the health handshake; subsequent turns retain its cache.
                 val reused = ready && process?.isAlive == true
+                var modelFileMs = 0L
+                var copiedModel = false
+                var processStartMs = 0L
+                var readyWaitMs = 0L
                 if (!reused) {
                     ready = false; process?.destroy(); process = null
+                    val fileStartedAt = SystemClock.elapsedRealtime()
                     directory.mkdirs()
                     val model = File(directory,"model.gguf")
                     val preferences = activity.getSharedPreferences("miyin-local-model",0)
                     if (!model.exists() || model.length() != 1280835840L || preferences.getString("verified","") != "$sha:${model.lastModified()}") {
+                        copiedModel = true
                         val temporary = File(directory,"model.part")
                         val digest = MessageDigest.getInstance("SHA-256")
                         activity.assets.open("flutter_assets/assets/chat-model/model.gguf").use { source ->
@@ -77,6 +83,7 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                         preferences.edit().putString("verified","$sha:${model.lastModified()}").apply()
                     }
                     checkActive()
+                    modelFileMs = SystemClock.elapsedRealtime() - fileStartedAt
                     val executable = File(activity.applicationInfo.nativeLibraryDir,"libmiyin_llama.so")
                     check(executable.exists()) { "missing_runtime" }
                     val key = UUID.randomUUID().toString()
@@ -86,19 +93,23 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                     // Keep all dependency lookup inside the APK's extracted
                     // native directory; the ARMv8.0 module remains the fallback.
                     launcher.environment()["LD_LIBRARY_PATH"] = executable.parentFile!!.absolutePath
+                    val processStartedAt = SystemClock.elapsedRealtime()
                     val child = launcher.redirectErrorStream(true)
                         .redirectOutput(File(directory,"runtime.log")).start()
+                    processStartMs = SystemClock.elapsedRealtime() - processStartedAt
                     launches++
                     process = child
+                    val waitStartedAt = SystemClock.elapsedRealtime()
                     try {
                         var ready = false
                         repeat(120) { if (!ready) { checkActive(); check(child.isAlive) { "load_failed" }; ready = health(); if (!ready) Thread.sleep(500) } }
                         check(ready) { "load_timeout" }; checkActive()
+                        readyWaitMs = SystemClock.elapsedRealtime() - waitStartedAt
                     } catch (error: Exception) { child.destroy(); if (process === child) process = null; throw error }
                 }
                 ready = true
                 val elapsed = SystemClock.elapsedRealtime() - requestedAt
-                Log.d("MiyinPhoneLlm", "prepare reused=$reused launches=$launches queueMs=${enteredAt-requestedAt} totalMs=$elapsed")
+                Log.d("MiyinPhoneLlm", "prepare reused=$reused launches=$launches queueMs=${enteredAt-requestedAt} modelFileMs=$modelFileMs copiedModel=$copiedModel processStartMs=$processStartMs readyWaitMs=$readyWaitMs totalMs=$elapsed")
                 val key = apiKey ?: error("canceled")
                 activity.runOnUiThread {
                     if (ticket != epoch.get()) result.error("local_model", "本机模型已释放，请重试。", null)
