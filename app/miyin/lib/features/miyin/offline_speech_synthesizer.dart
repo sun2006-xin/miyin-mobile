@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 import 'multilingual_tts_model_store.dart';
+import 'speech_audio_cache.dart';
 
 /// Tracks latest-only asynchronous voice requests without depending on timers.
 @visibleForTesting
@@ -27,7 +28,28 @@ final class MiyinSpeechRequestGate {
 
 /// Creates Chinese and English speech locally using the model bundled in the APK.
 final class MiyinOfflineSpeechSynthesizer {
-  MiyinOfflineSpeechSynthesizer._();
+  MiyinOfflineSpeechSynthesizer._() : _audioCache = MiyinSpeechAudioCache();
+
+  @visibleForTesting
+  MiyinOfflineSpeechSynthesizer.forTesting({
+    required MiyinSpeechAudioCache cache,
+    Future<void>? workerBusy,
+    SendPort? coreCommands,
+    SendPort? multilingualCommands,
+  }) : _audioCache = cache {
+    _workerOperationTail = workerBusy ?? Future<void>.value();
+    _commands = coreCommands;
+    _multilingualCommands = multilingualCommands;
+    _speechInitializationReady.complete();
+  }
+
+  @visibleForTesting
+  bool get hasScheduledCoreIdleRelease =>
+      _coreWorkerIdleTimer?.isActive == true;
+
+  @visibleForTesting
+  bool get hasScheduledMultilingualIdleRelease =>
+      _multilingualWorkerIdleTimer?.isActive == true;
 
   static final MiyinOfflineSpeechSynthesizer instance =
       MiyinOfflineSpeechSynthesizer._();
@@ -68,9 +90,8 @@ final class MiyinOfflineSpeechSynthesizer {
   final MiyinSpeechRequestGate _speechRequests = MiyinSpeechRequestGate();
   final MiyinSpeechRequestGate _utterancePreparationRequests =
       MiyinSpeechRequestGate();
-  String? _preparedAudioKey;
+  final MiyinSpeechAudioCache _audioCache;
   String? _preparingAudioKey;
-  File? _preparedAudioFile;
   String _preferredTtsProvider = 'melo';
   String _preferredTtsLanguage = 'zh-Hans';
   final Completer<void> _speechInitializationReady = Completer<void>();
@@ -165,8 +186,9 @@ final class MiyinOfflineSpeechSynthesizer {
     // spoken request must not wait for ASR warmup to finish first.
     // A matching in-flight preparation should finish once and feed this tap.
     // Unrelated speculative work remains lower priority than a spoken request.
-    if (_preparingAudioKey !=
-        _utteranceKey(languageTag, text, speed, speakerId, provider)) {
+    final key = _utteranceKey(languageTag, text, speed, speakerId, provider);
+    final cachedWave = _disposed ? null : _audioCache.get(key);
+    if (cachedWave == null && _preparingAudioKey != key) {
       _utterancePreparationRequests.invalidate();
       _preparingAudioKey = null;
     }
@@ -179,6 +201,14 @@ final class MiyinOfflineSpeechSynthesizer {
     } else {
       _coreWorkerIdleTimer?.cancel();
       _coreWorkerIdleTimer = null;
+    }
+    if (cachedWave != null) {
+      return _playCachedWave(
+        cachedWave,
+        requestGeneration,
+        requestClock,
+        onAudio,
+      );
     }
     return _runWorkerExclusive(
       () => _synthesizeExclusive(
@@ -201,7 +231,7 @@ final class MiyinOfflineSpeechSynthesizer {
     double speed,
     int speakerId,
     String provider,
-  ) => '$languageTag|$provider|$speakerId|$speed|$text';
+  ) => MiyinSpeechAudioCache.key(languageTag, text, speed, speakerId, provider);
 
   /// Prepares the latest translated sentence without starting playback.
   Future<Map<String, Object?>> prepareUtterance({
@@ -212,7 +242,7 @@ final class MiyinOfflineSpeechSynthesizer {
     required String provider,
   }) {
     final key = _utteranceKey(languageTag, text, speed, speakerId, provider);
-    if (_preparedAudioKey == key && _preparedAudioFile?.existsSync() == true) {
+    if (!_disposed && _audioCache.get(key) != null) {
       return Future.value({'status': 'ready'});
     }
     final generation = _utterancePreparationRequests.next();
@@ -291,52 +321,15 @@ final class MiyinOfflineSpeechSynthesizer {
     }
 
     final key = _utteranceKey(languageTag, text, speed, speakerId, provider);
-    if (!prepareOnly &&
-        key == _preparedAudioKey &&
-        _preparedAudioFile?.existsSync() == true) {
-      if (onAudio != null) {
-        final wave = await _preparedAudioFile!.readAsBytes();
-        final header = ByteData.sublistView(wave);
-        final rate = header.getUint32(24, Endian.little);
-        for (var offset = 44; offset < wave.length; offset += 65536) {
-          if (!_speechRequests.isCurrent(requestGeneration)) {
-            throw PlatformException(
-              code: 'tts_synthesis_cancelled',
-              message: '朗读已取消。',
-            );
-          }
-          await onAudio(
-            Uint8List.sublistView(
-              wave,
-              offset,
-              math.min(offset + 65536, wave.length),
-            ),
-            rate,
-            requestGeneration,
-          );
-        }
-        debugPrint(
-          '[MiyinTTS] preparedPcmHit requestToPcmReadyMs=${requestClock.elapsedMilliseconds} audioDurationMs=${(wave.length - 44) * 1000 ~/ (rate * 2)}',
-        );
-        return {
-          'status': 'ready',
-          'streamed': true,
-          'requestGeneration': requestGeneration,
-        };
-      }
-      final directory = await getTemporaryDirectory();
-      final output = File(
-        '${directory.path}${Platform.pathSeparator}miyin-tts-${DateTime.now().microsecondsSinceEpoch}.wav',
+    final cachedWave = _audioCache.get(key);
+    if (cachedWave != null) {
+      if (prepareOnly) return {'status': 'ready'};
+      return _playCachedWave(
+        cachedWave,
+        requestGeneration,
+        requestClock,
+        onAudio,
       );
-      await _preparedAudioFile!.copy(output.path);
-      debugPrint(
-        '[MiyinTTS] preparedAudioHit requestToWavReadyMs=${requestClock.elapsedMilliseconds}',
-      );
-      return {
-        'status': 'ready',
-        'path': output.path,
-        'requestGeneration': requestGeneration,
-      };
     }
 
     if (!useMultilingual) {
@@ -390,17 +383,18 @@ final class MiyinOfflineSpeechSynthesizer {
         });
         Object? response;
         var streamedChunks = 0;
+        final pcmCollector = MiyinBoundedPcmCollector(
+          maxWaveBytes: _audioCache.maxBytes,
+        );
         await for (final message in reply.timeout(const Duration(minutes: 4))) {
           if (message is Map && message['type'] == 'audio' && onAudio != null) {
             if (!_speechRequests.isCurrent(requestGeneration)) continue;
             final pcm = message['pcm'];
             final sampleRate = message['sampleRate'];
             if (pcm is TransferableTypedData && sampleRate is int) {
-              await onAudio(
-                pcm.materialize().asUint8List(),
-                sampleRate,
-                requestGeneration,
-              );
+              final bytes = pcm.materialize().asUint8List();
+              pcmCollector.add(bytes, sampleRate);
+              await onAudio(bytes, sampleRate, requestGeneration);
               streamedChunks++;
             }
           } else {
@@ -439,14 +433,17 @@ final class MiyinOfflineSpeechSynthesizer {
             await _deleteOutput(output);
             return {'status': 'superseded'};
           }
-          final previous = _preparedAudioFile;
-          _preparedAudioFile = output;
-          _preparedAudioKey = key;
-          if (previous != null && previous.path != output.path) {
-            await _deleteOutput(previous);
-          }
+          await _cacheWaveFile(key, output);
+          await _deleteOutput(output);
           return {'status': 'ready'};
         }
+        if (streamedChunks > 0) {
+          final wave = pcmCollector.finish();
+          if (wave != null) _audioCache.put(key, wave);
+        } else {
+          await _cacheWaveFile(key, output);
+        }
+        _checkSpeechRequest(requestGeneration);
         return {
           'status': 'ready',
           'path': output.path,
@@ -477,6 +474,92 @@ final class MiyinOfflineSpeechSynthesizer {
       } else {
         _scheduleMultilingualWorkerIdleRelease();
       }
+    }
+  }
+
+  void _checkSpeechRequest(int generation) {
+    if (_disposed || !_speechRequests.isCurrent(generation)) {
+      throw PlatformException(
+        code: 'tts_synthesis_cancelled',
+        message: '朗读已取消。',
+      );
+    }
+  }
+
+  Future<void> _cacheWaveFile(String key, File output) async {
+    try {
+      if (await output.length() > _audioCache.maxBytes) return;
+      final wave = await output.readAsBytes();
+      if (!_disposed) _audioCache.put(key, wave);
+    } catch (_) {
+      // Cache I/O is optional and must never fail a successfully generated utterance.
+    }
+  }
+
+  Future<Map<String, Object?>> _playCachedWave(
+    Uint8List wave,
+    int generation,
+    Stopwatch clock,
+    Future<void> Function(Uint8List, int, int)? onAudio,
+  ) => _deliverCachedWave(wave, generation, clock, onAudio).whenComplete(() {
+    // A cache hit bypasses the worker queue but the request may already have
+    // cancelled its idle timer. Rearm whichever worker is actually resident,
+    // including after cancellation; these helpers preserve active/dispose gates.
+    _scheduleCoreWorkerIdleRelease();
+    _scheduleMultilingualWorkerIdleRelease();
+  });
+
+  Future<Map<String, Object?>> _deliverCachedWave(
+    Uint8List wave,
+    int generation,
+    Stopwatch clock,
+    Future<void> Function(Uint8List, int, int)? onAudio,
+  ) async {
+    _checkSpeechRequest(generation);
+    final rate = ByteData.sublistView(wave).getUint32(24, Endian.little);
+    if (onAudio != null) {
+      final firstCachedPcmMs = clock.elapsedMilliseconds;
+      for (var offset = 44; offset < wave.length; offset += 65536) {
+        _checkSpeechRequest(generation);
+        await onAudio(
+          Uint8List.sublistView(
+            wave,
+            offset,
+            math.min(offset + 65536, wave.length),
+          ),
+          rate,
+          generation,
+        );
+        _checkSpeechRequest(generation);
+      }
+      debugPrint(
+        '[MiyinTTS] generatedAudioCacheHit requestToFirstCachedPcmMs=$firstCachedPcmMs cachedPcmDeliveryMs=${clock.elapsedMilliseconds} audioDurationMs=${(wave.length - 44) * 1000 ~/ (rate * 2)} cacheEntries=${_audioCache.length} cacheBytes=${_audioCache.byteLength}',
+      );
+      return {
+        'status': 'ready',
+        'streamed': true,
+        'requestGeneration': generation,
+        'cacheHit': true,
+        'sampleRate': rate,
+      };
+    }
+    final directory = await getTemporaryDirectory();
+    _checkSpeechRequest(generation);
+    final output = File(
+      '${directory.path}${Platform.pathSeparator}miyin-tts-${DateTime.now().microsecondsSinceEpoch}.wav',
+    );
+    try {
+      await output.writeAsBytes(wave, flush: true);
+      _checkSpeechRequest(generation);
+      return {
+        'status': 'ready',
+        'path': output.path,
+        'requestGeneration': generation,
+        'cacheHit': true,
+      };
+    } catch (_) {
+      await _deleteOutput(output);
+      rethrow;
     }
   }
 
@@ -545,10 +628,7 @@ final class MiyinOfflineSpeechSynthesizer {
     _prewarmRequests.invalidate();
     _speechRequests.invalidate();
     _utterancePreparationRequests.invalidate();
-    final preparedAudio = _preparedAudioFile;
-    _preparedAudioFile = null;
-    _preparedAudioKey = null;
-    if (preparedAudio != null) await _deleteOutput(preparedAudio);
+    _audioCache.clear();
     if (!_speechInitializationReady.isCompleted) {
       _speechInitializationReady.complete();
     }

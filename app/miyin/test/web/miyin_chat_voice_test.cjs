@@ -23,7 +23,7 @@ function harness(request) {
   vm.runInNewContext(source, {window, document,
     localStorage: {getItem: key => data.get(key) || null, setItem: (key,value) => data.set(key,value)},
     setTimeout: fn => {timers.set(++timerId,fn);return timerId;}, clearTimeout: id => timers.delete(id)});
-  return {voice: window.MiyinChatVoice, window, calls, states, timers,
+  return {voice: window.MiyinChatVoice, window, calls, states, timers, preferences:data,
     get draft(){return draft;}, get reading(){return reading;},
     emit(name,detail){for(const fn of listeners.get(name)||[])fn({detail});},
     leave(){activeScreen=false;this.emit('miyin:surface-visibility-change');}};
@@ -237,12 +237,48 @@ test('long manual reading streams the next segment after buffering and retains a
   assert.equal(spoken.replace(/\s/g,''),text.replace(/\s/g,''));assert.equal(h.reading,null);
   assert(h.calls.filter(row=>row.method==='voice.prepareUtterance').length<h.calls.filter(row=>row.method==='voice.speak').length);
 });
-test('a completed text reply prepares only the first bounded segment without playing audio', async () => {
-  const h=harness(),text='First sentence. '+('More complete sentences. '.repeat(30));
+test('completed reply prepares bounded lookahead serially and deduplicates notifications', async () => {
+  const releases=[];
+  const h=harness(method=>method==='voice.prepareUtterance'?new Promise(resolve=>releases.push(resolve)):{});
+  const text='连续朗读要保留后面的声音。'.repeat(60);
   h.voice.finish(true,text);h.voice.prepareMessage(text);await settle();
+  assert.equal(releases.length,1);
+  releases[0]();await settle();assert.equal(releases.length,2);
+  releases[1]();await settle();assert.equal(releases.length,3);
+  releases[2]();await settle();
   const prepares=h.calls.filter(row=>row.method==='voice.prepareUtterance');
-  assert.equal(prepares.length,1);assert(prepares[0].params.text.length<=120);
+  assert.equal(prepares.length,3);assert(prepares.every(row=>row.params.text.length<=64));
+  assert(prepares.reduce((sum,row)=>sum+Array.from(row.params.text).length,0)<=360);
   assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,0);
+});
+
+test('leaving the page during preparation does not queue later segments', async () => {
+  let release;const h=harness(method=>method==='voice.prepareUtterance'?new Promise(resolve=>{release=resolve;}):{});
+  h.voice.prepareMessage('这是后台准备的语音内容。'.repeat(20));await settle();
+  h.leave();release();await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,1);
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,0);
+});
+
+test('changing voice preferences stops the remaining speculative batch', async () => {
+  let release;const h=harness(method=>method==='voice.prepareUtterance'?new Promise(resolve=>{release=resolve;}):{});
+  h.voice.prepareMessage('这是后台准备的语音内容。'.repeat(20));await settle();
+  h.preferences.set('miyin.full.preview.v5.tts-speed',JSON.stringify(1.25));release();await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,1);
+});
+
+test('a new model request prevents further speculative synthesis', async () => {
+  let release;const h=harness(method=>method==='voice.prepareUtterance'?new Promise(resolve=>{release=resolve;}):{});
+  h.voice.prepareMessage('这是后台准备的语音内容。'.repeat(20));await settle();
+  h.window.MiyinChat.isGenerating=true;release();await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,1);
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,0);
+});
+
+test('speculative lookahead stops before changing language workers', async () => {
+  const h=harness();h.voice.prepareMessage('你好。Hello yesterday.');await settle();
+  const prepares=h.calls.filter(row=>row.method==='voice.prepareUtterance');
+  assert.equal(prepares.length,1);assert.equal(prepares[0].params.languageTag,'zh-Hans');
 });
 test('reading a completed reply does not cancel its in-flight first segment preparation', async () => {
   let release;const pending=new Promise(resolve=>{release=resolve;});

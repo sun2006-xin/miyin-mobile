@@ -29,7 +29,8 @@
   function warmVoice() {
     // A visible reply already prepares the exact first utterance. A generic
     // warm-up queued afterwards must not unload that reply's language worker.
-    if (preparation?.generation === epoch) return;
+    if (preparation?.generation === epoch &&
+        preparation.speechKey === JSON.stringify(speechParams(preparation.text))) return;
     const selected = load('ai-tts-language', 'auto');
     const row=chat()?.get?.(chat()?.getActiveId?.());
     const reply=row?.messages?.at(-1);
@@ -68,18 +69,39 @@
     }
     flush();return chunks;
   }
-  function prepare(text) {
-    const params=speechParams(text), key=JSON.stringify(params), generation=epoch;
-    if (preparation?.generation === generation && preparation.key === key) return;
-    const job={generation,key,text};preparation=job;
-    void rpc('voice.prepareUtterance',params).catch(() => {
-      // Preparation is speculative; a normal speak request still reports errors.
-      if (preparation === job) preparation=null;
-    });
-  }
   function prepareMessage(text) {
-    if (ttsId || speaking || opened || window.MiyinChat.isGenerating) return;
-    const first=speechChunks(text)[0];if (first) prepare(first);
+    if (ttsId || speechGroup || speaking || opened || document.hidden || window.MiyinChat.isGenerating ||
+        !document.querySelector('#screen-chat')?.classList.contains('active')) return;
+    // Keep the first segment plus a small lookahead. Crossing languages here
+    // would unload the worker needed by the first tap, so stop at that boundary.
+    const parts=[];let chars=0,firstLanguage=null;
+    for (const chunk of speechChunks(text)) {
+      const tag=language(chunk),length=Array.from(chunk).length;
+      if(parts.length===3 || chars+length>360 || (firstLanguage && firstLanguage!==tag)) break;
+      firstLanguage=tag;chars+=length;parts.push(speechParams(chunk));
+    }
+    if(!parts.length) return;
+    const key=JSON.stringify(parts),generation=epoch;
+    if(preparation?.generation===generation && preparation.key===key) return;
+    const job={generation,key,text:parts[0].text,speechKey:JSON.stringify(parts[0])};preparation=job;
+    void (async()=>{
+      try {
+        for(const params of parts) {
+          if(preparation!==job || generation!==epoch || ttsId || speechGroup || opened ||
+              document.hidden || window.MiyinChat.isGenerating ||
+              !document.querySelector('#screen-chat')?.classList.contains('active')) return;
+          if(JSON.stringify(speechParams(params.text))!==JSON.stringify(params)) {
+            if(preparation===job) preparation=null;
+            return;
+          }
+          // Only one speculative request is in flight. A real tap can consume
+          // a cached segment immediately without queuing behind later work.
+          await rpc('voice.prepareUtterance',params);
+        }
+      } catch (_) {
+        if(preparation===job) preparation=null;
+      }
+    })();
   }
   async function stopSpeech() {
     epoch++;
