@@ -275,6 +275,26 @@ test('a new model request prevents further speculative synthesis', async () => {
   assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,0);
 });
 
+test('idle reply preparation waits for local model loading without blocking a real read', async () => {
+  let loaded;const h=harness();
+  h.window.MiyinChat.warmLocal=()=>new Promise(resolve=>{loaded=resolve;});
+  h.voice.prepareMessage('你好，这是已有回复。');await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,0);
+  await h.voice.read('你好，这是已有回复。','read-during-load');await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,1);
+  loaded();await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,0);
+});
+
+test('local preparation completion cannot resume a reply batch after leaving chat', async () => {
+  let loaded;const h=harness();
+  h.window.MiyinChat.warmLocal=()=>new Promise(resolve=>{loaded=resolve;});
+  h.voice.prepareMessage('你好，这是已有回复。');await settle();h.leave();
+  loaded();await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.prepareUtterance').length,0);
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,0);
+});
+
 test('speculative lookahead stops before changing language workers', async () => {
   const h=harness();h.voice.prepareMessage('你好。Hello yesterday.');await settle();
   const prepares=h.calls.filter(row=>row.method==='voice.prepareUtterance');

@@ -86,6 +86,9 @@
     const job={generation,key,text:parts[0].text,speechKey:JSON.stringify(parts[0])};preparation=job;
     void (async()=>{
       try {
+        // Model loading and speculative speech synthesis compete for the same
+        // phone CPU. This only orders idle work; read() never awaits this job.
+        await window.MiyinChat.warmLocal?.();
         for(const params of parts) {
           if(preparation!==job || generation!==epoch || ttsId || speechGroup || opened ||
               document.hidden || window.MiyinChat.isGenerating ||

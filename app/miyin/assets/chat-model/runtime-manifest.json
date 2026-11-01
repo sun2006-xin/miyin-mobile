@@ -1,0 +1,132 @@
+{
+  "source": "https://github.com/ggml-org/llama.cpp",
+  "revision": "d854d98bae598388ecea1ed84396587e5edc326d",
+  "license": "MIT",
+  "abi": "arm64-v8a",
+  "androidApi": 28,
+  "ndk": "28.2.13676358",
+  "cmake": "3.22.1",
+  "buildType": "Release",
+  "backendDispatch": true,
+  "cpuBackends": [
+    "android_armv8.0_1",
+    "android_armv8.2_2"
+  ],
+  "openmp": false,
+  "prebuiltWebUi": false,
+  "embeddedWebUiAssets": 0,
+  "files": {
+    "libggml-cpu-android_armv8.0_1.so": {
+      "bytes": 849664,
+      "sha256": "dfb86826c09a32f2c35dada15797d19e29386dadea55c4f4f6f68bcf90bd75bd",
+      "needed": [
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libggml-cpu-android_armv8.2_2.so": {
+      "bytes": 872488,
+      "sha256": "08a95a4c2785d4b106216dfb7cd20ee777d87bea8ad5156237e7594c5cd8fde0",
+      "needed": [
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libllama-server-impl.so": {
+      "bytes": 3209376,
+      "sha256": "fd31db24c4d65b935d8c0608863ab348c47a127f8fa5189a7a2dd4bdb1f1cf93",
+      "needed": [
+        "libllama-common.so",
+        "libmtmd.so",
+        "libllama.so",
+        "libggml.so",
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libllama-common.so": {
+      "bytes": 4609224,
+      "sha256": "d9961db1ef520208f05123f5c62e95656c8f10f95ef0741ab9c3dfe8eff5282e",
+      "needed": [
+        "libllama.so",
+        "libggml.so",
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libmtmd.so": {
+      "bytes": 1471480,
+      "sha256": "fdcb4594f48659e5ed630e42c835f1637ac68431975110b1d09059a00b2722ab",
+      "needed": [
+        "libllama.so",
+        "libggml.so",
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libllama.so": {
+      "bytes": 4413160,
+      "sha256": "be7ca1a3051efb6b4c0bf5de868d1b482389ba9f377fd894846a56f0f770b713",
+      "needed": [
+        "libggml.so",
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libggml.so": {
+      "bytes": 120176,
+      "sha256": "78a1ec915f6041692979319cb493cbecc809c833f6535d785df82897eb8bfd8e",
+      "needed": [
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libggml-base.so": {
+      "bytes": 1134200,
+      "sha256": "072b6d4673ff93942ad88feaee4c292fd17414130f8bf77553f894b555f9ab43",
+      "needed": [
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    },
+    "libmiyin_llama.so": {
+      "bytes": 4656,
+      "sha256": "f0a7f2524200cbb34a74562aec85353b0ee2471328eeac2680ab5b35654712a4",
+      "needed": [
+        "libllama-server-impl.so",
+        "libllama-common.so",
+        "libmtmd.so",
+        "libllama.so",
+        "libggml.so",
+        "libggml-base.so",
+        "libm.so",
+        "libdl.so",
+        "libc.so"
+      ],
+      "runpath": []
+    }
+  }
+}

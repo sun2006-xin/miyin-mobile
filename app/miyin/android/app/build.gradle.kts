@@ -11,7 +11,13 @@ dependencies {
 }
 
 android {
-    packaging { jniLibs { useLegacyPackaging = true; keepDebugSymbols += "**/libmiyin_llama.so" } }
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+            // These fixed runtime artifacts are already stripped and hashed.
+            keepDebugSymbols += setOf("**/libmiyin_llama.so", "**/libllama*.so", "**/libggml*.so", "**/libmtmd.so")
+        }
+    }
     namespace = "com.miyin.app"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion

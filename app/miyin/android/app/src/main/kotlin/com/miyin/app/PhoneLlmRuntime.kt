@@ -81,8 +81,13 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                     check(executable.exists()) { "missing_runtime" }
                     val key = UUID.randomUUID().toString()
                     apiKey = key
-                    val child = ProcessBuilder(executable.absolutePath,"-m",model.absolutePath,"-c",contextTokens.toString(),"-t","4","--host","127.0.0.1","--port","11438","-np","1","--api-key",key,"--log-disable")
-                        .redirectErrorStream(true).redirectOutput(File(directory,"runtime.log")).start()
+                    val launcher = ProcessBuilder(executable.absolutePath,"-m",model.absolutePath,"-c",contextTokens.toString(),"-t","4","--host","127.0.0.1","--port","11438","-np","1","--api-key",key,"--log-disable")
+                    // The fixed runtime chooses the best supported CPU module.
+                    // Keep all dependency lookup inside the APK's extracted
+                    // native directory; the ARMv8.0 module remains the fallback.
+                    launcher.environment()["LD_LIBRARY_PATH"] = executable.parentFile!!.absolutePath
+                    val child = launcher.redirectErrorStream(true)
+                        .redirectOutput(File(directory,"runtime.log")).start()
                     launches++
                     process = child
                     try {
