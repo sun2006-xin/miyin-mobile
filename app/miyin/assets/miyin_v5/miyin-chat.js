@@ -227,7 +227,7 @@
   document.addEventListener('click', event => {
     if (!native) return;
     const picture=event.target.closest('[data-chat-image]');
-    if(picture){event.preventDefault();event.stopImmediatePropagation();void viewImage(picture.dataset.chatImage);return;}
+    if(picture){event.preventDefault();event.stopImmediatePropagation();void viewImage(picture.dataset.chatImage,picture);return;}
     const ocr=event.target.closest('[data-modal-action="chat-image-ocr"]');
     if(ocr){event.preventDefault();event.stopImmediatePropagation();void extractImageText();return;}
     const webSource=event.target.closest('[data-chat-web-url]');
@@ -411,15 +411,16 @@
     } catch (error) { notify(error.message || '读取资料失败。'); }
     finally { importing = false; }
   }
-  async function viewImage(imageId) {
-    const owner=ui().getActiveId();
+  async function viewImage(imageId,source) {
+    const owner=ui().getActiveId(),screen=document.querySelector('.screen.active');
+    const stillVisible=()=>owner===ui().getActiveId()&&screen===document.querySelector('.screen.active')&&source?.isConnected&&source.getClientRects().length>0;
     try {
       const result=await rpc('chat.image.preview',{imageId});
-      if(owner!==ui().getActiveId()||!document.querySelector('#screen-chat')?.classList.contains('active'))return;
+      if(!stillVisible())return;
       if(typeof result.dataUrl!=='string'||!/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(result.dataUrl)||result.dataUrl.length>12*1024*1024)throw Error('图片无法打开。');
       const image=document.createElement('img');image.src=result.dataUrl;image.dataset.imageMode='original';
       window.miyinOpenImageViewer?.(image);
-    } catch(error){notify(error.message||'图片无法打开，请重新选择。');}
+    } catch(error){if(stillVisible())notify(error.message||'图片无法打开，请重新选择。');}
   }
   async function extractImageText() {
     if(importing || !imported?.imageId || !imageJob)return;

@@ -44,6 +44,56 @@ async function fixture(providerId='openai',width=390,phoneVision){
 async function pick(page){await page.evaluate(()=>MiyinChat.pickAttachment('image'));await page.locator('#modal-scrim.open .chat-image-preview').waitFor();}
 async function methods(page){return page.evaluate(()=>calls.map(c=>c.method));}
 async function click(page,selector){await page.locator(selector).evaluate(n=>n.click());}
+async function imageHistory(page){
+ await page.evaluate(({id})=>MiyinChatUI.replaceHistory([{id:'history-image-fixture',title:'原图历史',createdAt:Date.now(),updatedAt:Date.now(),messages:[{id:'history-picture',role:'user',status:'complete',createdAt:Date.now(),text:'请查看原图',attachments:[{imageId:id,name:'历史图片.png',thumbnailDataUrl:imageFixture.thumbnailDataUrl}]},{id:'history-answer',role:'assistant',status:'complete',createdAt:Date.now(),text:'测试回答'}]}]),{id});
+ await click(page,'#screen-chat .topbar [data-screen="history"]');
+ await click(page,'[data-history-category="chat"]');
+ await click(page,'[data-conversation-open="history-image-fixture"]');
+ await page.locator('.history-detail-messages').waitFor();
+}
+
+test('AI history detail displays its saved original image and opens it without continuing chat',async()=>{
+ for(const width of [320,375,390,768,1024,1440]){
+  const page=await fixture('phone',width,true);try{
+   const errors=[];page.on('pageerror',error=>errors.push(error.message));
+   await imageHistory(page);
+   assert.equal(await page.locator('.history-detail-messages [data-chat-image]').count(),1);
+   assert.equal(await page.locator('.history-detail-messages .chat-image-card img').count(),1);
+   await page.evaluate(()=>{window.viewerCalls=[];window.miyinOpenImageViewer=image=>viewerCalls.push({src:image.src,mode:image.dataset.imageMode});});
+   await click(page,'.history-detail-messages [data-chat-image]');
+   await page.waitForFunction(()=>viewerCalls.length===1);
+   assert.equal(await page.evaluate(()=>viewerCalls[0].mode),'original');
+   assert(!(await methods(page)).includes('chat.start'));assert(!(await methods(page)).includes('chat.image.extract'));
+   const bounds=await page.locator('.history-detail-messages .chat-image-card').evaluate(n=>{const b=n.getBoundingClientRect();return{left:b.left,right:b.right,radius:parseFloat(getComputedStyle(n).borderRadius)}});
+   assert(bounds.left>=0&&bounds.right<=width);assert.equal(bounds.radius,18);
+   assert.deepEqual(errors,[]);
+   const out=path.resolve(__dirname,'../../../../output/ai54');await fs.mkdir(out,{recursive:true});await page.screenshot({path:path.join(out,`history-image-${width}.png`)});
+  }finally{await page.close();}
+ }
+});
+
+test('leaving image history while original loads never opens a late viewer',async()=>{
+ const page=await fixture();try{
+  await imageHistory(page);
+  await page.evaluate(()=>{const original=MiyinNativeBridge.request;MiyinNativeBridge.request=(method,params)=>method==='chat.image.preview'?new Promise(resolve=>{window.releaseHistoryImage=()=>resolve({dataUrl:imageFixture.thumbnailDataUrl});}):original(method,params);window.viewerCalls=[];window.miyinOpenImageViewer=image=>viewerCalls.push(image.src);});
+  await click(page,'.history-detail-messages [data-chat-image]');
+  await page.waitForFunction(()=>!!window.releaseHistoryImage);
+  await click(page,'[data-history-detail-back]');
+  await page.evaluate(()=>releaseHistoryImage());await page.evaluate(()=>new Promise(r=>setTimeout(r,0)));
+  assert.deepEqual(await page.evaluate(()=>viewerCalls),[]);
+ }finally{await page.close();}
+});
+
+test('closing image import while original loads never opens a late viewer',async()=>{
+ const page=await fixture();try{
+  await pick(page);
+  await page.evaluate(()=>{const original=MiyinNativeBridge.request;MiyinNativeBridge.request=(method,params)=>method==='chat.image.preview'?new Promise(resolve=>{window.releasePreviewImage=()=>resolve({dataUrl:imageFixture.thumbnailDataUrl});}):original(method,params);window.viewerCalls=[];window.miyinOpenImageViewer=image=>viewerCalls.push(image.src);});
+  await click(page,'.chat-image-preview [data-chat-image]');await page.waitForFunction(()=>!!window.releasePreviewImage);
+  await click(page,'#modal-footer [data-modal-action="close"]');
+  await page.evaluate(()=>releasePreviewImage());await page.evaluate(()=>new Promise(r=>setTimeout(r,0)));
+  assert.deepEqual(await page.evaluate(()=>viewerCalls),[]);
+ }finally{await page.close();}
+});
 
 test('native picture import previews original, with explicit OCR and no automatic text extraction',async()=>{
  const page=await fixture();try{
