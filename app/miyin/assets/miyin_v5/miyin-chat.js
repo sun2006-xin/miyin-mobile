@@ -116,7 +116,7 @@
     if (importing) { notify('正在读取资料，请稍候。'); return false; }
     try {
       const pending = ui().getPending();
-      if(status.providerId==='phone' && pending.files.some(file=>file.imageId)) {
+      if(status.providerId==='phone' && status.phoneVision!==true && pending.files.some(file=>file.imageId)) {
         notify('当前手机模型包尚未包含看图组件。请切换支持图片的模型，或在图片预览中选择“仅提取文字”。');return false;
       }
       window.MiyinChatContext.assemble({text: prompt ?? document.querySelector('#chat-input')?.value,
@@ -282,7 +282,7 @@
     const confirm = event.target.closest('[data-modal-action="chat-confirm-import"]');
     if (confirm) {
       event.preventDefault(); event.stopImmediatePropagation();
-      const chooseModel=!!imported?.imageId && status.providerId==='phone';
+      const chooseModel=!!imported?.imageId && status.providerId==='phone' && status.phoneVision!==true;
       if (imported) { ui().addAttachment(imported); imported = null; }
       imageJob=null;ui().closeModal();
       if(chooseModel) document.querySelector('#screen-chat .model-select')?.click();
@@ -400,7 +400,7 @@
       if(kind!=='document') {
         if(job.canceled || job.owner!==ui().getActiveId() || !document.querySelector('#screen-chat')?.classList.contains('active')) {void rpc('chat.image.discard',{imageId:result.id}).catch(()=>{});return;}
         imported={imageId:result.id,name:result.name,type:result.mimeType,bytes:result.bytes,thumbnailDataUrl:result.thumbnailDataUrl};
-        job.phase='preview';ui().previewImageAttachment(imported,status.providerId==='phone');return;
+        job.phase='preview';ui().previewImageAttachment(imported,status.providerId==='phone'&&status.phoneVision!==true);return;
       }
       const text = String(result.text || result.recognizedText || '').trim();
       if (!text || text.length > 10000) throw new Error('资料为空或超过 10,000 字符，请分段导入。');

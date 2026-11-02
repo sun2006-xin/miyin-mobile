@@ -180,24 +180,27 @@ void main() {
     ],
   };
 
-  test('phone original-image request explicitly fails without OCR or model preparation', () async {
-    expect(
-      () => host.start(
-        request([
-          {
-            'role': 'user',
-            'content': 'look',
-            'imageIds': ['a' * 32],
-          },
-        ]),
-      ),
-      throwsA(failure('image_unsupported')),
-    );
-    expect(recognizer.paths, isEmpty);
-    expect(nativeMethods, isEmpty);
-    expect(noNetwork.attempts, 0);
-    expect(await private.exists(), isFalse);
-  });
+  test(
+    'phone image count limit rejects before OCR or model preparation',
+    () async {
+      expect(
+        () => host.start(
+          request([
+            {
+              'role': 'user',
+              'content': 'look',
+              'imageIds': ['a' * 32, 'b' * 32, 'c' * 32],
+            },
+          ]),
+        ),
+        throwsA(failure('image_limit')),
+      );
+      expect(recognizer.paths, isEmpty);
+      expect(nativeMethods, isEmpty);
+      expect(noNetwork.attempts, 0);
+      expect(await private.exists(), isFalse);
+    },
+  );
 
   test(
     'network consent rejects before malformed image IDs or local store access',

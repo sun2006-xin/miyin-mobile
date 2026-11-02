@@ -258,6 +258,7 @@ final class ChatHost {
     'cloudConfigured': !isPhone && !isLocal && keyFor(provider) != null,
     'provider': serviceLabel,
     'providerId': provider,
+    'phoneVision': true,
     'model': selectedModel,
     'models': modelsFor(provider),
     'thinking': thinking,
@@ -989,11 +990,8 @@ final class ChatHost {
     );
     if (imageCount > ChatImage.maxImages)
       throw const ChatFailure('image_limit', '本轮最多携带4张图片，请新建对话或关闭携带历史后再发送。');
-    if (isPhone && imageCount > 0)
-      throw const ChatFailure(
-        'image_unsupported',
-        '当前手机模型包尚未包含看图组件。请切换支持图片的模型，或选择仅提取图片文字。',
-      );
+    if (isPhone && imageCount > 2)
+      throw const ChatFailure('image_limit', '手机本机模型每轮最多携带2张图片，请新建对话或减少图片。');
     final selected = selectedModel!;
     final query = params['searchQuery'];
     final searchQuery = query is String && WebSearch.needed(webMode, query)
@@ -1012,7 +1010,11 @@ final class ChatHost {
         conversationId != null &&
         imageCount == 0;
     final prepared = isPhone
-        ? PhoneLlmClient.prepareContext(selected, messages)
+        ? PhoneLlmClient.prepareContext(
+            selected,
+            messages,
+            imageCount: imageCount,
+          )
         : isLocal && !compress
         ? OllamaClient.prepareContext(
             selected,
@@ -1091,7 +1093,9 @@ final class ChatHost {
           }
           return loaded;
         },
-        create: (images) => selectedProvider == 'ollama'
+        create: (images) => selectedProvider == 'phone'
+            ? PhoneLlmClient(thinking: selectedThinking, imageMessages: images)
+            : selectedProvider == 'ollama'
             ? OllamaClient(
                 thinking: selectedThinking,
                 windowTokens: window,
@@ -1107,6 +1111,7 @@ final class ChatHost {
     }
     _active = client;
     _activeId = id;
+    final phoneRequest = isPhone;
     // Let the RPC acknowledgement reach the page before streaming events.
     unawaited(
       Future<void>.delayed(
@@ -1119,6 +1124,8 @@ final class ChatHost {
           compress ? conversationId : null,
           searchQuery,
           prepared?.omitted ?? 0,
+          phoneRequest,
+          imageCount > 0,
         ),
       ),
     );
@@ -1140,8 +1147,9 @@ final class ChatHost {
     String? conversationId,
     String? searchQuery,
     int previouslyOmitted,
+    bool phone,
+    bool hasImages,
   ) async {
-    final phone = client is PhoneLlmClient;
     Future<void> emit(String type, [String? text, String? code]) async {
       if (_closed || _activeId != id) return;
       try {
@@ -1266,7 +1274,7 @@ final class ChatHost {
                   .toList(),
             ),
           );
-          if (phone) {
+          if (phone && !hasImages) {
             final prepared = ChatSearchContext.preparePhone(
               selected,
               messages,
@@ -1282,7 +1290,7 @@ final class ChatHost {
                 .map((row) => Map<String, String>.of(row))
                 .toList();
             messages.last['content'] =
-                '${messages.last['content']}${WebSearch.material(sources, phone: false)}';
+                '${messages.last['content']}${WebSearch.material(sources, phone: phone)}';
           }
           await emit('progress', '已取得来源，正在生成回答…');
         } finally {

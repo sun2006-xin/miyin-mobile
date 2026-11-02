@@ -15,13 +15,13 @@ before(async()=>{
  await new Promise(r=>server.listen(0,'127.0.0.1',r));browser=await chromium.launch({headless:true});
 });
 after(async()=>{await browser?.close();await new Promise(r=>server?.close(r));});
-async function fixture(providerId='openai',width=390){
+async function fixture(providerId='openai',width=390,phoneVision){
  const page=await browser.newPage({viewport:{width,height:844}});
  await page.route('**/*',route=>new URL(route.request().url()).hostname==='127.0.0.1'?route.continue():route.abort());
  await page.addInitScript(()=>{window.MiyinApp={postMessage(){}};});
  await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
  await page.waitForFunction(()=>!!window.MiyinChatUI&&window.MiyinChat?.native);
- await page.evaluate(({providerId,id})=>{
+ await page.evaluate(({providerId,id,phoneVision})=>{
   document.querySelectorAll('.screen').forEach(n=>n.classList.remove('active'));document.querySelector('#screen-chat').classList.add('active');
   window.MiyinChatVoice=undefined;window.MiyinChatSettings=undefined;
   const canvas=document.createElement('canvas');canvas.width=240;canvas.height=160;const ctx=canvas.getContext('2d');ctx.fillStyle='#d4f5ed';ctx.fillRect(0,0,240,160);ctx.fillStyle='#176e64';ctx.beginPath();ctx.arc(80,80,40,0,Math.PI*2);ctx.fill();
@@ -29,7 +29,7 @@ async function fixture(providerId='openai',width=390){
   window.calls=[];window.MiyinNativeBridge={request:async(method,params)=>{
    calls.push({method,params});
    if(method==='chat.history.load')return{conversations:[{id:'image-fixture',updatedAt:Date.now(),messages:[]}]};
-   if(method==='chat.status')return{configured:true,providerId,model:'fixture-vision',privacy:{allowNetwork:true,sendHistory:true,saveLocalHistory:true}};
+   if(method==='chat.status')return{configured:true,providerId,model:'fixture-vision',...(phoneVision===undefined?{}:{phoneVision}),privacy:{allowNetwork:true,sendHistory:true,saveLocalHistory:true}};
    if(method==='chat.local.status')return{ready:true};
    if(method==='chat.image.pick')return imageFixture;
    if(method==='chat.image.extract')return{text:'用户明确请求提取的文字'};
@@ -38,7 +38,7 @@ async function fixture(providerId='openai',width=390){
    return{};
   }};
   window.dispatchEvent(new Event('miyin:native-host-ready'));
- },{providerId,id});
+ },{providerId,id,phoneVision});
  await page.waitForFunction(()=>MiyinChat.ready);return page;
 }
 async function pick(page){await page.evaluate(()=>MiyinChat.pickAttachment('image'));await page.locator('#modal-scrim.open .chat-image-preview').waitFor();}
@@ -58,7 +58,8 @@ test('native picture import previews original, with explicit OCR and no automati
  }finally{await page.close();}
 });
 test('phone preview explains missing component; selection is preserved and sending is blocked',async()=>{
- const page=await fixture('phone');try{
+ for(const capability of [undefined,false]){
+ const page=await fixture('phone',390,capability);try{
   await pick(page);assert.match(await page.locator('#modal-copy').innerText(),/尚未包含看图组件/);
   assert.equal(await page.locator('[data-modal-action="chat-confirm-import"]').innerText(),'添加后选模型');
   await click(page,'[data-modal-action="chat-confirm-import"]');
@@ -66,6 +67,26 @@ test('phone preview explains missing component; selection is preserved and sendi
   assert.equal(await page.evaluate(()=>MiyinChatUI.getPending().files.length),1);
   assert.equal(await page.evaluate(()=>MiyinChat.canSend(true,false,'这是什么？')),false);
   assert(!(await methods(page)).includes('chat.start'));assert(!(await methods(page)).includes('chat.image.extract'));
+ }finally{await page.close();}
+ }
+});
+test('vision-capable phone adds and sends original image without OCR or model-picker detour',async()=>{
+ const page=await fixture('phone',390,true);try{
+  await pick(page);
+  assert.equal(await page.locator('[data-modal-action="chat-confirm-import"]').innerText(),'添加图片');
+  assert.doesNotMatch(await page.locator('#modal-copy').innerText(),/尚未包含看图组件/);
+  await click(page,'[data-modal-action="chat-confirm-import"]');
+  assert.equal(await page.evaluate(()=>MiyinChatUI.getPending().files[0].imageId),id);
+  assert.equal(await page.evaluate(()=>MiyinChat.canSend(true,false,'图片中是什么？')),true);
+  await page.evaluate(()=>MiyinChatUI.sendVoice('图片中是什么？'));
+  await page.waitForFunction(()=>calls.some(c=>c.method==='chat.start'));
+  const request=await page.evaluate(()=>calls.find(c=>c.method==='chat.start').params);
+  const message=request.messages.find(m=>m.role==='user');assert.deepEqual(message.imageIds,[id]);assert.match(message.content||message.text,/图片中是什么/);
+  assert.equal(await page.locator('#chat-messages [data-chat-image]').count(),1);
+  const invoked=await methods(page);
+  assert(!invoked.includes('chat.image.extract'));assert(!invoked.includes('attachment.recognizeImage'));
+  assert(!invoked.includes('chat.configure'));assert(!invoked.includes('chat.image.discard'));
+  assert(!JSON.stringify(request).includes('base64'));
  }finally{await page.close();}
 });
 test('explicit OCR creates a text attachment and discards the unsent original',async()=>{

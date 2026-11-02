@@ -23,6 +23,7 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
     @Volatile private var process: Process? = null
     @Volatile private var apiKey: String? = null
     @Volatile private var ready = false
+    @Volatile private var visionReady = false
     private var launches = 0
     private val handler = Handler(Looper.getMainLooper())
     private val retention = ModelKeepAlive(object : ModelKeepAlive.Scheduler {
@@ -37,17 +38,18 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
         apiKey?.let { connection.setRequestProperty("Authorization", "Bearer $it") }
         try { connection.responseCode == 200 } finally { connection.disconnect() }
     } catch (_: Exception) { false }
-    fun stop() { epoch.incrementAndGet(); ready = false; process?.destroy(); process = null; apiKey = null }
+    fun stop() { epoch.incrementAndGet(); ready = false; visionReady = false; process?.destroy(); process = null; apiKey = null }
     fun setForeground(value: Boolean) { if (value) retention.foreground() else retention.background() }
     override fun onMethodCall(call: MethodCall, result: MethodChannel.Result) {
         if (call.method == "stop") { stop(); result.success(null); return }
         if (call.method == "status") {
-            result.success(mapOf("bundled" to File(activity.applicationInfo.nativeLibraryDir,"libmiyin_llama.so").exists(),"ready" to (ready && process?.isAlive == true)))
+            result.success(mapOf("bundled" to File(activity.applicationInfo.nativeLibraryDir,"libmiyin_llama.so").exists(),"ready" to (ready && process?.isAlive == true),"vision" to (visionReady && ready && process?.isAlive == true)))
             return
         }
         if (call.method != "prepare") { result.notImplemented(); return }
         if (android.os.Build.VERSION.SDK_INT < 28) { result.error("local_model", "手机内置聊天模型需要 Android 9 或以上版本。你仍可配置云端模型。", null); return }
         val ticket = epoch.get()
+        val needsVision = call.argument<Boolean>("vision") == true
         val requestedAt = SystemClock.elapsedRealtime()
         worker.execute {
             try {
@@ -57,13 +59,13 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                 // A busy loopback health probe is not evidence that an already
                 // loaded process should be destroyed. Only cold/unready starts
                 // need the health handshake; subsequent turns retain its cache.
-                val reused = ready && process?.isAlive == true
+                val reused = ready && process?.isAlive == true && (!needsVision || visionReady)
                 var modelFileMs = 0L
                 var copiedModel = false
                 var processStartMs = 0L
                 var readyWaitMs = 0L
                 if (!reused) {
-                    ready = false; process?.destroy(); process = null
+                    ready = false; visionReady = false; process?.destroy(); process = null
                     val fileStartedAt = SystemClock.elapsedRealtime()
                     directory.mkdirs()
                     val model = File(directory,"model.gguf")
@@ -83,12 +85,34 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                         preferences.edit().putString("verified","$sha:${model.lastModified()}").apply()
                     }
                     checkActive()
+                    val projector = File(directory,"mmproj.gguf")
+                    if (needsVision) {
+                        val projectorSha = "7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7"
+                        if (!projector.exists() || projector.length() != 668227264L || preferences.getString("vision-verified","") != "$projectorSha:${projector.lastModified()}") {
+                            val temporary = File(directory,"mmproj.part")
+                            val digest = MessageDigest.getInstance("SHA-256")
+                            try {
+                                activity.assets.open("flutter_assets/assets/chat-model/mmproj.gguf").use { source ->
+                                    temporary.outputStream().use { target ->
+                                        val buffer = ByteArray(1024*1024)
+                                        while (true) { checkActive(); val count = source.read(buffer); if (count < 0) break; digest.update(buffer,0,count); target.write(buffer,0,count) }
+                                    }
+                                }
+                                check(digest.digest().joinToString("") { "%02x".format(it) } == projectorSha) { "vision_integrity" }
+                                checkActive(); check(temporary.renameTo(projector)) { "vision_storage" }
+                                preferences.edit().putString("vision-verified","$projectorSha:${projector.lastModified()}").apply()
+                            } finally { temporary.delete() }
+                        }
+                        checkActive()
+                    }
                     modelFileMs = SystemClock.elapsedRealtime() - fileStartedAt
                     val executable = File(activity.applicationInfo.nativeLibraryDir,"libmiyin_llama.so")
                     check(executable.exists()) { "missing_runtime" }
                     val key = UUID.randomUUID().toString()
                     apiKey = key
-                    val launcher = ProcessBuilder(executable.absolutePath,"-m",model.absolutePath,"-c",contextTokens.toString(),"-t","4","--host","127.0.0.1","--port","11438","-np","1","--api-key",key,"--log-disable")
+                    val arguments = mutableListOf(executable.absolutePath,"-m",model.absolutePath,"-c",contextTokens.toString(),"-t","4","--host","127.0.0.1","--port","11438","-np","1","--api-key",key,"--log-disable")
+                    if (needsVision) arguments.addAll(listOf("--mmproj",projector.absolutePath,"--no-mmproj-offload","--image-max-tokens","768","--mtmd-batch-max-tokens","256"))
+                    val launcher = ProcessBuilder(arguments)
                     // The fixed runtime chooses the best supported CPU module.
                     // Keep all dependency lookup inside the APK's extracted
                     // native directory; the ARMv8.0 module remains the fallback.
@@ -102,9 +126,10 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                     val waitStartedAt = SystemClock.elapsedRealtime()
                     try {
                         var ready = false
-                        repeat(120) { if (!ready) { checkActive(); check(child.isAlive) { "load_failed" }; ready = health(); if (!ready) Thread.sleep(500) } }
+                        repeat(if (needsVision) 180 else 120) { if (!ready) { checkActive(); check(child.isAlive) { "load_failed" }; ready = health(); if (!ready) Thread.sleep(500) } }
                         check(ready) { "load_timeout" }; checkActive()
                         readyWaitMs = SystemClock.elapsedRealtime() - waitStartedAt
+                        visionReady = needsVision
                     } catch (error: Exception) { child.destroy(); if (process === child) process = null; throw error }
                 }
                 ready = true
@@ -113,7 +138,7 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                 val key = apiKey ?: error("canceled")
                 activity.runOnUiThread {
                     if (ticket != epoch.get()) result.error("local_model", "本机模型已释放，请重试。", null)
-                    else result.success(mapOf("endpoint" to "http://127.0.0.1:11438/v1", "key" to key, "contextTokens" to contextTokens,"reused" to reused,"prepareMs" to elapsed))
+                    else result.success(mapOf("endpoint" to "http://127.0.0.1:11438/v1", "key" to key, "contextTokens" to contextTokens,"reused" to reused,"prepareMs" to elapsed,"vision" to visionReady))
                 }
             } catch (error: Exception) {
                 val code = error.message.orEmpty()
