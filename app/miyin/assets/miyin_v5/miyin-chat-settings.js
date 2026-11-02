@@ -2,7 +2,6 @@
 (() => {
   'use strict';
   let data,draft,page,busy=false,notice='',parent=null,focusBefore,selectedService,selectedModel,session=0;
-  let speechDraft=null,speechParent='config';
   const rpc=(method,params={})=>MiyinNativeBridge.request(method,params),ui=()=>window.MiyinChatUI;
   const el=(tag,text,cls)=>{const n=document.createElement(tag);if(text!=null)n.textContent=text;if(cls)n.className=cls;return n;};
   const arrow='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="m14 5-7 7 7 7M7 12h13"/></svg>';
@@ -36,7 +35,7 @@
   function close(){session++;busy=false;view.hidden=true;document.querySelector('#app').classList.remove('chat-config-open');document.querySelectorAll('[data-chat-config-inert]').forEach(n=>{n.inert=false;n.removeAttribute('data-chat-config-inert');});draft=null;parent=null;focusBefore?.focus?.({preventScroll:true});}
   function setPage(next){page=next;notice='';render();view.querySelector('h1,h2')?.focus({preventScroll:true});}
   function closeSearchMenu(){const menu=view.querySelector(".chat-search-menu:not([hidden])");if(!menu)return false;menu.hidden=true;const select=view.querySelector(".chat-search-select");select?.setAttribute("aria-expanded","false");select?.focus();return true;}
-  function back(){if(closeSearchMenu())return;if(page==='speech'){speechDraft=null;setPage(speechParent);}else if(page==='config'&&parent==='picker'){parent=null;setPage('picker');}else close();}
+  function back(){if(closeSearchMenu())return;if(page==='config'&&parent==='picker'){parent=null;setPage('picker');}else close();}
   async function run(action){if(busy)return;const ticket=session;busy=true;notice='';render();try{await action();}catch(e){if(ticket===session)notice=e.message||'操作未完成，请重试。';}finally{if(ticket===session){busy=false;if(draft)render();}}}
   function apply(current){window.MiyinChat?.applyStatus(current);if(ui().getActiveId())ui().pinModel(ui().getActiveId(),current.model);}
   async function useSelected(){
@@ -62,26 +61,7 @@
     for(const [value,name] of modes){const option=btn(name,()=>{draft.privacy.webMode=value;render();view.querySelector('.chat-search-select')?.focus();},'chat-config-mode');option.setAttribute('role','option');option.setAttribute('aria-selected',String(value===draft.privacy.webMode));menu.append(option);}
     selector.append(select,menu);box.append(label,selector);root.append(box);footer('保存',async()=>{const owner=draft;const current=await rpc('chat.privacy',owner.privacy);if(draft!==owner)return;apply(current);close();ui().announce('隐私设置已保存。');});}
   async function check(s){if(!draft?.services.includes(s))return;const owner=draft;const result=await rpc('chat.settings.check',{service:s.id,endpoint:s.endpoint});if(draft!==owner)return;s.models=result.models||[];if(!['phone','ollama'].includes(s.id)&&s.models.length){if(!s.models.includes(s.model))s.model=s.models[0];await rpc('chat.settings.catalog',{service:s.id,endpoint:s.endpoint,model:s.model,models:s.models});}notice=s.id==='phone'?'本机发现 '+s.models.length+' 个内置聊天模型。':'连接成功，已读取 '+s.models.length+' 个模型；可选择后使用。';}
-  function speechValues(){const {mode,allowCloud,region,model,voice}=speechDraft;return{mode,allowCloud,region,model,voice};}
-  async function openSpeech(){const owner=draft,origin=page;const result=await rpc('speech.settings');if(owner!==draft)return;if(!result||!['local','qwen'].includes(result.mode))throw new Error('无法读取 AI 语音服务设置。');speechDraft={...result};speechParent=origin;setPage('speech');}
-  function speechChanged(){window.dispatchEvent(new Event('miyin:speech-settings-changed'));}
-  function speechChoice(root,label,key,options){const section=el('details',null,'chat-config-provider'),summary=el('summary',null,'appearance-surface');summary.append(el('strong',label),el('span',(options.find(x=>x[0]===speechDraft[key])||options[0])[1]+' ⌄','chat-config-chevron'));section.append(summary);const list=el('div',null,'chat-config-provider-body appearance-surface');list.setAttribute('role','listbox');list.setAttribute('aria-label',label);for(const [value,name]of options){const option=btn(name+(speechDraft[key]===value?' ✓':''),()=>{speechDraft[key]=value;if(key==='region')speechDraft.hasKey=false;render();},'chat-config-model');option.setAttribute('role','option');option.setAttribute('aria-selected',String(speechDraft[key]===value));list.append(option);}section.append(list);root.append(section);}
-  function speech(root){
-    root.append(el('p','聊天模型负责回答，语音服务负责朗读，两者可分别选择。','chat-config-hint'));
-    const modes=el('div',null,'chat-config-model-list');modes.setAttribute('role','radiogroup');modes.setAttribute('aria-label','AI 语音方式');
-    for(const [value,label]of [['local','本机离线语音'],['qwen','在线流式语音 · 通义千问']]){const row=btn(label+(speechDraft.mode===value?' ✓':''),()=>{speechDraft.mode=value;render();},'chat-config-model');row.setAttribute('role','radio');row.setAttribute('aria-checked',String(speechDraft.mode===value));modes.append(row);}root.append(modes);
-    if(speechDraft.mode==='local')root.append(el('p','无需语音服务密钥。使用已内置的音色与当前朗读速度。','chat-config-hint'));
-    else{
-      speechChoice(root,'服务地域','region',[['beijing','北京'],['singapore','新加坡']]);
-      speechChoice(root,'语音模型','model',[['qwen3-tts-flash-realtime','Qwen3 Flash']]);
-      speechChoice(root,'朗读音色','voice',[['Cherry','Cherry · 女声'],['Serena','Serena · 女声'],['Ethan','Ethan · 男声'],['Chelsie','Chelsie · 女声']]);
-      root.append(toggle('允许在线合成',!!speechDraft.allowCloud,()=>{speechDraft.allowCloud=!speechDraft.allowCloud;render();},'仅把待朗读的回答文字发送给语音服务；麦克风识别仍在本机。'));
-      const keyButton=btn(speechDraft.hasKey?'更换语音专用密钥':'配置语音专用密钥',()=>void run(async()=>{const owner=draft,voiceOwner=speechDraft;await rpc('speech.settings.save',speechValues());if(owner!==draft||voiceOwner!==speechDraft||page!=='speech')return;speechChanged();await rpc('speech.configure',{colors:colors()});if(owner!==draft||voiceOwner!==speechDraft||page!=='speech')return;const fresh=await rpc('speech.settings');if(owner!==draft||voiceOwner!==speechDraft||page!=='speech')return;speechDraft=fresh;speechChanged();notice=speechDraft.hasKey?'当前地域的语音密钥已保存。':'尚未配置当前地域的语音密钥。';}),'chat-config-key');keyButton.style.minHeight='44px';root.append(keyButton);
-      root.append(el('p','在线服务需要独立开通，可能按用量计费，使用服务默认语速。保存后可在 AI 回答旁点击朗读，或进入语音对话。','chat-config-hint'));
-    }
-    footer('保存语音设置',async()=>{const owner=draft,voiceOwner=speechDraft;await rpc('speech.settings.save',speechValues());if(owner!==draft||voiceOwner!==speechDraft||page!=='speech')return;speechChanged();speechDraft=null;setPage(speechParent);notice='AI 语音服务已保存，聊天模型未改变。';});
-  }
-  function config(root){root.append(btn('AI 语音服务  →',()=>void run(openSpeech),'chat-config-add'));root.append(el('p','勾选要显示在聊天列表中的模型，可多选；这里不会切换当前聊天模型。','chat-config-hint'));for(const s of draft.services){const section=el('details',null,'chat-config-provider');section.open=draft.expanded.has(s.id);section.ontoggle=()=>{if(!section.isConnected||!draft)return;section.open?draft.expanded.add(s.id):draft.expanded.delete(s.id);};const summary=el('summary',null,'appearance-surface');summary.append(el('h2',s.id==='phone'?'本机模型':s.label),el('span','⌄','chat-config-chevron'));section.append(summary);const card=el('div',null,'chat-config-provider-body appearance-surface');section.append(card);
+  function config(root){root.append(el('p','勾选要显示在聊天列表中的模型，可多选；这里不会切换当前聊天模型。','chat-config-hint'));for(const s of draft.services){const section=el('details',null,'chat-config-provider');section.open=draft.expanded.has(s.id);section.ontoggle=()=>{if(!section.isConnected||!draft)return;section.open?draft.expanded.add(s.id):draft.expanded.delete(s.id);};const summary=el('summary',null,'appearance-surface');summary.append(el('h2',s.id==='phone'?'本机模型':s.label),el('span','⌄','chat-config-chevron'));section.append(summary);const card=el('div',null,'chat-config-provider-body appearance-surface');section.append(card);
     if(['phone','ollama'].includes(s.id)){card.append(btn(s.id==='phone'?'搜索本机':'搜索电脑模型',()=>void run(()=>check(s)),'chat-config-test'));if(s.id==='ollama')card.append(el('p','通过 USB 连接电脑 Ollama。','chat-config-hint'));}
     else{if(s.id==='custom')card.append(field('API 服务地址',s.endpoint,v=>s.endpoint=v,'https://服务地址/v1'));const row=el('div',null,'chat-config-key-row');row.append(btn(s.hasKey?'API 密钥  ••••••••':'添加 API 密钥',()=>void run(async()=>{const saved=await rpc('chat.configure',{page:'key',service:s.id,endpoint:s.endpoint,colors:colors()});if(!saved.settingsSaved)return;const fresh=await rpc('chat.settings');if(!draft?.services.includes(s))return;const updated=fresh.services.find(x=>x.id===s.id);s.hasKey=updated.hasKey;s.endpoint=updated.endpoint;s.visibleModels=updated.visibleModels||[];if(s.hasKey)await check(s);else notice='尚未保存密钥。';}),'chat-config-key'),btn('测试连接',()=>void run(()=>check(s)),'chat-config-test'));card.append(row);}
     if(s.models?.length)models(card,s);else card.append(el('p','无已添加模型','chat-config-hint'));
@@ -91,9 +71,9 @@
     const scroll=view.querySelector('.chat-config-scroll')?.scrollTop||0;
     const positions=new Map([...view.querySelectorAll('[data-model-service]')].map(n=>[n.dataset.modelService,n.scrollTop]));
     const focused=document.activeElement,modelFocus=focused?.dataset.modelId,serviceFocus=focused?.dataset.serviceId;
-    const root=shell(page==='picker'?'选择 AI 模型':page==='privacy'?'隐私设置':page==='speech'?'AI 语音服务':'模型设置',page==='picker');
+    const root=shell(page==='picker'?'选择 AI 模型':page==='privacy'?'隐私设置':'模型设置',page==='picker');
     view.classList.toggle('is-privacy',page==='privacy');
-    if(page==='picker')picker(root);else if(page==='privacy')privacy(root);else if(page==='speech')speech(root);else config(root);
+    if(page==='picker')picker(root);else if(page==='privacy')privacy(root);else config(root);
     view.querySelector('.chat-config-scroll').scrollTop=scroll;
     view.querySelectorAll('[data-model-service]').forEach(n=>n.scrollTop=positions.get(n.dataset.modelService)||0);
     if(modelFocus)[...view.querySelectorAll('[data-model-id]')].find(n=>n.dataset.modelId===modelFocus&&n.dataset.serviceId===serviceFocus)?.focus({preventScroll:true});

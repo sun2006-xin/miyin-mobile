@@ -44,8 +44,6 @@ class MainActivity : FlutterActivity() {
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-local").setMethodCallHandler(phoneLlm)
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-secrets")
             .setMethodCallHandler(MiyinChatSecrets(this))
-        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/voice-secrets")
-            .setMethodCallHandler(MiyinChatSecrets(this, voice = true))
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "com.miyin.app/chat-actions")
             .setMethodCallHandler { call, result ->
                 if (call.method == "openUrl") {

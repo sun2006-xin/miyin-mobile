@@ -11,17 +11,8 @@ class ServiceKeySheet extends StatefulWidget {
     required this.service,
     required this.endpoint,
     required this.colors,
-  }) : onSave = null, hasCredential = false, isVoice = false;
-  const ServiceKeySheet.voice({
-    super.key,
-    required this.endpoint,
-    required this.colors,
-    required this.onSave,
-    required this.hasCredential,
-  }) : host = null, service = 'qwen-tts', isVoice = true;
-  final ChatHost? host;
-  final Future<void> Function(String)? onSave;
-  final bool hasCredential, isVoice;
+  });
+  final ChatHost host;
   final String service, endpoint;
   final Map<String, Object?> colors;
   @override
@@ -46,12 +37,11 @@ class _ServiceKeySheetState extends State<ServiceKeySheet> {
     }
     setState(() => busy = true);
     try {
-      final value = remove ? '' : keyText.text.trim();
-      if (widget.onSave != null) {
-        await widget.onSave!(value);
-      } else {
-        await widget.host!.saveCredential(widget.service, widget.endpoint, value);
-      }
+      await widget.host.saveCredential(
+        widget.service,
+        widget.endpoint,
+        remove ? '' : keyText.text.trim(),
+      );
       if (mounted) Navigator.pop(context, true);
     } on ChatFailure catch (e) {
       if (mounted) setState(() => error = e.message);
@@ -106,7 +96,7 @@ class _ServiceKeySheetState extends State<ServiceKeySheet> {
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  widget.isVoice ? '语音服务密钥' : '服务密钥',
+                  '服务密钥',
                   style: TextStyle(
                     fontSize: 23,
                     fontWeight: FontWeight.w600,
@@ -155,7 +145,7 @@ class _ServiceKeySheetState extends State<ServiceKeySheet> {
                           : () => Navigator.pop(context, false),
                       child: const Text('返回'),
                     ),
-                    if (widget.hasCredential || widget.host?.keyFor(widget.service) != null)
+                    if (widget.host.keyFor(widget.service) != null)
                       TextButton(
                         onPressed: busy ? null : () => save(remove: true),
                         child: const Text('移除密钥'),

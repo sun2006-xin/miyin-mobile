@@ -26,8 +26,6 @@ import 'multilingual_asr_model_store.dart';
 import 'offline_speech_recognizer.dart';
 import 'offline_speech_synthesizer.dart';
 import 'translation_rpc_router.dart';
-import 'voice_service_host.dart';
-import 'voice_request_ownership.dart';
 
 /// Mobile host for the approved V5 preview.
 ///
@@ -58,8 +56,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   );
   late final WebViewController _controller;
   late final ChatHost _chat;
-  late final VoiceServiceHost _speech;
-  final _speechOwnership = VoiceRequestOwnership();
   final _navigatorKey = GlobalKey<NavigatorState>();
   bool _chatSettingsOpen = false;
   late final AdaptiveRefreshCoordinator _refreshCoordinator;
@@ -119,11 +115,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     _attachmentSourcePicker = PlatformAttachmentSourcePicker();
     _avatarImagePicker = PlatformAvatarImagePicker();
     _recoveredAttachment = _attachmentSourcePicker.retrieveLostData();
-    _speech = VoiceServiceHost(
-      invokePlayback: (method, arguments) => const MethodChannel('com.miyin.app/voice')
-          .invokeMethod<Object?>(method, arguments),
-      onEvent: _forwardVoiceEvent,
-    );
     unawaited(
       LiveAudioArchive.instance.purgePending().catchError((Object error) {
         debugPrint('Could not remove unfinished conference audio: $error');
@@ -225,8 +216,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
         },
         onPageStarted: (_) {
           _chat.cancel();
-          _speechOwnership.invalidate();
-          unawaited(_speech.cancel());
           _nativeHostReady = false;
           if (mounted) {
             setState(() {
@@ -272,16 +261,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     Map<String, Object?> response;
     try {
       final request = jsonDecode(rawMessage);
-      if (request is Map && request['method'] is String &&
-          (request['method'] as String).startsWith('speech.')) {
-        if (request['version'] != 1 || request['id'] is! String ||
-            rawMessage.length > 65536) {
-          throw const ChatFailure('invalid_request', '语音请求格式不正确。');
-        }
-        final result = await _handleSpeechRequest(request['method'] as String,
-            request['params'] is Map ? Map<String, Object?>.from(request['params'] as Map) : {});
-        response = {'version': 1, 'id': request['id'], 'ok': true, 'result': result};
-      } else if (request is Map &&
+      if (request is Map &&
           request['method'] is String &&
           (request['method'] as String).startsWith('chat.')) {
         if (request['version'] != 1 ||
@@ -355,15 +335,8 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
           'result': result,
         };
       } else {
-        if (request is Map && ['voice.speak', 'voice.stopSpeaking'].contains(request['method'])) {
-          _speechOwnership.invalidate();
-          await _speech.cancel();
-        }
         response = await (await _getRpcRouter()).handle(rawMessage);
       }
-    } on VoiceServiceFailure catch (error) {
-      response = {'version': 1, 'id': _requestIdFrom(rawMessage), 'ok': false,
-        'error': {'code': error.code, 'message': error.message}};
     } on ChatFailure catch (error) {
       response = {
         'version': 1,
@@ -390,68 +363,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
       debugPrint(
         'Could not return translation response to WebView: ${error.message}',
       );
-    }
-  }
-
-  Future<Map<String, Object?>> _handleSpeechRequest(String method, Map<String, Object?> params) async {
-    final rawId = params['sessionId'];
-    if (['speech.open', 'speech.cancel', 'speech.append', 'speech.finish'].contains(method) &&
-        (rawId is! String || !RegExp(r'^[A-Za-z0-9_.-]{1,128}$').hasMatch(rawId))) {
-      throw const ChatFailure('speech_invalid_session', '语音操作标识无效。');
-    }
-    if (method == 'speech.cancel') {
-      if (_speechOwnership.cancel(rawId as String)) await _speech.cancel();
-      return {'status': 'cancelled'};
-    }
-    final ticket = method == 'speech.open' ? _speechOwnership.begin(rawId as String) : null;
-    if (['speech.settings.save', 'speech.configure'].contains(method)) {
-      _speechOwnership.invalidate();
-      await _speech.cancel();
-    }
-    await _speech.load();
-    if (method == 'speech.settings') return _speech.status;
-    if (method == 'speech.settings.save') return _speech.saveSettings(params);
-    if (!_appVisible || !mounted) throw const ChatFailure('speech_inactive', '请返回觅音后再使用在线语音。');
-    if (method == 'speech.configure') {
-      if (_chatSettingsOpen) throw const ChatFailure('busy', '服务设置已打开。');
-      _chatSettingsOpen = true;
-      try {
-        final saved = await showDialog<bool>(context: _navigatorKey.currentContext!,
-          barrierDismissible: false, builder: (_) => ServiceKeySheet.voice(
-            endpoint: _speech.status['region'] == 'singapore' ? '阿里云语音 · 新加坡' : '阿里云语音 · 北京',
-            colors: params['colors'] is Map ? Map<String, Object?>.from(params['colors'] as Map) : {},
-            hasCredential: _speech.status['hasKey'] == true,
-            onSave: (key) async {
-              try { await _speech.saveCredential(key); }
-              on VoiceServiceFailure catch (error) { throw ChatFailure(error.code, error.message); }
-            },
-          ));
-        return {..._speech.status, 'settingsSaved': saved == true};
-      } finally { _chatSettingsOpen = false; }
-    }
-    final id = params['sessionId'];
-    if (id is! String || !RegExp(r'^[A-Za-z0-9_.-]{1,128}$').hasMatch(id)) {
-      throw const ChatFailure('speech_invalid_session', '语音操作标识无效。');
-    }
-    switch (method) {
-      case 'speech.open':
-        if (!_speechOwnership.owns(id, ticket!)) return {'status': 'cancelled'};
-        MiyinOfflineSpeechSynthesizer.instance.cancelPending();
-        // Cancel the old channel before opening the new cloud answer.
-        await const MethodChannel('com.miyin.app/voice').invokeMethod<Object?>('stopSpeaking');
-        if (!_speechOwnership.owns(id, ticket)) return {'status': 'cancelled'};
-        if (!_appVisible || !mounted) throw const ChatFailure('speech_inactive', '请返回觅音后再使用在线语音。');
-        final languageTag = params['languageTag'];
-        if (languageTag != null && languageTag is! String) {
-          throw const ChatFailure('speech_language', '请选择有效的朗读语言。');
-        }
-        return _speech.open(id, languageTag: languageTag as String? ?? 'auto');
-      case 'speech.append':
-        final text = params['text'];
-        if (text is! String) throw const ChatFailure('speech_invalid_text', '朗读内容无效。');
-        return _speech.append(id, text);
-      case 'speech.finish': return _speech.finish(id);
-      default: throw const ChatFailure('speech_unknown_method', '不支持的语音操作。');
     }
   }
 
@@ -1614,10 +1525,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   Future<void> _forwardVoiceEvent(Object? rawEvent) async {
     if (rawEvent is! Map) return;
     final event = Map<String, Object?>.from(rawEvent);
-    if (event['sessionId'] is String && ['tts_done', 'tts_error', 'tts_stopped'].contains(event['type'])) {
-      _speechOwnership.complete(event['sessionId'] as String);
-    }
-    _speech.onNativeEvent(event);
     if (event['type'] == 'recognition_partial' &&
         event['text'] is String &&
         _isRepetitiveAudioArtifact(event['text'] as String)) return;
@@ -1945,8 +1852,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     } else if (state == AppLifecycleState.inactive ||
         state == AppLifecycleState.paused) {
       _appVisible = false;
-      _speechOwnership.invalidate();
-      unawaited(_speech.cancel());
       if (state == AppLifecycleState.paused && _nativeHostReady) {
         unawaited(_controller.runJavaScript(
           'window.dispatchEvent(new Event("miyin:app-paused"));',
@@ -1992,7 +1897,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
 
   @override
   void dispose() {
-    unawaited(_speech.dispose());
     unawaited(_chat.close());
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_stopLiveServices());

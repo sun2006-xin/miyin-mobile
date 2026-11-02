@@ -13,10 +13,9 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /** Only Dart can access this channel. No credential is returned to JavaScript. */
-class MiyinChatSecrets(context: Context, voice: Boolean = false) : MethodChannel.MethodCallHandler {
-    // Native-only namespaces: independent writers cannot overwrite chat keys.
-    private val prefs = context.getSharedPreferences(if (voice) "miyin_voice_credentials" else "miyin_chat_credentials", Context.MODE_PRIVATE)
-    private val alias = if (voice) "miyin.voice.credentials.v1" else "miyin.deepseek.credentials.v1"
+class MiyinChatSecrets(context: Context) : MethodChannel.MethodCallHandler {
+    private val prefs = context.getSharedPreferences("miyin_chat_credentials", Context.MODE_PRIVATE)
+    private val alias = "miyin.deepseek.credentials.v1"
 
     private fun key(): SecretKey {
         val store = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
