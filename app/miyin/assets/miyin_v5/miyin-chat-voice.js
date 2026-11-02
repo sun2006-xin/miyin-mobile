@@ -13,6 +13,56 @@
   let timer = 0, lastReadId = null, playbackStarted = false, hasSpoken = false, preparation = null;
   let voiceWarmAt = 0, voiceWarmKey = '';
   let speechGroup = null, groupEnding = false;
+  let speechSettings = null, speechSettingsFlight = null, turnSpeechMode = 'local', cloudSpeech = null;
+  async function loadSpeechSettings() {
+    if (speechSettings) return speechSettings;
+    if (speechSettingsFlight) return speechSettingsFlight;
+    const flight = rpc('speech.settings').then(value => {
+      if (!value || !['local','qwen'].includes(value.mode)) throw new Error('无法读取 AI 语音服务设置，请重新打开语音服务设置。');
+      if (speechSettingsFlight === flight) speechSettings = value;
+      return value;
+    }).finally(() => {if (speechSettingsFlight === flight) speechSettingsFlight = null;});
+    speechSettingsFlight = flight;return flight;
+  }
+  function requireCloudSpeechSettings() {
+    if (!speechSettings?.allowCloud || !speechSettings.hasKey) throw new Error('请在 AI 语音服务中配置专用密钥，并允许发送回答文字。');
+  }
+  function startCloudSpeech() {
+    requireCloudSpeechSettings();
+    const job = {id:'chat-cloud-'+Date.now()+'-'+(++sequence),generation:epoch,buffer:'',draining:false,finished:false,ending:false};
+    cloudSpeech = job;
+    // Open only once spoken text exists; model thinking must not consume the
+    // service's audio idle timeout. Text stays bounded while WSS connects.
+    job.ready = rpc('speech.open',{sessionId:job.id,languageTag:load('ai-tts-language','auto')});
+    job.ready.catch(error => cloudSpeechError(job,error));
+    return job;
+  }
+  function cloudSpeechError(job,error) {
+    if (cloudSpeech !== job || job.generation !== epoch) return;
+    void stopSpeech();state('error');notify(error.message || '在线语音中断，回答文字已保留。');
+  }
+  function appendCloudSpeech(text, final = false) {
+    const job = cloudSpeech;if (!job || job.generation !== epoch || job.ending) return;
+    job.buffer += String(text || '');job.finished ||= final;
+    if (job.buffer.length > 32768) {cloudSpeechError(job,new Error('在线语音暂时跟不上回答，已停止朗读，文字仍会保留。'));return;}
+    void drainCloudSpeech(job);
+  }
+  async function drainCloudSpeech(job) {
+    if (job.draining) return;job.draining=true;
+    try {
+      const ready = await job.ready;
+      if (cloudSpeech !== job || job.generation !== epoch) return;
+      if (ready?.status === 'cancelled') {await stopSpeech();state('paused');return;}
+      while (job.buffer && cloudSpeech === job && job.generation === epoch) {
+        const part=Array.from(job.buffer).slice(0,512).join('');job.buffer=job.buffer.slice(part.length);
+        await rpc('speech.append',{sessionId:job.id,text:part});
+      }
+      if (cloudSpeech === job && job.generation === epoch && job.finished && !job.ending) {
+        job.ending=true;await rpc('speech.finish',{sessionId:job.id});
+      }
+    } catch (error) {cloudSpeechError(job,error);}
+    finally {job.draining=false;}
+  }
   function state(value, mic = false) { if (opened) ui().state(value, mic); }
   function language(text) {
     const selected = load('ai-tts-language', 'auto');
@@ -27,6 +77,10 @@
       speed:Number(load('tts-speed', 1)), speakerId:Number(load('tts-speaker', 0))};
   }
   function warmVoice() {
+    const generation=epoch;
+    void loadSpeechSettings().then(settings=>{if(generation===epoch && settings.mode==='local') warmLocalVoice();}).catch(()=>{});
+  }
+  function warmLocalVoice() {
     // A visible reply already prepares the exact first utterance. A generic
     // warm-up queued afterwards must not unload that reply's language worker.
     if (preparation?.generation === epoch &&
@@ -70,6 +124,10 @@
     flush();return chunks;
   }
   function prepareMessage(text) {
+    const generation=epoch;
+    void loadSpeechSettings().then(settings=>{if(generation===epoch && settings.mode==='local') prepareLocalMessage(text);}).catch(()=>{});
+  }
+  function prepareLocalMessage(text) {
     if (ttsId || speechGroup || speaking || opened || document.hidden || window.MiyinChat.isGenerating ||
         !document.querySelector('#screen-chat')?.classList.contains('active')) return;
     // Keep the first segment plus a small lookahead. Crossing languages here
@@ -113,11 +171,13 @@
     clearTimeout(timer); timer = 0;
     const old = ttsId;
     const oldGroup = speechGroup;
+    const oldCloud = cloudSpeech;cloudSpeech=null;turnSpeechMode='disabled';
     speechGroup = null;groupEnding = false;
     ttsId = null;
     lastReadId = null;
     chat().setReading(null);
     if (old || oldGroup) { try { await rpc('voice.stopSpeaking'); } catch (_) {} }
+    if (oldCloud) { try { await rpc('speech.cancel',{sessionId:oldCloud.id}); } catch (_) {} }
   }
   async function cancelMic() {
     const old = micId;
@@ -247,18 +307,35 @@
   }
   async function read(text, id) {
     if (window.MiyinChat.isGenerating) { notify('请先停止当前回答，再朗读其他消息。'); return; }
-    if (lastReadId === id && (ttsId || queue.length || speechGroup)) { await stopSpeech(); notify('已停止朗读'); return; }
+    if (lastReadId === id && (ttsId || queue.length || speechGroup || cloudSpeech)) { await stopSpeech(); notify('已停止朗读'); return; }
     const session = ++lifecycle;
     await cancelMic();
     if (session !== lifecycle) return;
     await stopSpeech();
     if (session !== lifecycle) return;
+    try {
+      const settings=await loadSpeechSettings();if(session!==lifecycle)return;
+      if(settings.mode==='qwen') {
+        lastReadId=id;chat().setReading(id);state('processing');
+        startCloudSpeech();appendCloudSpeech(text,true);return;
+      }
+    } catch(error) {if(session===lifecycle){lastReadId=null;chat().setReading(null);state('error');notify(error.message||'无法启动在线语音。');}return;}
     lastReadId = id; queue = speechChunks(text); finished = true;
     chat().setReading(id);
     void drain();
   }
   window.addEventListener('miyin:voice-event', event => {
     const data = event.detail || {};
+    if (cloudSpeech && data.sessionId === cloudSpeech.id) {
+      if (data.type === 'tts_started') state('speaking');
+      if (data.type === 'tts_done') {
+        cloudSpeech=null;lastReadId=null;chat().setReading(null);if(opened)state('paused');
+      } else if (data.type === 'tts_error' || data.type === 'tts_stopped') {
+        const failed=data.type==='tts_error';void stopSpeech();state(failed?'error':'paused');
+        if(failed)notify(data.message||'在线语音中断，回答文字已保留。');
+      }
+      return;
+    }
     if (speechGroup && data.sessionId === speechGroup) {
       if (data.type === 'tts_done') {
         clearTimeout(timer);timer=0;ttsId=null;speaking=false;playbackStarted=false;
@@ -305,6 +382,7 @@
     if (opened) ui().close(); else { lifecycle++; void stopSpeech(); }
   }
   window.addEventListener('miyin:app-paused', suspend);
+  window.addEventListener('miyin:speech-settings-changed',()=>{lifecycle++;speechSettings=null;speechSettingsFlight=null;void stopSpeech();});
   window.addEventListener('miyin:surface-visibility-change', () => {
     if (!document.querySelector('#screen-chat')?.classList.contains('active')) suspend();
     else if (!document.hidden && !ttsId && !window.MiyinChat.isGenerating) warmVoice();
@@ -342,12 +420,18 @@
       await cancelMic();
       if (session !== lifecycle) return;
       await stopSpeech();
-      if (opened && session === lifecycle) state('processing');
+      if (!opened || session!==lifecycle) return;
+      turnSpeechMode='disabled';state('processing');
+      try {
+        const settings=await loadSpeechSettings();if(!opened||session!==lifecycle)return;
+        turnSpeechMode=settings.mode;
+        if(turnSpeechMode==='qwen')requireCloudSpeechSettings();
+      } catch(error) {if(opened&&session===lifecycle){turnSpeechMode='disabled';state('error');notify(error.message||'语音服务未能准备，回答文字仍会显示。');}}
     },
-    delta(text) { if (opened) { buffer += text; splitSentences(); ui().refresh(); } },
+    delta(text) { if (opened) {if(turnSpeechMode==='qwen' && String(text||'').trim()) {try{if(!cloudSpeech)startCloudSpeech();appendCloudSpeech(text);}catch(error){turnSpeechMode='disabled';state('error');notify(error.message||'在线语音未能开始，回答文字已保留。');}}else if(turnSpeechMode==='qwen'&&cloudSpeech)appendCloudSpeech(text);else if(turnSpeechMode==='local'){buffer += text; splitSentences();} ui().refresh(); } },
     finish(success, text) {
       if (!opened) {if (success && text) prepareMessage(text);return;}
-      if (success) { finished = true; splitSentences(true); }
+      if (success) {if(turnSpeechMode==='qwen')appendCloudSpeech('',true);else if(turnSpeechMode==='local'){finished = true; splitSentences(true);}}
       else { void stopSpeech(); state('paused'); }
       ui().refresh();
     },

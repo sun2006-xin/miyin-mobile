@@ -4,8 +4,8 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../assets/miyin_v5/miyin-chat-voice.js'), 'utf8');
-const settle = async () => { for (let i=0; i<8; i++) await Promise.resolve(); };
-function harness(request) {
+const settle = async () => { for (let i=0; i<30; i++) await Promise.resolve(); };
+function harness(request, speechSettings={mode:'local'}) {
   const listeners = new Map(), calls = [], states = [], timers = new Map();
   let draft = '', activeScreen = true, timerId = 0, reading = null;
   const data = new Map();
@@ -13,7 +13,7 @@ function harness(request) {
   const document = {hidden: false, addEventListener: (name, fn) => on('doc:' + name, fn),
     querySelector: () => ({classList: {contains: () => activeScreen}})};
   const window = {MiyinApp: {}, addEventListener: on,
-    MiyinNativeBridge: {request: async (method, params) => { calls.push({method, params}); return request ? request(method, params) : {status:'ok'}; }},
+    MiyinNativeBridge: {request: async (method, params) => { calls.push({method, params});if(method==='speech.settings') {if(speechSettings instanceof Error)throw speechSettings;return speechSettings;} return request ? request(method, params) : {status:'ok'}; }},
     MiyinChatUI: {announce: () => {}, setReading: id => { reading=id; },
       sendVoice: () => undefined, normalizeTranscript: text => text},
     MiyinChat: {isGenerating: false, cancel: (conversationId,messageId) => calls.push({method:'cancel',conversationId,messageId})},
@@ -28,9 +28,9 @@ function harness(request) {
     emit(name,detail){for(const fn of listeners.get(name)||[])fn({detail});},
     leave(){activeScreen=false;this.emit('miyin:surface-visibility-change');}};
 }
-test('opening voice does not start a microphone or contact a model', () => {
-  const h=harness(); h.voice.open(); assert.equal(h.calls.length,1); assert.equal(h.calls[0].method,'voice.prepare');
-  assert.equal(h.calls[0].params.languageTag,'zh-Hans');assert.equal(h.voice.isOpen,true);
+test('opening voice reads local settings and warms without starting a microphone or model', async () => {
+  const h=harness(); h.voice.open();await settle();assert.deepEqual(h.calls.map(x=>x.method),['speech.settings','voice.prepare']);
+  assert.equal(h.calls[1].params.languageTag,'zh-Hans');assert.equal(h.voice.isOpen,true);
 });
 
 test('one answer queues the next segment after buffering without ending the shared track', async () => {
@@ -62,10 +62,10 @@ test('generic voice warmup cannot replace an exact prepared reply with another l
   assert.equal(h.calls.filter(row=>row.method==='voice.prepare').length,0);
 });
 
-test('automatic warmup follows the visible reply language', () => {
+test('automatic warmup follows the visible reply language', async () => {
   const h=harness();h.window.MiyinChatUI.getActiveId=()=> 'en';
   h.window.MiyinChatUI.get=()=>({messages:[{role:'assistant',status:'complete',text:'Hello yesterday.'}]});
-  h.voice.open();assert.equal(h.calls[0].params.languageTag,'en');
+  h.voice.open();await settle();assert.equal(h.calls.find(x=>x.method==='voice.prepare').params.languageTag,'en');
 });
 test('microphone uses local chat mode and shutdown cancels the exact session', async () => {
   const h=harness();h.voice.open();await h.voice.toggleMicrophone();
@@ -337,4 +337,75 @@ test('formatting-only lines do not trigger an English model between Chinese spee
     h.emit('miyin:voice-event',{sessionId:call.params.sessionId,type:'tts_done'});await settle();
   }
   assert.equal(h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text).join('').replace(/\s/g,''),'你好。继续交流。');
+});
+
+const cloudSettings=()=>({mode:'qwen',allowCloud:true,region:'beijing',model:'qwen3-tts-flash-realtime',voice:'Cherry',hasKey:true});
+test('online live answer opens once, appends before final text and finishes one session',async()=>{
+  const h=harness(undefined,cloudSettings());h.voice.open();await settle();
+  assert.deepEqual(h.calls.map(x=>x.method),['speech.settings']);
+  await h.voice.beforeGeneration({conversationId:'c',messageId:'stream'});
+  h.voice.delta('你好');await settle();
+  const first=h.calls.find(x=>x.method==='speech.append');assert.equal(first.params.text,'你好');
+  h.voice.delta('，这是连续回复。');h.voice.finish(true);await settle();
+  assert.equal(h.calls.filter(x=>x.method==='speech.open').length,1);
+  assert.equal(h.calls.find(x=>x.method==='speech.open').params.languageTag,'auto');
+  assert.equal(h.calls.filter(x=>x.method==='speech.finish').length,1);
+  assert.equal(h.calls.filter(x=>x.method==='speech.append').map(x=>x.params.text).join(''),'你好，这是连续回复。');
+  assert(h.calls.filter(x=>x.method.startsWith('speech.')&&x.method!=='speech.settings').every(x=>x.params.sessionId===first.params.sessionId));
+  assert(!h.calls.some(x=>['voice.prepare','voice.prepareUtterance','voice.speak'].includes(x.method)));
+});
+test('online speech waits for the first nonempty text instead of timing out during model thinking',async()=>{
+  const h=harness(undefined,cloudSettings());h.voice.open();await settle();
+  await h.voice.beforeGeneration({conversationId:'c',messageId:'long-thinking'});await settle();
+  h.voice.delta('');h.voice.delta('  ');await settle();
+  assert.equal(h.calls.filter(x=>x.method==='speech.open').length,0);
+  h.voice.delta('你好');await settle();h.voice.delta('，这是后续文字。');await settle();
+  assert.equal(h.calls.filter(x=>x.method==='speech.open').length,1);
+  assert.equal(h.calls.filter(x=>x.method==='speech.append').map(x=>x.params.text).join(''),'你好，这是后续文字。');
+  const empty=harness(undefined,cloudSettings());empty.voice.open();await settle();
+  await empty.voice.beforeGeneration({conversationId:'c',messageId:'empty'});empty.voice.finish(true,'');await settle();
+  assert.equal(empty.calls.filter(x=>x.method==='speech.open').length,0);
+});
+test('online manual read uses one connection and bounded Unicode-safe append chunks',async()=>{
+  const h=harness(undefined,cloudSettings()),text='你好😀，这是一个完整回答。'.repeat(100);
+  await h.voice.read(text,'cloud-read');await settle();
+  const appended=h.calls.filter(x=>x.method==='speech.append');
+  assert(appended.length>1);assert(appended.every(x=>Array.from(x.params.text).length<=512));
+  assert.equal(appended.map(x=>x.params.text).join(''),text);
+  assert.equal(h.calls.filter(x=>x.method==='speech.open').length,1);
+  assert.equal(h.calls.filter(x=>x.method==='speech.finish').length,1);
+  assert.equal(h.reading,'cloud-read');
+  h.emit('miyin:voice-event',{type:'tts_done',sessionId:appended[0].params.sessionId});assert.equal(h.reading,null);
+});
+test('online speech requires its dedicated key and explicit text upload permission',async()=>{
+  for(const invalid of [{...cloudSettings(),hasKey:false},{...cloudSettings(),allowCloud:false}]){
+    const h=harness(undefined,invalid);await h.voice.read('Do not upload.','private');await settle();
+    assert(!h.calls.some(x=>['speech.open','speech.append','voice.speak'].includes(x.method)));assert.equal(h.reading,null);
+  }
+});
+test('speech settings failure never silently selects a local or cloud engine',async()=>{
+  const h=harness(undefined,new Error('Settings failed'));await h.voice.read('No fallback.','failed');await settle();
+  assert(!h.calls.some(x=>['speech.open','voice.speak'].includes(x.method)));assert.equal(h.reading,null);
+});
+test('interrupt while online connection opens discards pending and late text',async()=>{
+  let release;const pending=new Promise(r=>release=r);
+  const h=harness(method=>method==='speech.open'?pending:{},cloudSettings());h.voice.open();await settle();
+  await h.voice.beforeGeneration({conversationId:'c',messageId:'cloud-turn'});h.voice.delta('Pending text.');await settle();
+  const id=h.calls.find(x=>x.method==='speech.open').params.sessionId;
+  await h.voice.interrupt();release({status:'ready'});await settle();
+  h.emit('miyin:voice-event',{sessionId:id,type:'tts_done'});h.voice.delta('Late text.');await settle();
+  assert.equal(h.calls.filter(x=>x.method==='speech.cancel').length,1);
+  assert(!h.calls.some(x=>['speech.append','voice.speak'].includes(x.method)));assert.equal(h.reading,null);
+});
+test('online stream keeps bounded pending text and cancels on overflow',async()=>{
+  let release;const pending=new Promise(r=>release=r);
+  const h=harness(method=>method==='speech.open'?pending:{},cloudSettings());h.voice.open();await settle();
+  await h.voice.beforeGeneration({conversationId:'c',messageId:'bounded'});h.voice.delta('字'.repeat(33000));await settle();
+  release({status:'ready'});await settle();
+  assert(h.calls.some(x=>x.method==='speech.cancel'));assert(!h.calls.some(x=>x.method==='speech.append'));
+});
+test('online speech forwards the selected AI reading language independently of chat model',async()=>{
+  const h=harness(undefined,cloudSettings());h.preferences.set('miyin.full.preview.v5.ai-tts-language',JSON.stringify('ru'));
+  await h.voice.read('Привет.','russian');await settle();
+  assert.equal(h.calls.find(x=>x.method==='speech.open').params.languageTag,'ru');
 });
