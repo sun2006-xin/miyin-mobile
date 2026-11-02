@@ -1,9 +1,24 @@
 {
-  "repo": "unsloth/Qwen3.5-2B-GGUF",
-  "revision": "f6d5376be1edb4d416d56da11e5397a961aca8ae",
-  "name": "mmproj-F16.gguf",
-  "bytes": 668227264,
-  "sha256": "7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7",
+  "name": "mmproj-Q8_0.gguf",
+  "bytes": 361518784,
+  "sha256": "3dc9c77a3323342e6a08b85cf715bf8d8d20704fb50723ba2458487703cb9c24",
   "license": "apache-2.0",
-  "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/mmproj-F16.gguf"
+  "derivation": "Locally quantized from the pinned upstream F16 projector; not an upstream Q8 release.",
+  "source": {
+    "repo": "unsloth/Qwen3.5-2B-GGUF",
+    "revision": "f6d5376be1edb4d416d56da11e5397a961aca8ae",
+    "name": "mmproj-F16.gguf",
+    "bytes": 668227264,
+    "sha256": "7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7",
+    "license": "apache-2.0",
+    "url": "https://huggingface.co/unsloth/Qwen3.5-2B-GGUF/resolve/f6d5376be1edb4d416d56da11e5397a961aca8ae/mmproj-F16.gguf"
+  },
+  "quantization": {
+    "format": "Q8_0",
+    "tool": "llama-quantize",
+    "build": 11433,
+    "revision": "50569eb87",
+    "executableSha256": "48dd56fb909b8c1935fea48d4c5c8fefaac444201a512d97f61de8994fa189e9",
+    "command": "llama-quantize mmproj-F16.gguf mmproj-Q8_0.gguf Q8_0 4"
+  }
 }

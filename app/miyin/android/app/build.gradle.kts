@@ -40,6 +40,14 @@ android {
         // flag during build.
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        // target-platform limits Flutter itself, but transitive Android SDKs
+        // also contribute native libraries. Keep the arm64 artifact arm64-only.
+        if (providers.gradleProperty("target-platform").orNull == "android-arm64") {
+            ndk {
+                abiFilters.clear()
+                abiFilters.add("arm64-v8a")
+            }
+        }
     }
 
     buildTypes {

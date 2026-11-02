@@ -87,8 +87,8 @@ class PhoneLlmRuntime(private val activity: Activity) : MethodChannel.MethodCall
                     checkActive()
                     val projector = File(directory,"mmproj.gguf")
                     if (needsVision) {
-                        val projectorSha = "7035e9cb8d7c6a9681d07eef9a364783e86ea4cd73faab2eabb4f43a101830c7"
-                        if (!projector.exists() || projector.length() != 668227264L || preferences.getString("vision-verified","") != "$projectorSha:${projector.lastModified()}") {
+                        val projectorSha = "3dc9c77a3323342e6a08b85cf715bf8d8d20704fb50723ba2458487703cb9c24"
+                        if (!projector.exists() || projector.length() != 361518784L || preferences.getString("vision-verified","") != "$projectorSha:${projector.lastModified()}") {
                             val temporary = File(directory,"mmproj.part")
                             val digest = MessageDigest.getInstance("SHA-256")
                             try {
