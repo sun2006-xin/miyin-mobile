@@ -98,4 +98,7 @@ html[data-button-material] #app :is(#chat-input,#translation-input,#voice-input)
 :where(#app .appearance-surface){border-radius:14px}
 :where(#app .appearance-panel){border-radius:18px}
 :where(#app .appearance-field){border-radius:12px}
+
+/* Image previews keep their rectangular canvas under every button material. */
+#app button.chat-image-card.value-control{border-radius:18px!important;clip-path:none}
 #app .mic-button.shader-fallback .mic-surface{opacity:0}.v4-style-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.v4-mic-style-section{margin-top:22px}.v4-style-choice{min-width:0}.v4-style-heading{gap:12px}.v4-style-heading>div{min-width:0}.v4-style-heading small{white-space:normal;line-height:1.5}

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/services.dart';
 import 'package:path_provider/path_provider.dart';
@@ -14,16 +15,30 @@ import 'cloud_service.dart';
 import 'phone_llm_client.dart';
 import 'chat_search_context.dart';
 import 'web_search.dart';
+import 'chat_image.dart';
+import 'chat_image_store.dart';
+import 'chat_image_request.dart';
+import '../miyin/attachment_source_picker.dart';
+import '../miyin/translation_attachment_ocr.dart';
 
 final class ChatHost {
   ChatHost({
     required this.onEvent,
     this.databasePath,
     DatabaseFactory? databaseFactory,
+    this.imagePicker,
+    this.imageTextRecognizer,
+    this.imageStore,
   }) : _databaseFactory = databaseFactory;
   final String? databasePath;
   final DatabaseFactory? _databaseFactory;
   final Future<void> Function(Map<String, Object?>) onEvent;
+  final TranslationImageSourcePicker? imagePicker;
+  final TranslationImageTextRecognizer? imageTextRecognizer;
+  final ChatImageStore? imageStore;
+  Future<ChatImageStore>? _images;
+  final _pendingImageIds = <String>{};
+  bool _pickingImage = false;
   static const _secrets = MethodChannel('com.miyin.app/chat-secrets');
   String? _key;
   final cloudServices = Map<String, CloudService>.of(CloudService.defaults);
@@ -82,16 +97,21 @@ final class ChatHost {
       : service == 'deepseek'
       ? 'https://api.deepseek.com'
       : cloudServices[service]!.endpoint;
-  DeepSeekClient cloudClient(String service, String key, String endpoint) =>
-      DeepSeekClient(
-        apiKey: key,
-        baseUrl: endpoint,
-        serviceName: service == 'deepseek'
-            ? 'DeepSeek'
-            : cloudServices[service]!.label,
-        deepSeekOptions: service == 'deepseek',
-        anthropic: service == 'anthropic',
-      );
+  DeepSeekClient cloudClient(
+    String service,
+    String key,
+    String endpoint, {
+    Map<int, List<ChatImage>> imageMessages = const {},
+  }) => DeepSeekClient(
+    apiKey: key,
+    imageMessages: imageMessages,
+    baseUrl: endpoint,
+    serviceName: service == 'deepseek'
+        ? 'DeepSeek'
+        : cloudServices[service]!.label,
+    deepSeekOptions: service == 'deepseek',
+    anthropic: service == 'anthropic',
+  );
   static const presetModels = ['deepseek-flash', 'deepseek-v4-pro'];
   String? model = presetModels.first;
   List<String> models = [...presetModels];
@@ -510,10 +530,151 @@ final class ChatHost {
     return available;
   }
 
+  static final _imageIdPattern = RegExp(r'^[a-f0-9]{32}$');
+  Set<String> _historyImageIds(Iterable<Object?> rows) {
+    final ids = <String>{};
+    for (final row in rows.whereType<Map>()) {
+      final messages = row['messages'];
+      if (messages is! List) continue;
+      for (final message in messages.whereType<Map>()) {
+        final attachments = message['attachments'];
+        if (attachments is! List) continue;
+        for (final attachment in attachments.whereType<Map>()) {
+          final id = attachment['imageId'];
+          if (id is String && _imageIdPattern.hasMatch(id)) ids.add(id);
+        }
+      }
+    }
+    return ids;
+  }
+
+  Set<String> _savedImageIds() =>
+      _historyImageIds(_storedBodies.values.map(jsonDecode));
+  Future<void> _imageMutations = Future<void>.value();
+  Future<T> _mutateImages<T>(Future<T> Function() action) {
+    final operation = _imageMutations.then((_) => action());
+    _imageMutations = operation.then<void>((_) {}, onError: (Object _) {});
+    return operation;
+  }
+
+  Future<ChatImageStore> _imageStorage() => _images ??= () async {
+    final ChatImageStore store;
+    if (imageStore != null) {
+      store = imageStore!;
+    } else {
+      final support = await getApplicationSupportDirectory();
+      final directory = Directory('${support.path}/chat-images');
+      await directory.create(recursive: true);
+      store = ChatImageStore(
+        directory: Directory(await directory.resolveSymbolicLinks()),
+      );
+    }
+    await store.pruneReferenced({..._savedImageIds(), ..._pendingImageIds});
+    return store;
+  }();
+  String _imageId(Map<String, Object?> params) {
+    final id = params['imageId'];
+    if (id is! String || !_imageIdPattern.hasMatch(id))
+      throw const ChatFailure('invalid_image', '图片引用无效，请重新选择。');
+    return id;
+  }
+
+  Future<Map<String, Object?>> _imageAction(
+    String method,
+    Map<String, Object?> params,
+  ) async {
+    if (method == 'chat.image.pick') {
+      if (_pickingImage || _active != null)
+        throw const ChatFailure('busy', '请先完成当前操作。');
+      if (_pendingImageIds.length >= 16)
+        throw const ChatFailure('image_limit', '待处理图片较多，请发送或移除后再添加。');
+      final kind = switch (params['kind']) {
+        'camera' => AttachmentSourceKind.camera,
+        'image' => AttachmentSourceKind.image,
+        _ => throw const ChatFailure('invalid_image', '请选择相机或相册。'),
+      };
+      final picker = imagePicker;
+      if (picker == null)
+        throw const ChatFailure('image_unavailable', '当前平台暂时无法选择图片。');
+      _pickingImage = true;
+      try {
+        final selected = await picker.pickTranslationImage(kind);
+        if (selected == null) return {'canceled': true};
+        try {
+          if (_closed) throw const ChatFailure('closed', '聊天页面已关闭。');
+          final canonical = await File(selected.path).resolveSymbolicLinks();
+          return await _mutateImages(() async {
+            if (_closed) throw const ChatFailure('closed', '聊天页面已关闭。');
+            final store = await _imageStorage();
+            final result = await store.importImage(
+              PickedTranslationImage(
+                path: canonical,
+                name: selected.name,
+                mimeType: selected.mimeType,
+              ),
+            );
+            final id = result['id']! as String;
+            if (_closed) {
+              await store.remove(id);
+              throw const ChatFailure('closed', '聊天页面已关闭。');
+            }
+            _pendingImageIds.add(id);
+            return result;
+          });
+        } finally {
+          await picker.disposeTranslationImage(selected);
+        }
+      } on ChatFailure {
+        rethrow;
+      } catch (_) {
+        throw const ChatFailure('image_read', '图片无法读取，请选择8MB以内的JPEG或PNG图片。');
+      } finally {
+        _pickingImage = false;
+      }
+    }
+    final id = _imageId(params);
+    try {
+      final store = await _imageStorage();
+      if (method == 'chat.image.discard') {
+        return await _mutateImages(() async {
+          if (_active == null && !_savedImageIds().contains(id)) {
+            await store.remove(id);
+            _pendingImageIds.remove(id);
+          }
+          return {'discarded': true};
+        });
+      }
+      if (method == 'chat.image.extract') {
+        final recognizer = imageTextRecognizer;
+        if (recognizer == null)
+          throw const ChatFailure('ocr_unavailable', '本机图片文字提取暂不可用。');
+        final result = await recognizer.recognize(await store.verifiedPath(id));
+        final text = result.recognizedText.trim();
+        if (text.isEmpty || text.length > 10000 || result.truncated)
+          throw const ChatFailure('ocr_incomplete', '图片文字为空或过多，请裁小图片后重试。');
+        return {'text': text};
+      }
+      if (method == 'chat.image.preview') {
+        final image = await store.readImage(id);
+        return {
+          'imageId': id,
+          'dataUrl':
+              'data:${image.mimeType};base64,${base64Encode(image.bytes)}',
+        };
+      }
+      throw const ChatFailure('unknown_method', '不支持的图片操作。');
+    } on ChatFailure {
+      rethrow;
+    } catch (_) {
+      throw const ChatFailure('image_missing', '图片已不可用，请重新选择。');
+    }
+  }
+
   Future<Map<String, Object?>> handle(
     String method,
     Map<String, Object?> params,
   ) async {
+    if (method.startsWith('chat.image.')) return _imageAction(method, params);
     switch (method) {
       case 'chat.settings':
         return settingsSnapshot;
@@ -787,6 +948,7 @@ final class ChatHost {
     }
     var length = 0;
     final messages = <Map<String, String>>[];
+    final imageRefs = <int, List<String>>{};
     for (final item in raw) {
       if (item is! Map ||
           !['user', 'assistant'].contains(item['role']) ||
@@ -799,15 +961,39 @@ final class ChatHost {
         throw const ChatFailure('context_limit', '对话内容过长，请新建会话或减少附加资料。');
       }
       messages.add({'role': item['role'] as String, 'content': content});
+      final ids = item['imageIds'];
+      if (ids != null) {
+        if (item['role'] != 'user' ||
+            ids is! List ||
+            ids.length > ChatImage.maxImages ||
+            ids.any((id) => id is! String || !_imageIdPattern.hasMatch(id)))
+          throw const ChatFailure('invalid_image', '图片引用无效，请重新选择。');
+        if (ids.isNotEmpty)
+          imageRefs[messages.length - 1] = List<String>.from(ids);
+      }
     }
     if (messages.last['role'] != 'user')
       throw const ChatFailure('invalid_request', '请先输入本轮问题。');
     if (!sendHistory && messages.isNotEmpty) {
+      final lastImages = imageRefs[messages.length - 1];
       final lastUser = messages.lastWhere((item) => item['role'] == 'user');
       messages
         ..clear()
         ..add(lastUser);
+      imageRefs.clear();
+      if (lastImages != null) imageRefs[0] = lastImages;
     }
+    final imageCount = imageRefs.values.fold<int>(
+      0,
+      (sum, ids) => sum + ids.length,
+    );
+    if (imageCount > ChatImage.maxImages)
+      throw const ChatFailure('image_limit', '本轮最多携带4张图片，请新建对话或关闭携带历史后再发送。');
+    if (isPhone && imageCount > 0)
+      throw const ChatFailure(
+        'image_unsupported',
+        '当前手机模型包尚未包含看图组件。请切换支持图片的模型，或选择仅提取图片文字。',
+      );
     final selected = selectedModel!;
     final query = params['searchQuery'];
     final searchQuery = query is String && WebSearch.needed(webMode, query)
@@ -820,7 +1006,11 @@ final class ChatHost {
         ? _conversationId(params)
         : null;
     final compress =
-        isLocal && sendHistory && useMemory && conversationId != null;
+        isLocal &&
+        sendHistory &&
+        useMemory &&
+        conversationId != null &&
+        imageCount == 0;
     final prepared = isPhone
         ? PhoneLlmClient.prepareContext(selected, messages)
         : isLocal && !compress
@@ -828,10 +1018,23 @@ final class ChatHost {
             selected,
             messages,
             windowTokens: localContextWindow,
+            reservedOutputTokens:
+                OllamaClient.outputTokens +
+                imageCount * OllamaClient.imageTokenReserve,
           )
         : null;
     final requestMessages = prepared?.messages ?? messages;
-    final ChatClient client = isPhone
+    final offset = messages.length - requestMessages.length;
+    if (imageRefs.keys.any((index) => index < offset))
+      throw const ChatFailure(
+        'image_context_limit',
+        '图片和对话超过当前模型容量，请新建对话或选择更大的上下文。',
+      );
+    final requestImageRefs = {
+      for (final entry in imageRefs.entries)
+        entry.key - offset: List<String>.of(entry.value),
+    };
+    ChatClient client = isPhone
         ? PhoneLlmClient(
             thinking: thinking,
             onReasoning: () {
@@ -851,6 +1054,57 @@ final class ChatHost {
         : isLocal
         ? OllamaClient(thinking: thinking, windowTokens: localContextWindow)
         : cloudClient(provider, keyFor(provider)!, endpointFor(provider));
+    if (imageCount > 0) {
+      // The provisional text client owns no request yet. Loading remains lazy,
+      // after consent and request validation; it never enters the WebView.
+      client.cancel();
+      final selectedProvider = provider,
+          selectedKey = keyFor(provider),
+          selectedEndpoint = endpointFor(provider);
+      final window = localContextWindow, selectedThinking = thinking;
+      client = ChatImageRequest(
+        load: () async {
+          final store = await _imageStorage();
+          final loaded = <int, List<ChatImage>>{};
+          var totalBytes = 0;
+          for (final entry in requestImageRefs.entries) {
+            final images = <ChatImage>[];
+            for (final imageId in entry.value) {
+              try {
+                final image = await store.readImage(imageId);
+                totalBytes += image.bytes.length;
+                if (totalBytes > ChatImage.maxTotalBytes)
+                  throw const ChatFailure(
+                    'image_limit',
+                    '本轮图片总大小超过16MB，请减少图片。',
+                  );
+                images.add(
+                  ChatImage(mimeType: image.mimeType, bytes: image.bytes),
+                );
+              } on ChatFailure {
+                rethrow;
+              } catch (_) {
+                throw const ChatFailure('image_missing', '附加图片已不可用，请重新选择。');
+              }
+            }
+            loaded[entry.key] = images;
+          }
+          return loaded;
+        },
+        create: (images) => selectedProvider == 'ollama'
+            ? OllamaClient(
+                thinking: selectedThinking,
+                windowTokens: window,
+                imageMessages: images,
+              )
+            : cloudClient(
+                selectedProvider,
+                selectedKey!,
+                selectedEndpoint,
+                imageMessages: images,
+              ),
+      );
+    }
     _active = client;
     _activeId = id;
     // Let the RPC acknowledgement reach the page before streaming events.
@@ -1196,6 +1450,16 @@ final class ChatHost {
         }
       });
       _storedBodies = bodies;
+      if (_images != null) {
+        await _mutateImages(() async {
+          final saved = _historyImageIds(rows);
+          _pendingImageIds.removeAll(saved);
+          await (await _images!).pruneReferenced({
+            ...saved,
+            ..._pendingImageIds,
+          });
+        });
+      }
     });
     _writes = write.catchError((Object _) {});
     return write;
@@ -1206,6 +1470,14 @@ final class ChatHost {
     _pageReader?.cancel();
     cancel();
     await _writes;
+    await _mutateImages(() async {
+      _pendingImageIds.clear();
+      if (_images != null) {
+        try {
+          await (await _images!).pruneReferenced(_savedImageIds());
+        } catch (_) {}
+      }
+    });
     if (_database != null) await (await _database!).close();
   }
 

@@ -6,6 +6,16 @@ const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../../assets/miyin_v5/miyin-chat-context.js'), 'utf8');
 function api() { const window = {}; vm.runInNewContext(source, {window}); return window.MiyinChatContext; }
 
+test('image attachments stay separate from text and retain only opaque image references', () => {
+  const image={imageId:'a'.repeat(32),name:'diagram.png',type:'image/png',thumbnailDataUrl:'data:image/png;base64,AAA='};
+  const message={text:'图上是什么？',attachments:[image,{name:'notes.txt',text:'文字资料',extraction:'文档'}]};
+  assert.equal(api().assemble(message).includes('AAA='),false);
+  assert.match(api().assemble(message),/文字资料/);
+  assert.equal(api().assemble({text:'看图',attachments:[image]}),'看图');
+  assert.deepEqual(Array.from(api().imageIds(message)),['a'.repeat(32)]);
+  assert.throws(()=>api().imageIds({attachments:[{imageId:'../private-file'}]}),/图片引用/);
+});
+
 test('memory presentation distinguishes phone, cloud and automatic summary capability', () => {
   const view=api().memoryPresentation;
   const context={providerId:'phone',model:'phone-model',summarySupported:false,privacy:{sendHistory:true,useMemory:true,saveLocalHistory:true}};

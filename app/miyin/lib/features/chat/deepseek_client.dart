@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'chat_prompts.dart';
+import 'chat_image.dart';
 
 final class ChatFailure implements Exception {
   const ChatFailure(this.code, this.message);
@@ -30,7 +31,9 @@ final class DeepSeekClient implements ChatClient {
     this.temperature,
     this.systemPrompt,
     this.onReasoning,
-  }) : _http = client ?? HttpClient() {
+    Map<int, List<ChatImage>> imageMessages = const {},
+  }) : imageMessages = snapshotChatImages(imageMessages),
+       _http = client ?? HttpClient() {
     _http.connectionTimeout = const Duration(seconds: 20);
   }
   final String apiKey;
@@ -42,8 +45,48 @@ final class DeepSeekClient implements ChatClient {
   final double? temperature;
   final String? systemPrompt;
   final void Function()? onReasoning;
+  final Map<int, List<ChatImage>> imageMessages;
   final HttpClient _http;
   bool _canceled = false;
+
+  List<Map<String, Object?>> _messagesWithImages(
+    List<Map<String, String>> messages,
+  ) {
+    if (imageMessages.isEmpty) return messages;
+    try {
+      validateChatImages(imageMessages, messages);
+    } on ArgumentError {
+      throw const ChatFailure('image_invalid', '原图资料不完整、超出限制或与消息不匹配，请重新附加图片。');
+    }
+    return [
+      for (var index = 0; index < messages.length; index++)
+        if (imageMessages.containsKey(index))
+          {
+            ...messages[index],
+            'content': [
+              if (messages[index]['content']!.isNotEmpty)
+                {'type': 'text', 'text': messages[index]['content']},
+              for (final image in imageMessages[index]!)
+                if (anthropic)
+                  {
+                    'type': 'image',
+                    'source': {
+                      'type': 'base64',
+                      'media_type': image.mimeType,
+                      'data': image.base64,
+                    },
+                  }
+                else
+                  {
+                    'type': 'image_url',
+                    'image_url': {'url': image.dataUrl},
+                  },
+            ],
+          }
+        else
+          messages[index],
+    ];
+  }
 
   @override
   void cancel() {
@@ -137,6 +180,8 @@ final class DeepSeekClient implements ChatClient {
     List<Map<String, String>> messages,
   ) async* {
     try {
+      if (_canceled) throw const ChatFailure('canceled', '已停止生成。');
+      final wireMessages = _messagesWithImages(messages);
       final identity =
           systemPrompt ??
           ChatPrompts.identity(model, runtime: '$serviceName 服务');
@@ -147,7 +192,7 @@ final class DeepSeekClient implements ChatClient {
           if (anthropic) 'system': identity,
           'messages': [
             if (!anthropic) {'role': 'system', 'content': identity},
-            ...messages,
+            ...wireMessages,
           ],
           'stream': true,
           if (deepSeekOptions && !anthropic) 'thinking': {'type': 'disabled'},

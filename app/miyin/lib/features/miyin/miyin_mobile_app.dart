@@ -18,6 +18,7 @@ import '../chat/deepseek_settings.dart';
 import '../chat/service_key_sheet.dart';
 import '../chat/cloud_service.dart';
 import 'attachment_source_picker.dart';
+import 'translation_attachment_ocr.dart';
 import 'avatar_image_picker.dart';
 import 'live_audio_archive.dart';
 import 'live_session_microphone_recorder.dart';
@@ -162,6 +163,8 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     }
     _controller = WebViewController();
     _chat = ChatHost(
+      imagePicker: _attachmentSourcePicker,
+      imageTextRecognizer: const BundledMlKitImageTextRecognizer(),
       onEvent: (event) async {
         if (!_nativeHostReady || !mounted) return;
         final literal = jsonEncode(jsonEncode(event));

@@ -27,9 +27,11 @@
       '\n来源编号：' + (item.sourceRecordId || item.id || '') + '\n' + body;
   }
   function assemble(message) {
-    const files = Array.isArray(message.attachments) ? message.attachments : [];
+    const attachments = Array.isArray(message.attachments) ? message.attachments : [];
+    imageIds(message);
+    const files = attachments.filter(item=>!item.imageId);
     const history = Array.isArray(message.contextAttachments) ? message.contextAttachments : [];
-    if (files.length > 4 || history.length > 8) throw new Error('一次最多附加 4 个文件和 8 条历史资料。');
+    if (attachments.length > 4 || history.length > 8) throw new Error('一次最多附加 4 个文件和 8 条历史资料。');
     const sections = history.map((item, i) => material(item, i + 1));
     files.forEach((item, i) => sections.push(material(item, history.length + i + 1, true)));
     const result = String(message.text || '') + (sections.length
@@ -55,5 +57,10 @@
     const content=memory?'更新时间：'+(Number.isNaN(time.getTime())?'未知':time.toLocaleString())+'\n来源模型：'+memory.model+'\n\n'+memory.summary+'\n\n【关键原文摘录】\n'+(memory.sourceQuotes||'暂无摘录'):'本会话尚无已保存摘要。';
     return {description:lines.join('\n\n'),content,hasSummary:!!memory};
   }
-  window.MiyinChatContext = Object.freeze({assemble, textSnapshot, memoryPresentation});
+  function imageIds(message) {
+    const images=(Array.isArray(message.attachments)?message.attachments:[]).filter(item=>item.imageId!==undefined);
+    if(images.length>4 || images.some(item=>typeof item.imageId!=='string'||!/^[a-f0-9]{32}$/.test(item.imageId))) throw new Error('图片引用无效，请重新选择。');
+    return images.map(item=>item.imageId);
+  }
+  window.MiyinChatContext = Object.freeze({assemble, textSnapshot, memoryPresentation, imageIds});
 })();

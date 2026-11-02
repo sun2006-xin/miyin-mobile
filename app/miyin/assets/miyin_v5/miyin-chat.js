@@ -6,6 +6,7 @@
   let ready = false, status = {configured: false}, serial = 0, active = null;
   let saveTimer = 0, saveQueue = Promise.resolve(), pendingSnapshot = null;
   let importing = false, imported = null;
+  let imageJob = null;
   let webRequest = null;
   let warming = null, warmedAt = 0;
   let nativeContextRows = [], nativeContextOffset = 0;
@@ -115,6 +116,9 @@
     if (importing) { notify('正在读取资料，请稍候。'); return false; }
     try {
       const pending = ui().getPending();
+      if(status.providerId==='phone' && pending.files.some(file=>file.imageId)) {
+        notify('当前手机模型包尚未包含看图组件。请切换支持图片的模型，或在图片预览中选择“仅提取文字”。');return false;
+      }
       window.MiyinChatContext.assemble({text: prompt ?? document.querySelector('#chat-input')?.value,
         attachments: pending.files, contextAttachments: pending.contexts});
     } catch (error) { notify(error.message); return false; }
@@ -171,8 +175,10 @@
     try {
       let selected = conversation.messages.slice(0, index).filter(message => message.status === 'complete');
       if (status.privacy?.sendHistory === false) selected = selected.slice(-1);
-      messages = selected.map(message => ({role: message.role, content: message.role === 'user'
-        ? window.MiyinChatContext.assemble(message) : message.text}));
+      messages = selected.map(message => {
+        const imageIds=message.role==='user'&&message.attachments?.some(file=>file.imageId)?window.MiyinChatContext.imageIds(message):[];
+        return {role:message.role,content:message.role==='user'?window.MiyinChatContext.assemble(message):message.text,...(imageIds.length?{imageIds}:{})};
+      });
     } catch (error) { finish(entry, 'failed', error.message); return; }
     if (status.privacy?.sendHistory === false) messages = messages.slice(-1);
     // Old preview replies must not masquerade as context from a real model.
@@ -220,6 +226,10 @@
   });
   document.addEventListener('click', event => {
     if (!native) return;
+    const picture=event.target.closest('[data-chat-image]');
+    if(picture){event.preventDefault();event.stopImmediatePropagation();void viewImage(picture.dataset.chatImage);return;}
+    const ocr=event.target.closest('[data-modal-action="chat-image-ocr"]');
+    if(ocr){event.preventDefault();event.stopImmediatePropagation();void extractImageText();return;}
     const webSource=event.target.closest('[data-chat-web-url]');
     if(webSource){event.preventDefault();event.stopImmediatePropagation();void rpc('chat.openUrl',{url:webSource.dataset.chatWebUrl}).catch(error=>notify(error.message));return;}
     const webOpen = event.target.closest('[data-modal-action="chat-web-open"]');
@@ -272,8 +282,11 @@
     const confirm = event.target.closest('[data-modal-action="chat-confirm-import"]');
     if (confirm) {
       event.preventDefault(); event.stopImmediatePropagation();
+      const chooseModel=!!imported?.imageId && status.providerId==='phone';
       if (imported) { ui().addAttachment(imported); imported = null; }
-      ui().closeModal(); return;
+      imageJob=null;ui().closeModal();
+      if(chooseModel) document.querySelector('#screen-chat .model-select')?.click();
+      return;
     }
     const shareButton = event.target.closest('[data-chat-action="share"]');
     if (shareButton) {
@@ -351,6 +364,10 @@
     if (!dialog) return;
     new MutationObserver(() => {
       if (webRequest && !dialog.classList.contains('open')) cancelWebPage();
+      if(imageJob && imageJob.phase!=='picking' && !dialog.classList.contains('open')) {
+        imageJob.canceled=true;
+        if(imported?.imageId) {void rpc('chat.image.discard',{imageId:imported.imageId}).catch(()=>{});imported=null;}
+      }
     }).observe(dialog, {attributes:true, attributeFilter:['class']});
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', watchWebDialog, {once:true});
@@ -375,10 +392,16 @@
     importing = true;
     imported = null;
     ui().closeModal();
-    notify(kind === 'document' ? '请选择 TXT 或 Markdown 文件' : '在本机提取图片文字，不上传图片');
+    notify(kind === 'document' ? '请选择 TXT 或 Markdown 文件' : '请选择图片，发送时由所选模型查看');
+    const job={owner:ui().getActiveId(),phase:'picking',canceled:false};if(kind!=='document')imageJob=job;
     try {
-      const result = await rpc(kind === 'document' ? 'attachment.pickArticle' : 'attachment.recognizeImage', {kind});
+      const result = await rpc(kind === 'document' ? 'attachment.pickArticle' : 'chat.image.pick', {kind});
       if (!result || result.canceled) return;
+      if(kind!=='document') {
+        if(job.canceled || job.owner!==ui().getActiveId() || !document.querySelector('#screen-chat')?.classList.contains('active')) {void rpc('chat.image.discard',{imageId:result.id}).catch(()=>{});return;}
+        imported={imageId:result.id,name:result.name,type:result.mimeType,bytes:result.bytes,thumbnailDataUrl:result.thumbnailDataUrl};
+        job.phase='preview';ui().previewImageAttachment(imported,status.providerId==='phone');return;
+      }
       const text = String(result.text || result.recognizedText || '').trim();
       if (!text || text.length > 10000) throw new Error('资料为空或超过 10,000 字符，请分段导入。');
       if (result.truncated || result.omittedBlockCount > 0) throw new Error('图片文字超出完整提取范围，请裁小图片后重试，避免遗漏资料。');
@@ -388,6 +411,28 @@
     } catch (error) { notify(error.message || '读取资料失败。'); }
     finally { importing = false; }
   }
+  async function viewImage(imageId) {
+    const owner=ui().getActiveId();
+    try {
+      const result=await rpc('chat.image.preview',{imageId});
+      if(owner!==ui().getActiveId()||!document.querySelector('#screen-chat')?.classList.contains('active'))return;
+      if(typeof result.dataUrl!=='string'||!/^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(result.dataUrl)||result.dataUrl.length>12*1024*1024)throw Error('图片无法打开。');
+      const image=document.createElement('img');image.src=result.dataUrl;image.dataset.imageMode='original';
+      window.miyinOpenImageViewer?.(image);
+    } catch(error){notify(error.message||'图片无法打开，请重新选择。');}
+  }
+  async function extractImageText() {
+    if(importing || !imported?.imageId || !imageJob)return;
+    const picture=imported,job=imageJob;imported=null;job.phase='ocr';importing=true;
+    try {
+      const result=await rpc('chat.image.extract',{imageId:picture.imageId});
+      if(job.canceled||job.owner!==ui().getActiveId()||!document.querySelector('#screen-chat')?.classList.contains('active'))return;
+      imageJob=null;imported={id:'text-'+picture.imageId,name:picture.name+'（文字）',type:'text/plain',extraction:'用户选择提取的图片文字',text:result.text};
+      ui().previewAttachment(imported);
+    } catch(error){if(!job.canceled){imageJob=null;ui().closeModal();notify(error.message||'图片文字提取失败，请重新选择。');}}
+    finally {importing=false;void rpc('chat.image.discard',{imageId:picture.imageId}).catch(()=>{});}
+  }
+  window.addEventListener('miyin:chat-image-removed',event=>{if(native)void rpc('chat.image.discard',{imageId:event.detail?.imageId}).catch(()=>{});});
   window.addEventListener('miyin:native-host-ready', () => { void initialize(); });
   window.MiyinChat = Object.freeze({native, start, cancel, continueAnswer, warmLocal, canSend, persist, pickAttachment, share,applyStatus:setStatus,
     saveHistoryPreference(value) {

@@ -1,7 +1,7 @@
 name: miyin_app
 description: "觅音独立手机应用"
 publish_to: 'none'
-version: 1.6.0-preview+50
+version: 1.6.0-preview+51
 
 environment:
   sdk: ^3.13.2

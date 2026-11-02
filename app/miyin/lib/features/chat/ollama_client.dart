@@ -4,11 +4,25 @@ import 'dart:io';
 
 import 'deepseek_client.dart';
 import 'chat_prompts.dart';
+import 'chat_image.dart';
 
 /// USB reverse maps this loopback port to the computer. No cloud fallback.
 final class OllamaClient implements ChatClient {
-  OllamaClient({this.thinking = false, this.windowTokens = contextTokens});
+  OllamaClient({
+    this.thinking = false,
+    this.windowTokens = contextTokens,
+    Uri? baseUrl,
+    Map<int, List<ChatImage>> imageMessages = const {},
+  }) : _endpoint = baseUrl ?? endpoint,
+       imageMessages = snapshotChatImages(imageMessages);
   static final endpoint = Uri.parse('http://127.0.0.1:11435');
+  final Uri _endpoint;
+  final Map<int, List<ChatImage>> imageMessages;
+
+  /// Deliberately conservative extra reservation, not an exact image tokenizer.
+  /// Native image preparation must separately bound resolution. A backend may
+  /// still reject a request whose model-specific visual token count is larger.
+  static const imageTokenReserve = 4096;
   final bool thinking;
   final int windowTokens;
   final HttpClient _http = HttpClient()
@@ -67,7 +81,7 @@ final class OllamaClient implements ChatClient {
 
   Future<HttpClientResponse> _request(String path, [Object? body]) async {
     final request = await _http
-        .openUrl(body == null ? 'GET' : 'POST', endpoint.resolve(path))
+        .openUrl(body == null ? 'GET' : 'POST', _endpoint.resolve(path))
         .timeout(const Duration(seconds: 10));
     request.followRedirects = false;
     if (body != null) {
@@ -79,6 +93,37 @@ final class OllamaClient implements ChatClient {
       throw const ChatFailure('local_service', '电脑模型未能处理请求，请检查模型是否已安装及服务状态。');
     }
     return response;
+  }
+
+  Future<void> _requireVision(String model) async {
+    final response = await _request('/api/show', {'model': model});
+    final bytes = <int>[];
+    await for (final chunk in response.timeout(const Duration(seconds: 10))) {
+      if (_canceled) throw const ChatFailure('canceled', '已停止生成。');
+      if (bytes.length + chunk.length > 512 * 1024) {
+        throw const ChatFailure(
+          'image_capability_unknown',
+          '无法确认当前电脑模型的图片能力，请检查模型配置后重试。',
+        );
+      }
+      bytes.addAll(chunk);
+    }
+    Object? value;
+    try {
+      value = jsonDecode(utf8.decode(bytes));
+    } on FormatException {
+      throw const ChatFailure(
+        'image_capability_unknown',
+        '无法确认当前电脑模型的图片能力，请检查模型配置后重试。',
+      );
+    }
+    final capabilities = value is Map ? value['capabilities'] : null;
+    if (capabilities is! List || !capabilities.contains('vision')) {
+      throw const ChatFailure(
+        'image_unsupported',
+        '当前电脑模型未确认支持原图识别，请选择支持图片的模型；原图未发送。',
+      );
+    }
   }
 
   Future<List<String>> models() async {
@@ -125,18 +170,74 @@ final class OllamaClient implements ChatClient {
     int maxOutput = outputTokens,
   }) async* {
     try {
-      final context = systemPrompt == null
-          ? prepareContext(model, messages, windowTokens: windowTokens).messages
-          : messages;
+      if (_canceled) throw const ChatFailure('canceled', '已停止生成。');
+      final hasImages = imageMessages.isNotEmpty;
+      try {
+        validateChatImages(imageMessages, messages);
+      } on ArgumentError {
+        throw const ChatFailure(
+          'image_invalid',
+          '原图资料不完整、超出限制或与消息不匹配，请重新附加图片。',
+        );
+      }
+      final imageTokens = imageMessages.values.fold<int>(
+        0,
+        (sum, images) => sum + images.length * imageTokenReserve,
+      );
+      if (hasImages && imageTokens + maxOutput >= windowTokens) {
+        throw const ChatFailure(
+          'image_context_limit',
+          '图片与输出预留超过当前模型上下文容量，请减少图片或选择更大上下文。',
+        );
+      }
+      final List<Map<String, String>> context;
+      try {
+        context = systemPrompt == null
+            ? (hasImages
+                      ? prepareContext(
+                          model,
+                          messages,
+                          windowTokens: windowTokens,
+                          reservedOutputTokens: maxOutput + imageTokens,
+                        )
+                      : prepareContext(
+                          model,
+                          messages,
+                          windowTokens: windowTokens,
+                        ))
+                  .messages
+            : messages;
+      } on ChatFailure {
+        if (!hasImages) rethrow;
+        throw const ChatFailure(
+          'image_context_limit',
+          '问题与图片超过当前上下文预算，请减少资料；原图不会自动省略。',
+        );
+      }
+      final omitted = messages.length - context.length;
+      if (hasImages && imageMessages.keys.any((index) => index < omitted)) {
+        throw const ChatFailure(
+          'image_context_limit',
+          '较早图片已超出本轮上下文预算，请移除图片或扩大上下文后重试；原图不会自动省略。',
+        );
+      }
       if (systemPrompt != null &&
           messages.fold<int>(
                 utf8.encode(systemPrompt).length + 256,
                 (sum, row) =>
                     sum + utf8.encode(row['content'] ?? '').length + 64,
               ) >
-              windowTokens - maxOutput) {
+              windowTokens - maxOutput - imageTokens) {
+        if (hasImages) {
+          throw const ChatFailure(
+            'image_context_limit',
+            '问题与图片超过当前上下文预算，请减少资料；原图不会自动省略。',
+          );
+        }
         throw const ChatFailure('memory_limit', '待整理的记忆片段过长，原文已保留。');
       }
+      if (_canceled) throw const ChatFailure('canceled', '已停止生成。');
+      if (hasImages) await _requireVision(model);
       if (_canceled) throw const ChatFailure('canceled', '已停止生成。');
       final response = await _request('/api/chat', {
         'model': model,
@@ -144,7 +245,17 @@ final class OllamaClient implements ChatClient {
         'think': systemPrompt == null && thinking,
         'messages': [
           {'role': 'system', 'content': systemPrompt ?? instructions(model)},
-          ...context,
+          for (var index = 0; index < context.length; index++)
+            if (imageMessages.containsKey(index + omitted))
+              {
+                ...context[index],
+                'images': [
+                  for (final image in imageMessages[index + omitted]!)
+                    image.base64,
+                ],
+              }
+            else
+              context[index],
         ],
         'options': {'num_ctx': windowTokens, 'num_predict': maxOutput},
         'keep_alive': '5m',
