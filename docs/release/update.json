@@ -1,0 +1,22 @@
+{
+  "version": "1.6.0-preview+71",
+  "versionCode": 71,
+  "apkBytes": 2235344664,
+  "apkSha256": "32d7cd60593394832aab17b85da0e5c4a5e30a7300b741e556f54715735f389b",
+  "certificateSha256": "31366f2557af4b1d3a22fa01b1701ca6bca5bf48ccbd94cf3d7f8bab7fe4b800",
+  "releaseUrl": "https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.71",
+  "parts": [
+    {
+      "file": "Miyin-1.6.0-preview+71-arm64.apk.part1",
+      "bytes": 1610612736,
+      "sha256": "73274b10ebb8687b67083dfa52306163e5a878eb741cacd9e832041aa558fa18",
+      "url": "https://github.com/sun2006-xin/miyin-mobile/releases/download/v1.6.0-preview.71/Miyin-1.6.0-preview%2B71-arm64.apk.part1"
+    },
+    {
+      "file": "Miyin-1.6.0-preview+71-arm64.apk.part2",
+      "bytes": 624731928,
+      "sha256": "6713f7ed06bd99e4a4ac0fa9d07726602f329d3ab3c21a6df6e447420eeaa9f3",
+      "url": "https://github.com/sun2006-xin/miyin-mobile/releases/download/v1.6.0-preview.71/Miyin-1.6.0-preview%2B71-arm64.apk.part2"
+    }
+  ]
+}
