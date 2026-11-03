@@ -1,0 +1,15 @@
+Miyin (觅音)
+Copyright 2026 Miyin contributors
+
+The project's original source code is licensed under the Apache License,
+Version 2.0. See LICENSE.
+
+Third-party source, SDKs, fonts, dictionary data, model weights and converted
+model artifacts retain their own licenses. They are not relicensed by the
+project's root LICENSE. Their notices and source records are listed in
+app/miyin/THIRD_PARTY_NOTICES.md and the relevant asset manifests/licenses.
+
+The application name and logo identify this project. The source-code license
+does not grant trademark rights in another contributor's or vendor's marks.
+
+This NOTICE is informational and does not modify any license.

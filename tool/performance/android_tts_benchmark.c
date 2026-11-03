@@ -26,7 +26,8 @@ int main(int argc,char **argv) {
   if(!strcmp(family,"matcha-zh-en")) c.model.matcha.data_dir=getenv("TTS_ESPEAK_DATA");
   else c.rule_fsts=path(dir,"date.fst");
  }
- double load=now_ms();const SherpaOnnxOfflineTts *tts=SherpaOnnxCreateOfflineTts(&c);load=now_ms()-load;
+  if(getenv("TTS_RULE_FSTS")) c.rule_fsts=getenv("TTS_RULE_FSTS");
+  double load=now_ms();const SherpaOnnxOfflineTts *tts=SherpaOnnxCreateOfflineTts(&c);load=now_ms()-load;
  if(!tts){fprintf(stderr,"create failed\n");return 3;}
   SherpaOnnxGenerationConfig gen;memset(&gen,0,sizeof(gen));gen.speed=1.0f;gen.sid=getenv("TTS_SPEAKER")?atoi(getenv("TTS_SPEAKER")):0;gen.silence_scale=0.2f;
  if(!strcmp(family,"supertonic")){gen.num_steps=5;gen.extra="{\"lang\":\"en\"}";}

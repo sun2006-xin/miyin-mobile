@@ -21,7 +21,7 @@ final class MiyinMatchaTtsModelStore {
 
   static final instance = MiyinMatchaTtsModelStore._();
   static const assetDirectory = 'assets/voice/tts-matcha-zh-en';
-  static const modelId = 'matcha-zh-en-20251010-vocos16k-r2-gzip';
+  static const modelId = 'matcha-zh-en-20251010-vocos16k-r3-cmu';
   static const archiveName = 'matcha-zh-en.tar.gz';
   static const manifestAsset = '$assetDirectory/asset-manifest.json';
   static const supportedLanguageTags = {'zh-Hans', 'en'};

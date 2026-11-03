@@ -41,14 +41,15 @@ The Supertonic 3 int8 TTS model is bundled in the APK from the
 [sherpa-onnx model release](https://github.com/k2-fsa/sherpa-onnx/releases/tag/tts-models).
 The upstream model card lists 31 languages and the sherpa-onnx interface
 exposes ten speaker IDs. The model does not include Chinese; Chinese continues
-to use the bundled Melo VITS voice. The APK asset is pinned by byte length and
+to use Melo for translation and Matcha for AI speech. The APK asset is pinned by byte length and
 SHA-256, then verified before local extraction on first launch.
 
 The model is licensed under BigScience OpenRAIL-M. The license text and its
 use-based restrictions are available from the
 [upstream model license](https://huggingface.co/Supertone/supertonic-3/blob/main/LICENSE).
-The app links to its full text. Bundling this model does not change the
-separate native-runtime license boundary described below.
+The full upstream model license is bundled at `assets/legal/Supertonic-OpenRAIL-M.txt`.
+The converted archive also retains an MIT notice; that converter notice does
+not replace the upstream model license or its use-based restrictions.
 
 ## English speech recognition model
 
@@ -75,8 +76,8 @@ SHA-256 checksums:
 The current review APK trials the int8 multilingual `base` Whisper ONNX files
 from [the sherpa-onnx Whisper Base model repository](https://huggingface.co/csukuangfj/sherpa-onnx-whisper-base/tree/main).
 The upstream [OpenAI Whisper license](https://github.com/openai/whisper/blob/main/LICENSE)
-is MIT. The conversion repository has no separate model card; its distribution
-terms need final review before a public release. The app verifies each APK
+is MIT, preserved at `assets/legal/Whisper-MIT.txt`. The conversion repository
+has no separate model card; conversion provenance remains a release-review item. The app verifies each APK
 asset's expected byte length and SHA-256 before copying it into application
 support on first launch. It is included in the installed app and is not
 managed as a user download.
@@ -112,40 +113,28 @@ Model SHA-256 checksums:
 | `model.onnx` | `BF30582EB1B012250A35B1A4A80E7DFBCF8485E7BB9DE0D95EFBBEEF0E4AD86D` |
 | `lexicon.txt` | `7236884B02435AC5D10CF69B4BE40A61B45AA676B5300F0E412F185748FEE528` |
 
-## AI Chinese speech candidate (preview 60)
+## AI Chinese speech candidate (preview 68)
 
-AI Chinese speech additionally uses `matcha-icefall-zh-en`, converted from
-`dengcunqin/matcha_tts_zh_en_20251010`, with `vocos-16khz-univ.onnx`. The model
-has one speaker at 16 kHz and declares Chinese/English support; this app routes
-only AI Chinese speech to it. Translation and face-to-face speech retain their
-existing provider selection, and AI non-Chinese speech uses Supertonic.
+AI Chinese speech uses the author's Apache-2.0 Matcha model
+`dengcunqin/matcha_tts_zh_en_20251010`, with the MIT-licensed Vocos vocoder.
+Translation and face-to-face retain their existing providers; AI non-Chinese
+speech uses Supertonic. The author declares Apache-2.0 for the acoustic model;
+complete training-data provenance has not been independently established.
 
-The author declares Apache-2.0 for the model. This is not a claim that the
-complete training-data provenance has been independently established. Source
-URLs, per-file hashes, Apache-2.0 and GPL-3.0 texts are retained inside
-`assets/voice/tts-matcha-zh-en/matcha-zh-en.tar.gz`; the adjacent manifest records
-the archive hash and extracted paths/sizes. This archive includes eSpeak NG
-data required by the current Matcha frontend. Its license and the native-runtime
-boundary below must be reviewed for public distribution independently of the
-application's own license.
+The r3 Matcha archive excludes eSpeak data. It includes full acoustic-model,
+vocoder and CMUdict license texts, sources, Chinese normalization rules, and
+CMUdict-derived English IPA. Unknown Latin words are spelled by letter instead
+of silently skipped. The adjacent manifest pins archive size and SHA-256.
+Synthetic native synthesis checks do not replace listening acceptance.
 
 ### Native runtime license boundary
 
-The Flutter app still depends on `sherpa_onnx` 1.13.8. Although sherpa-onnx is
-Apache-2.0, the Android native runtime contains eSpeak NG / piper-phonemize
-components identified by the upstream project as GPL-licensed dependencies.
-The Melo VITS configuration uses the model's supplied lexicon and does not
-configure eSpeak data. The AI Matcha candidate described above does bundle and
-configure eSpeak data. Neither configuration removes those components from
-the packaged native library. The sherpa-onnx maintainers track their
-removal for a future major version in
-[issue #3731](https://github.com/k2-fsa/sherpa-onnx/issues/3731).
-
-The old Kokoro model is no longer bundled. The model changes do not by
-themselves settle redistribution obligations for the current prebuilt
-native library or the newly bundled data. Keep public APK distribution gated on a reviewed source and
-license package, or on replacing that runtime with a build that excludes the
-GPL components.
+This candidate uses `sherpa_onnx` 2.0.1. Upstream removed eSpeak NG and
+piper-phonemize in [2.0.0](https://github.com/k2-fsa/sherpa-onnx/releases/tag/v2.0.0).
+Matcha uses supplied lexicons and normalization rules; Melo uses its supplied
+lexicon. Neither config sets an eSpeak data directory. Older commits/APKs
+retain their original components and require separate distribution review.
+This change does not settle every third-party model's provenance by itself.
 
 ## Offline English–Chinese dictionary
 
@@ -159,9 +148,9 @@ bundled at `assets/dictionary/LICENSE-COW.txt` and
 
 This data is a compact lexical reference, not a complete bilingual learner's
 dictionary. Chinese entries are source word equivalents aligned by synset;
-definitions and examples remain in English. The current search is exact
-headword lookup after case and whitespace normalization. It does not provide
-phonetics, inflection lookup, fuzzy matching, or sentence translation.
+definitions and examples remain in English. The dictionary also includes separately sourced phonetic data; see the current
+`assets/dictionary/SOURCES.md` and its bundled license files. It is not a
+sentence translation engine.
 
 ## Bundled local image text recognition
 
@@ -170,3 +159,12 @@ recognition dependency. The app uses its bundled model and processes selected
 images locally; it does not depend on a Play Services model download for this
 feature. Refer to the dependency's upstream terms and notices when distributing
 the APK.
+
+## Application license and privacy
+
+Original application source is Apache-2.0; third-party assets retain their own
+licenses. `assets/legal/` contains the original-source license and additional
+model notices. Google ML Kit is subject to its separate SDK terms and can
+download models/updates and send performance/utilization metrics; on-device
+inference is not a promise of network silence. See root `PRIVACY.md` and
+https://developers.google.com/ml-kit/terms.

@@ -11,6 +11,7 @@ import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 import 'multilingual_tts_model_store.dart';
 import 'matcha_tts_model_store.dart';
+import 'matcha_english_frontend.dart';
 import 'speech_audio_cache.dart';
 
 /// Tracks latest-only asynchronous voice requests without depending on timers.
@@ -1346,8 +1347,15 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
   sherpa.initBindings();
   final separator = Platform.pathSeparator;
   final useMatcha = initialization['provider'] == 'matcha';
+  late final MiyinMatchaEnglishFrontend? englishFrontend;
   late final sherpa.OfflineTts tts;
   try {
+    englishFrontend = useMatcha
+        ? MiyinMatchaEnglishFrontend(
+            File('$modelDirectory${separator}english-words.txt')
+                .readAsLinesSync(),
+          )
+        : null;
     tts = sherpa.OfflineTts(
       sherpa.OfflineTtsConfig(
         model: sherpa.OfflineTtsModelConfig(
@@ -1365,7 +1373,6 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
                   vocoder: '$modelDirectory${separator}vocos-16khz-univ.onnx',
                   lexicon: '$modelDirectory${separator}lexicon.txt',
                   tokens: '$modelDirectory${separator}tokens.txt',
-                  dataDir: '$modelDirectory${separator}espeak-ng-data',
                 )
               : const sherpa.OfflineTtsMatchaModelConfig(),
           numThreads: 2,
@@ -1373,7 +1380,11 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
           provider: 'cpu',
         ),
         ruleFsts: useMatcha
-            ? ''
+            ? [
+                '$modelDirectory${separator}date-zh.fst',
+                '$modelDirectory${separator}number-zh.fst',
+                '$modelDirectory${separator}phone-zh.fst',
+              ].join(',')
             : [
                 '$modelDirectory${separator}date.fst',
                 '$modelDirectory${separator}number.fst',
@@ -1418,7 +1429,8 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
       var streamedBytes = 0;
       var streamOverflow = false;
       final audio = tts.generateWithConfig(
-        text: raw['text'] as String,
+        text: englishFrontend?.prepare(raw['text'] as String) ??
+            raw['text'] as String,
         config: sherpa.OfflineTtsGenerationConfig(
           sid: 0,
           speed: raw['speed'] as double,
