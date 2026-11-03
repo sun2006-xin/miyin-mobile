@@ -323,6 +323,121 @@ test('long manual reading streams the next segment after buffering and retains a
   assert.equal(spoken.replace(/\s/g,''),text.replace(/\s/g,''));assert.equal(h.reading,null);
   assert(h.calls.filter(row=>row.method==='voice.prepareUtterance').length<h.calls.filter(row=>row.method==='voice.speak').length);
 });
+
+test('long unpunctuated English ramps 64 to 96 to 144 before stable 240 chunks with identical preparation', async () => {
+  const h=harness(),words=Array.from({length:100},(_,i)=>`word${i+1}`),text=words.join(' ');
+  h.voice.prepareMessage(text);await settle();
+  const prepared=h.calls.filter(row=>row.method==='voice.prepareUtterance').map(row=>row.params.text);
+  await h.voice.read(text,'english-first-chunk');await settle();
+  const first=h.calls.find(row=>row.method==='voice.speak');
+  assert(first.params.text.length<=64);assert.equal(first.params.text,prepared[0]);
+  for(let i=0;i<20;i++) {
+    const speech=h.calls.filter(row=>row.method==='voice.speak')[i];if(!speech)break;
+    h.emit('miyin:voice-event',{sessionId:speech.params.sessionId,type:'tts_buffered'});await settle();
+  }
+  const chunks=h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text);
+  assert(chunks.length>=4);
+  assert(chunks[1].length<=96);assert(chunks[2].length<=144);
+  assert(chunks[1].length>64);assert(chunks[2].length>96);
+  assert(chunks.slice(3).every(text=>text.length<=240));
+  assert(chunks.slice(3).some(text=>text.length>200));
+  assert.equal(prepared.length,3);assert.deepEqual(chunks.slice(0,3),prepared);
+  assert.deepEqual(chunks.join(' ').split(/\s+/),words);
+});
+
+test('short English sentences remain whole and a long single token never loses its tail', async () => {
+  const h=harness(),short='Hello, how are you?';await h.voice.read(short,'short-english');await settle();
+  assert.equal(h.calls.find(row=>row.method==='voice.speak').params.text,short);
+  await h.voice.interrupt();
+  const token='x'.repeat(300),offset=h.calls.filter(row=>row.method==='voice.speak').length;
+  await h.voice.read(token,'long-token');await settle();
+  for(let i=offset;i<offset+8;i++) {
+    const speech=h.calls.filter(row=>row.method==='voice.speak')[i];if(!speech)break;
+    h.emit('miyin:voice-event',{sessionId:speech.params.sessionId,type:'tts_buffered'});await settle();
+  }
+  const chunks=h.calls.filter(row=>row.method==='voice.speak').slice(offset).map(row=>row.params.text);
+  assert(chunks[0].length<=120);assert(chunks.every(text=>text.length<=240));assert.equal(chunks.join(''),token);
+});
+
+test('numbered Chinese Markdown headings retain their numbers without switching to English speech', async () => {
+  const h=harness(),text='### 1. 中文标题\n中文正文。\n### 2. 中文标题';
+  await h.voice.read(text,'numbered-chinese');await settle();
+  for(let i=0;i<10;i++) {
+    const speech=h.calls.filter(row=>row.method==='voice.speak')[i];if(!speech)break;
+    assert.equal(speech.params.languageTag,'zh-Hans');assert.equal(speech.params.provider,'matcha');
+    h.emit('miyin:voice-event',{sessionId:speech.params.sessionId,type:'tts_buffered'});await settle();
+  }
+  const spoken=h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text).join('');
+  assert.equal(spoken.replace(/\s/g,''),text.replace(/\s/g,''));
+});
+
+test('streamed numbered headings wait for their text instead of admitting an English number fragment', async () => {
+  let h;h=harness((method,params)=>{
+    if(method==='voice.speak')h.emit('miyin:voice-event',{sessionId:params.sessionId,type:'tts_buffered'});
+    return {};
+  });
+  h.voice.open();await h.voice.beforeGeneration({conversationId:'c',messageId:'numbered-stream'});
+  h.voice.delta('### 1. ');await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,0);
+  h.voice.delta('中文标题\n中文正文。\n### 2. ');await settle();
+  h.voice.delta('中文标题');h.voice.finish(true);await settle();
+  const spoken=h.calls.filter(row=>row.method==='voice.speak');
+  assert(spoken.length>0);assert(spoken.every(row=>row.params.languageTag==='zh-Hans'&&row.params.provider==='matcha'));
+  assert.equal(spoken.map(row=>row.params.text).join('').replace(/\s/g,''),'###1.中文标题中文正文。###2.中文标题');
+  assert.equal(h.calls.filter(row=>row.method==='voice.finishSpeech').length,1);
+});
+
+for(const prefix of ['', '前面已经完整说出的中文正文。\n']) {
+  test(`blank lines after a streamed number stay pending without blocking completed text (${prefix ? 'after body' : 'first heading'})`, async () => {
+    let h;h=harness((method,params)=>{
+      if(method==='voice.speak')h.emit('miyin:voice-event',{sessionId:params.sessionId,type:'tts_buffered'});
+      return {};
+    });
+    h.voice.open();await h.voice.beforeGeneration({conversationId:'c',messageId:'blank-number'});
+    if(prefix) {h.voice.delta(prefix);await settle();}
+    const completed=h.calls.filter(row=>row.method==='voice.speak').length;
+    assert.equal(completed,prefix ? 1 : 0);
+    h.voice.delta('### 1.\n\n');await settle();
+    assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,completed);
+    h.voice.delta('后续中文标题');h.voice.finish(true);await settle();
+    const spoken=h.calls.filter(row=>row.method==='voice.speak');
+    assert(spoken.every(row=>row.params.languageTag==='zh-Hans'&&row.params.provider==='matcha'));
+    assert.equal(spoken.map(row=>row.params.text).join('').replace(/\s/g,''),(prefix+'### 1.\n\n后续中文标题').replace(/\s/g,''));
+    assert.equal(h.calls.filter(row=>row.method==='voice.finishSpeech').length,1);
+  });
+}
+
+test('English streaming keeps a short first phrase and larger continuation while admission is pending', async () => {
+  let release,admissions=0;
+  const h=harness(method=>method==='voice.speak'&&++admissions===1 ? new Promise(resolve=>{release=resolve;}) : {});
+  h.voice.open();await h.voice.beforeGeneration({conversationId:'c',messageId:'english-phrases'});
+  const firstText='This is a complete English opening phrase that should speak before the full reply is ready';
+  const continuation=' and the following words provide a longer continuation without restarting small chunks'.repeat(5);
+  h.voice.delta(firstText);await settle();
+  const first=h.calls.find(row=>row.method==='voice.speak');
+  assert(first);assert(first.params.text.length<=48);assert.equal(first.params.provider,'supertonic');
+  h.voice.delta(continuation);h.voice.finish(true);await settle();
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').length,1);
+  for(let i=0;i<20;i++) {
+    const speech=h.calls.filter(row=>row.method==='voice.speak')[i];if(!speech)break;
+    h.emit('miyin:voice-event',{sessionId:speech.params.sessionId,type:'tts_buffered'});await settle();
+  }
+  release({status:'started'});await settle();
+  const chunks=h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text);
+  assert(chunks.slice(1).some(text=>text.length>200));assert(chunks.slice(1).every(text=>text.length<=240));
+  assert.equal(chunks.join(' ').replace(/\s/g,''),(firstText+continuation).replace(/\s/g,''));
+  assert.equal(h.calls.filter(row=>row.method==='voice.finishSpeech').length,1);
+});
+
+test('numbered English headings remain English and keep actual digits', async () => {
+  const h=harness(),text='1. Hello there.\n2. We will meet tomorrow.';await h.voice.read(text,'numbered-english');await settle();
+  for(let i=0;i<10;i++) {
+    const speech=h.calls.filter(row=>row.method==='voice.speak')[i];if(!speech)break;
+    assert.equal(speech.params.languageTag,'en');assert.equal(speech.params.provider,'supertonic');
+    h.emit('miyin:voice-event',{sessionId:speech.params.sessionId,type:'tts_buffered'});await settle();
+  }
+  assert.equal(h.calls.filter(row=>row.method==='voice.speak').map(row=>row.params.text).join('').replace(/\s/g,''),text.replace(/\s/g,''));
+});
 test('completed reply prepares bounded lookahead serially and deduplicates notifications', async () => {
   const releases=[];
   const h=harness(method=>method==='voice.prepareUtterance'?new Promise(resolve=>releases.push(resolve)):{});

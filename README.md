@@ -1,14 +1,26 @@
 # 觅音
 
-觅音是独立 Android 翻译与同传应用。GitHub 工程仓库名为 `miyin-mobile`；应用名为“觅音”。
+觅音是以本地能力为基础的 Android 翻译、同传与 AI 对话应用。GitHub 工程仓库名为 `miyin-mobile`；应用名为“觅音”。
 
 ## 当前阶段
 
-当前版本为 **V1.5.1+13**（2026-10-25）。支持文字、语音、图片与文章翻译，面对面翻译，同传字幕、截图翻译与双声源有声录屏。录屏和原声保存在手机公共媒体目录，可从觅音与系统文件应用打开。详细变化见 [更新记录](CHANGELOG.md)。
+当前开发处于 **1.6.0-preview 系列**，准确构建号以 [`pubspec.yaml`](app/miyin/pubspec.yaml) 为准。这里描述当前源码能力；历史正式版本与开发候选包应分别查看，不把开发验证当作全部设备的稳定性保证。
 
-Android App 位于 [`app/miyin/`](app/miyin/)，采用 Flutter 加随包本地界面，原生服务负责语音、翻译、存储和 Android 媒体权限。基础语音模型随 APK 提供；额外的离线翻译语言包由应用内管理。模型文件通过 Git LFS 保存，克隆后需执行 `git lfs pull`；Android 构建在应用目录执行 `flutter pub get` 和 `flutter build apk --release --target-platform android-arm64`。
+| 模块 | 当前能力与边界 |
+| --- | --- |
+| 翻译 | 文字、语音、图片覆盖译图、文章对照、面对面交流与本机历史；额外离线翻译语言包在应用内管理 |
+| 同传 | 麦克风/其他App音频、双语字幕与悬浮窗、会话记录、双方有声MP4录屏；部分App限制系统音频捕获 |
+| AI对话 | 本机模型与用户配置的外部模型、流式回答、模型显示名单、会话上下文、附件与联网搜索相关能力；模型质量及服务可用性分别受模型和网络影响 |
+| 本地语音 | ASR保留Whisper base int8；AI中文接入Matcha快速音色，其余AI语音保留现有多语言方案；翻译/面对面保持原TTS方案 |
+| 外观 | 主题、按钮材质、按压反馈、字体与AI球体独立搭配 |
 
-界面支持独立搭配主题、按钮材质、按压反馈、字体与 AI 球体；材质兼容 OPPO 的旧版 WebView。真实 AI 模型调用、流式聊天与语音对话将在下一阶段接入，目前 AI 回答和服务配置仍属于交互预览。
+完整手机Agent的系统操作能力尚未完成。当前主要在OPPO PEHM00（Android12）验证；跨品牌、逐语言识别/发音及真实首响仍需分别体验。详细历史见[更新记录](CHANGELOG.md)，近期语音证据见[本地快速语音验收](docs/product/AI本地快速语音接入与连续播放验收-2026-11-03.md)。
+
+Android App 位于 [`app/miyin/`](app/miyin/)，采用Flutter加随包本地界面，原生服务负责语音、翻译、存储和Android媒体权限。语音资源随当前候选APK提供，安装包较大；应用内AI也可以选择本机模型，或由用户自行配置聊天模型API。音频识别与合成走本地路线。
+
+模型文件通过Git LFS保存。下载源码ZIP不等于已取回模型内容；构建前需要取回LFS对象并准备Flutter、Android SDK/NDK及Gradle环境。安装与构建入口见[应用说明](app/miyin/README.md)。全新目录从零构建仍属于公开测试版准备验证项，不能只凭开发机已有缓存承诺一键成功。
+
+当前尚在准备公开测试版。源码许可证、第三方模型/原生库分发材料、公开快照检查和干净构建的状态见[开源准备清单](docs/product/开源测试版准备清单-2026-11-03.md)。第三方组件分别适用各自许可，不能将模型的某一条许可声明视作整个APK的许可。
 
 ## 品牌方向
 
@@ -21,7 +33,7 @@ Android App 位于 [`app/miyin/`](app/miyin/)，采用 Flutter 加随包本地�
 - Android 手机端先行，桌面端暂缓。
 - 面对面交流是首屏主场景：按住说话为默认，也支持免按住连续收音；播报可以自动、点按或关闭。
 - 视频、直播和会议共享同传会话与字幕核心，由 Android 平台适配器提供麦克风、系统播放音频和 PiP 能力。
-- 阅读器与译学共用 Agent。AI 助手也支持普通聊天；会话复盘由用户在对话中发起，相关记录必须由用户明确附加。
+- AI助手先做好普通对话、附件和语音体验，再分步扩展工具能力；当前不会因为“支持AI”就默认读取其他应用或自动操作手机。
 - Agent 模型与翻译模型分开配置；远程 API 只在用户配置、测试并选择后使用。
 
 ## 架构方向
@@ -30,18 +42,8 @@ Android App 位于 [`app/miyin/`](app/miyin/)，采用 Flutter 加随包本地�
 
 ## 设计材料
 
-- [V5 可交互预览](./docs/designs/miyin-full-app-preview-v5/index.html)
-- [V5 AI 对话截图（390 × 844）](./output/playwright/miyin-v5-chat-390x844.png)
-- [V5 AI 历史截图（390 × 844）](./output/playwright/miyin-v5-history-390x844.png)
-- [V5 AI 历史详情截图（390 × 844）](./output/playwright/miyin-v5-history-detail-390x844.png)
-- [V5 桌面浏览器截图（1280 × 900）](./output/playwright/miyin-v5-desktop-1280x900.png)
-- [V4 已确认视觉基线](./docs/designs/miyin-full-app-preview-v4/index.html)
-- [V5 功能规格](./docs/superpowers/specs/2026-10-08-miyin-ai-chat-history-voice-design.md)
-- [V5 实施与验收计划](./docs/superpowers/plans/2026-10-08-miyin-v5-ai-preview.md)
-- [旧交互草案 V1（未采纳，仅留档）](./docs/designs/译学Android同传手机端交互预览-v1.html)
-- [旧首页截图](./docs/designs/译学Android手机端预览-home-v1.png)
-- [旧面对面同传截图](./docs/designs/译学Android手机端预览-face-v1.png)
-- [产品边界与阶段门](./docs/product/移动端产品边界-v0.1.md)
-- [品牌启动动画概念](./docs/brand/品牌启动动画概念-v0.1.md)
+- [当前随包页面源码](app/miyin/assets/miyin_v5/index.html)
+- [材质与阅读交互规范](docs/ux-design/觅音材质与阅读交互规范-2026-10-29.md)
+- [主题实现说明](docs/ux-design/miyin-theme-implementation-v1.3.md)
 
-旧设计目录用于留档；实际安装包以 `app/miyin/` 源码为准。已完成的真机验收以版本说明为准，不代表所有品牌或所有语种都达到相同效果。当前 APK 沿用项目现有调试签名，供体验和分享。
+本地旧设计材料用于留档，可能不在公开源码快照内；实际安装包以`app/miyin/`源码为准。已完成的真机验收以版本说明为准，不代表所有品牌或所有语种都达到相同效果。当前候选APK沿用项目现有调试签名。

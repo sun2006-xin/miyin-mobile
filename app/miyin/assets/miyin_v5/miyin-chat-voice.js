@@ -48,15 +48,36 @@
   }
   // Combine adjacent sentences instead of paying synthesis startup after every
   // full stop. Keep a short first segment and bounded, word-aligned successors.
+  const isNumberedHeading = text => /^\s*(?:#{1,6}\s*)?(?:[-*+]\s*)?\d+\.\s*$/u.test(text);
+  function speechSentences(text) {
+    const pieces = String(text || '').match(/[\s\S]*?(?:[。！？!?\n]|\.(?:\s|$))|[\s\S]+$/gu) || [];
+    const sentences = [];let prefix = '';
+    for (const piece of pieces) {
+      // Keep a list number with its title/body so a Chinese heading such as
+      // "### 1. 中文标题" does not briefly load the English speech worker.
+      if (isNumberedHeading(piece) || (prefix && !/\p{L}/u.test(piece))) {prefix+=piece;continue;}
+      sentences.push(prefix+piece);prefix='';
+    }
+    if (prefix) sentences.push(prefix);
+    return sentences;
+  }
   function speechChunks(text, firstLimit = 120) {
-    const chunks = [], sentences = String(text || '').match(/[\s\S]*?(?:[。！？!?\n]|\.(?:\s|$))|[\s\S]+$/gu) || [];
-    // For a long answer, start with its first complete sentence rather than
-    // delaying the first sound while synthesizing several sentences together.
-    const chinese = language(text) === 'zh-Hans';
+    const chunks = [], sentences = speechSentences(text);
+    // Start long English with a short whole-word prefix, then grow the next
+    // chunks gradually so synthesis can keep up before settling at 240 chars.
+    const tag = language(text), chinese = tag === 'zh-Hans';
     const nextLimit = chinese ? 64 : 240;
-    let current = '', limit = chinese ? (firstLimit === 120 ? 24 : 64) : Array.from(String(text || '')).length > 240 && firstLimit === 120
-      ? Math.min(120, Math.max(1, Array.from(sentences[0] || '').length)) : firstLimit;
-    const flush = () => {if (current.trim()) {chunks.push(current.trim()); limit=nextLimit;} current='';};
+    const englishRamp = tag === 'en' && firstLimit === 120 ? [96,144,240] : null;
+    const initialLimit = tag === 'en' && firstLimit === 120 ? 64 : firstLimit;
+    let current = '', limit = chinese ? (firstLimit === 120 ? 24 : 64) : Array.from(String(text || '')).length > (tag === 'en' ? initialLimit : 240) && firstLimit === 120
+      ? Math.min(initialLimit, Math.max(1, Array.from(sentences[0] || '').length)) : initialLimit;
+    const flush = () => {
+      if (current.trim()) {
+        chunks.push(current.trim());
+        limit=englishRamp ? englishRamp[Math.min(chunks.length-1,englishRamp.length-1)] : nextLimit;
+      }
+      current='';
+    };
     for (const sentence of sentences) {
       // Formatting-only lines have no spoken content and must not switch the
       // synthesis model between two Chinese segments.
@@ -66,7 +87,7 @@
       while (rest.length > limit) {
         flush();
         let cut = limit;
-        for (let i=limit-1; i>limit/2; i--) {if (/[\s，、；：,;:]/u.test(rest[i] || '')) {cut=i+1;break;}}
+        for (let i=limit-1; i>(chinese ? limit/2 : 0); i--) {if (/[\s，、；：,;:]/u.test(rest[i] || '')) {cut=i+1;break;}}
         current=rest.splice(0,cut).join('');flush();
       }
       current += rest.join('');
@@ -173,12 +194,18 @@
     let cut=final ? buffer.length : 0;
     if (!final) {
       const boundaries=buffer.matchAll(/[。！？!?\n]|\.(?:\s|$)/gu);
-      for (const match of boundaries) cut=match.index+match[0].length;
+      for (const match of boundaries) {
+        const end=match.index+match[0].length;
+        // Keep the entire unconsumed number prefix, including blank lines.
+        // Earlier completed prose can still advance cut and start speaking.
+        if(isNumberedHeading(buffer.slice(cut,end))) continue;
+        cut=end;
+      }
       // Start a bounded phrase while text is still arriving instead of waiting
       // for a final full stop. Keep English words together.
       const chinese = language(buffer) === 'zh-Hans';
       const phraseLimit = chinese ? (hasSpoken ? 32 : 12) : (hasSpoken ? 120 : 48);
-      if (!cut && Array.from(buffer).length >= phraseLimit) {
+      if (!cut && !isNumberedHeading(buffer) && Array.from(buffer).length >= phraseLimit) {
         if (chinese) cut=Array.from(buffer).slice(0,phraseLimit).join('').length;
         else {
           const space=buffer.lastIndexOf(' ',phraseLimit);

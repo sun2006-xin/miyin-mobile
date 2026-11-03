@@ -28,11 +28,14 @@ LD_LIBRARY_PATH=./lib ./tts-bench matcha ./matcha-model ./vocos.onnx ./synthetic
 LD_LIBRARY_PATH=./lib ./tts-bench aishell ./aishell-model unused ./synthetic-text.txt ./aishell-result
 LD_LIBRARY_PATH=./lib ./tts-bench kokoro ./kokoro-model unused ./synthetic-text.txt ./kokoro-result
 LD_LIBRARY_PATH=./lib TTS_ESPEAK_DATA=./espeak-ng-data ./tts-bench matcha-zh-en ./matcha-zh-en-model ./vocos-16khz-univ.onnx ./synthetic-text.txt ./matcha-zh-en-result
+LD_LIBRARY_PATH=./lib TTS_THREADS=2 TTS_SPEAKER=0 ./tts-bench supertonic ./supertonic-3-int8 unused ./english-prefix.txt ./supertonic-result
 ```
 
 可用环境变量：`TTS_THREADS`（默认2）、`TTS_PROVIDER`（默认cpu）、`TTS_SPEAKER`（默认0）。检查stderr是否回退CPU，不能把请求了加速后端当作实际加速。
 
 `aishell` 使用 VITS 配置；`kokoro` 需要 `model.int8.onnx/voices.bin/tokens.txt/lexicon-zh.txt/date-zh.fst/espeak-ng-data`，语言提示固定为中文。`matcha-zh-en` 需要 `model-steps-3.onnx/tokens.txt/lexicon.txt`、独立16kHz声码器和 `TTS_ESPEAK_DATA`；该模式不启用日期规则，仅用于普通文本对照。中文成功不证明英文音素回退可用，也不证明原生库或数据的发布许可已审查。不要为通过初始化而创建空的占位数据文件。
+
+`supertonic` 对齐应用的英文路径：`duration_predictor.int8.onnx/text_encoder.int8.onnx/vector_estimator.int8.onnx/vocoder.int8.onnx/tts.json/unicode_indexer.bin/voice.bin`，`speed=1`、`numSteps=5`、`extra.lang=en`、`max_num_sentences=1`、合成与生成配置 `silence_scale=.2`。固定“Hi.”预热，不降低质量参数。可用同一段英文的短/长完整单词前缀做ABBA；首PCM是原生回调，并非点击至扬声器首响，prefix测试也不证明完整回答的停顿与语义质量。
 
 每行输入一个测试样本；先执行一次固定“你好”预热，再记录每条的合成、首PCM回调、音频时长和RTF，生成WAV用于后续质量检查。WAV不是用户录音。注意：首回调时间不是点击到可听首响；性能基准不证明发音正确。若比较不同模型，应记录音色、采样率、实际音频时长与许可，不能只报告速度比例。采用ABBA顺序并保存所有输出，包括失败与回退。
 
