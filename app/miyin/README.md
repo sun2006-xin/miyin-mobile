@@ -50,3 +50,16 @@ APK 输出到 `build/app/outputs/flutter-apk/app-debug.apk`。
 当前版本通过Flutter WebView加载本地V5页面，以保留已确认的界面和交互。翻译、SQLite历史、本地ASR/TTS、系统音频和录屏已有实现；其他离线翻译语言包由ML Kit在应用内管理。语音资源不要求用户去GitHub下载。
 
 模型采用Git LFS，构建前必须取得真实模型对象。当前开发机使用Flutter3.47.2与项目固定的Gradle/Android工具链；新环境仍需验证完整LFS克隆和干净构建。现有候选包沿用Android Debug签名，仅用于测试体验；公开分发前的许可证与资源材料见[开源准备清单](../../docs/product/开源测试版准备清单-2026-11-03.md)。
+
+## 当前构建核验
+
+2026-11-03已用独立检出目录构建preview68，执行标准
+`flutter pub get` 与 `flutter build apk --release --target-platform android-arm64`，
+未使用开发目录中的私有Gradle初始化脚本。此前同目录的preview67基线为
+全新克隆首次构建；preview68复用该目录生成的构建缓存。两次都使用本机
+LFS对象与依赖缓存，因此还不能宣称验证了GitHub远程LFS下载或空缓存构建。
+完整证据和遗留项见[核验记录](../../docs/release/open-source-preflight-2026-11-03.md)。
+
+自有源码采用[Apache-2.0](../../LICENSE)；模型、词典、字体及SDK独立适用
+[第三方声明](THIRD_PARTY_NOTICES.md)中的许可。不要提交密钥、签名私钥、
+用户会话、录音或本机配置。

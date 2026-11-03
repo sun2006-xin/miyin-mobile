@@ -18,9 +18,11 @@
 
 Android App 位于 [`app/miyin/`](app/miyin/)，采用Flutter加随包本地界面，原生服务负责语音、翻译、存储和Android媒体权限。语音资源随当前候选APK提供，安装包较大；应用内AI也可以选择本机模型，或由用户自行配置聊天模型API。音频识别与合成走本地路线。
 
-模型文件通过Git LFS保存。下载源码ZIP不等于已取回模型内容；构建前需要取回LFS对象并准备Flutter、Android SDK/NDK及Gradle环境。安装与构建入口见[应用说明](app/miyin/README.md)。全新目录从零构建仍属于公开测试版准备验证项，不能只凭开发机已有缓存承诺一键成功。
+模型文件通过Git LFS保存。下载源码ZIP不等于已取回模型内容；构建前需要取回LFS对象并准备Flutter、Android SDK/NDK及Gradle环境。安装与构建入口见[应用说明](app/miyin/README.md)。已在独立目录完成基线干净构建和preview68构建；使用本机LFS对象及已有依赖缓存，远程LFS下载和空缓存环境仍需核对。证据见[开源准备记录](docs/release/open-source-preflight-2026-11-03.md)。
 
 当前尚在准备公开测试版。源码许可证、第三方模型/原生库分发材料、公开快照检查和干净构建的状态见[开源准备清单](docs/product/开源测试版准备清单-2026-11-03.md)。第三方组件分别适用各自许可，不能将模型的某一条许可声明视作整个APK的许可。
+
+觅音自有源码采用 [Apache-2.0](LICENSE)，详见 [NOTICE](NOTICE)。第三方权重、字体、词典与SDK保留各自许可，不能整体当作Apache-2.0资源使用。网络与本地处理边界见[隐私说明](PRIVACY.md)。
 
 ## 品牌方向
 

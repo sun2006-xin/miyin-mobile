@@ -71,3 +71,30 @@ separate; no broad claim of unchanged voice quality is made here.
 - Use a stable release signing plan; do not commit private signing material.
 
 No push, public visibility change or public APK release occurred in this preflight.
+
+## Preview68 follow-up evidence
+
+Commit `ab557d946cdf60663654f4fb1e216965f607a0ff` was built in the independent
+checkout above. Standard pub get and release arm64 build both exited 0;
+assembleRelease took 79.6 seconds. This second build reused that checkout's
+generated build cache; only the earlier baseline build started clean.
+
+Final scan:49 commits,357 tracked paths,8 test-fixture candidates,0 unresolved
+candidates,0 sensitive filenames. The three private-address matches are tests
+for rejecting private-network page requests. No credential values were printed.
+
+APK:2234874321 bytes; SHA-256
+`dd02aca628a3581bb808f32bf47c2e7daf5edbee7ccf767b7bd9f32e2639ac29`.
+Verified all8 legal assets against committed text, Matcha archive against its
+manifest, and all3 sherpa native libraries against pinned2.0.1 package bytes
+after the same NDK symbol stripping. No top-level eSpeak assets were present;
+the Matcha archive inventory itself contains13 permitted model/lexicon/license
+files and no eSpeak tree. This does not prove licensing of all historical APKs.
+
+Fresh automated checks:229 Dart tests,10 web logic groups, browser suite all
+passed. Selected Dart analysis returned16 existing info-level style findings
+in the unchanged mobile shell, no warning/error; it was not a clean analyzer
+exit. CMU converter4 tests passed. OPPO native synthesis with2.0.1,CMU lexicon
+and all3 Chinese normalization rules passed mixed English, numeric Chinese and
+spelled unknown-name samples without OOV errors. Listening acceptance remains
+separate. The phone microphone was not opened for this work.
