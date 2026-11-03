@@ -1,5 +1,8 @@
-name: Stage verified signed build in Releases
+name: Publish verified signed Android release
 on:
+  workflow_run:
+    workflows: [Build signed Android release]
+    types: [completed]
   workflow_dispatch:
     inputs:
       run_id:
@@ -13,17 +16,24 @@ on:
 permissions:
   contents: write
   actions: read
+concurrency:
+  group: miyin-release-publisher
+  cancel-in-progress: false
 jobs:
-  stage:
-    if: github.ref == 'refs/heads/main'
-    environment: miyin-release
+  publish:
+    if: >-
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
       - name: Validate source run identity
         env:
           GH_TOKEN: ${{ github.token }}
-          SOURCE_RUN: ${{ inputs.run_id }}
+          SOURCE_RUN: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.run_id }}
+          EXPECTED_SHA: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || '' }}
         run: |
           gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > "$RUNNER_TEMP/source-run.json"
           python3 - <<'PY'
@@ -31,21 +41,30 @@ jobs:
           d=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'source-run.json').read_text())
           assert d['conclusion']=='success' and d['head_branch']=='main'
           assert d['path']=='.github/workflows/android-preview.yml'
+          assert not os.environ.get('EXPECTED_SHA') or d['head_sha']==os.environ['EXPECTED_SHA']
           with open(os.environ['GITHUB_ENV'],'a') as f:f.write('SOURCE_SHA='+d['head_sha']+'\n')
           PY
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.run_id }}
-          name: ${{ inputs.artifact_name }}
+          run-id: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.id || inputs.run_id }}
+          name: ${{ github.event_name == 'workflow_run' && format('miyin-arm64-signed-{0}', github.event.workflow_run.run_number) || inputs.artifact_name }}
           path: downloads
       - name: Verify download parts and public signing identity
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          git fetch --no-tags --depth=1 origin "$SOURCE_SHA"
           python3 - <<'PY'
-          import hashlib,json,pathlib,os
+          import hashlib,json,pathlib,os,re,subprocess
           root=pathlib.Path('downloads');d=json.loads((root/'DOWNLOAD-MANIFEST.json').read_text())
           expected=json.loads(pathlib.Path('docs/release/signing/certificate.json').read_text())
           assert d['certificateSha256']==expected['certificateSha256']
+          source_pubspec=subprocess.check_output(['git','show',os.environ['SOURCE_SHA']+':app/miyin/pubspec.yaml'],text=True)
+          current_pubspec=pathlib.Path('app/miyin/pubspec.yaml').read_text()
+          source_version=re.search(r'^version:\s*(\S+)',source_pubspec,re.M)[1]
+          current_version=re.search(r'^version:\s*(\S+)',current_pubspec,re.M)[1]
+          assert d['version']==source_version==current_version, 'Release source version is no longer current on main'
           merged=hashlib.sha256()
           for item in d['parts']:
               assert pathlib.Path(item['file']).name==item['file']
@@ -55,13 +74,68 @@ jobs:
               assert h.hexdigest()==item['sha256']
           assert merged.hexdigest()==d['sha256']
           tag='v'+d['version'].replace('+','.')
-          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('RELEASE_TAG='+tag+'\n')
+          version_code=int(d['version'].rsplit('+',1)[1])
+          with open(os.environ['GITHUB_ENV'],'a') as f:
+              f.write('RELEASE_TAG='+tag+'\n')
+              f.write('VERSION_CODE='+str(version_code)+'\n')
           PY
-      - name: Stage download files for final device acceptance
+      - name: Publish signed preview and its update metadata
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          cat > "$RUNNER_TEMP/release-notes.md" <<'EOF'
+          觅音正式签名的 arm64 完整测试版。
+
+          - 新增后台版本检查与 Wi-Fi 自动下载。
+          - 安装前核对每个分卷、合并 APK 的 SHA-256，并由 Android 校验应用签名。
+          - Android 按系统策略完成安装；部分手机需要一次性允许觅音安装更新，并确认系统安装提示。
+          - 完整安装包约 2.23 GB，更新下载仅使用非计量网络。
+          - 保留本机 AI、视觉与离线语音资源。
+
+          Windows 分卷合并与手动安装说明见附件。
+          EOF
           if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --title "Miyin signed preview" --notes "Verified official signed build. Download files staged for device acceptance; publication notes follow." --draft --prerelease
+            gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --title "觅音 ${RELEASE_TAG#v} · 自动更新测试版" --notes-file "$RUNNER_TEMP/release-notes.md" --prerelease
+          else
+            if [[ "$(gh release view "$RELEASE_TAG" --json isDraft -q .isDraft)" == "true" ]]; then
+              gh release edit "$RELEASE_TAG" --draft=false
+            fi
+            gh release edit "$RELEASE_TAG" --title "觅音 ${RELEASE_TAG#v} · 自动更新测试版" --prerelease --notes-file "$RUNNER_TEMP/release-notes.md"
           fi
           gh release upload "$RELEASE_TAG" downloads/* --clobber
+          python3 - <<'PY'
+          import json,os,pathlib,urllib.parse
+          manifest=json.loads(pathlib.Path('downloads/DOWNLOAD-MANIFEST.json').read_text())
+          tag='v'+manifest['version'].replace('+','.')
+          repo=os.environ['GITHUB_REPOSITORY']
+          release='https://github.com/'+repo+'/releases/tag/'+tag
+          parts=[]
+          for part in manifest['parts']:
+              filename=part['file']
+              parts.append({
+                  'file':filename,
+                  'bytes':part['bytes'],
+                  'sha256':part['sha256'],
+                  'url':'https://github.com/'+repo+'/releases/download/'+tag+'/'+urllib.parse.quote(filename,safe=''),
+              })
+          update={
+              'version':manifest['version'],
+              'versionCode':int(manifest['version'].rsplit('+',1)[1]),
+              'apkBytes':manifest['bytes'],
+              'apkSha256':manifest['sha256'],
+              'certificateSha256':manifest['certificateSha256'],
+              'releaseUrl':release,
+              'parts':parts,
+          }
+          path=pathlib.Path('docs/release/update.json')
+          path.write_text(json.dumps(update,ensure_ascii=False,indent=2)+'\n',encoding='utf-8')
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/release/update.json
+          if git diff --cached --quiet; then
+            echo "Update manifest already points at this release."
+          else
+            git commit -m "chore(release): publish ${RELEASE_TAG} update manifest"
+            git push origin HEAD:main
+          fi

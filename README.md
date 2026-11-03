@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/Android-arm64--v8a-178f83" alt="Android arm64-v8a">
 <img src="https://img.shields.io/badge/status-public%20preview-b7791f" alt="公开测试版">
 </p>
-<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.69">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
+<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.70">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
 
 Miyin is an Android app for translation, live captions and AI conversations,
 with bundled on-device speech and chat models. This is a preview release;
@@ -16,7 +16,7 @@ device compatibility and language quality are still being improved.
 ## 下载与安装
 
 安装包统一放在 **[GitHub Releases](https://github.com/sun2006-xin/miyin-mobile/releases)**，源码仓库不保存 APK。
-当前公开候选为 **1.6.0-preview+69**。完整包约 **2.23 GB**，保留本机 AI、视觉与离线语音资源。
+当前公开候选为 **1.6.0-preview+70**。完整包约 **2.23 GB**，保留本机 AI、视觉与离线语音资源。
 
 GitHub Release 单文件必须小于 2 GiB，因此完整 APK 分为两个文件：
 
@@ -26,13 +26,15 @@ GitHub Release 单文件必须小于 2 GiB，因此完整 APK 分为两个文件
 
 发布页同时提供 `INSTALL-README.txt`、`DOWNLOAD-MANIFEST.json` 和 `SHA256SUMS.txt`。
 需支持 **arm64-v8a** 的 Android 手机。建议为安装及首次准备模型预留 **10 GB**；这是保守建议，不是已测出的最低要求。
-preview69已接入固定发行签名与更新签名链，OPPO/Android12覆盖升级已验收；Android9及以上使用新密钥，Android7/8保留旧兼容签名。其他设备仍需扩展验收，详见[签名与自动化](docs/release/signing-and-automation.md)。
+preview70沿用固定发行签名与更新签名链；Android9及以上使用新密钥，Android7/8保留旧兼容签名。其他设备仍需扩展验收，详见[签名与自动化](docs/release/signing-and-automation.md)。
 
 ## 更新与数据保留
 
-目前通过本仓库的Release下载新版完整安装包，合并分卷后直接安装到已有觅音上，选择更新；**不要先卸载旧版，也不要清空应用数据**。当前没有内置自动更新或增量更新，仍需下载完整包。
+觅音会在启动时及后台定期检查版本，在非计量网络（通常为 Wi-Fi）自动下载完整更新包，并校验分卷、APK 摘要和 Android 签名，再交给系统安装；不需要手动点“检查更新”或打开网页。更新仍是完整包，不是增量包。
 
-同一应用、兼容签名的正常覆盖升级通常保留本机历史、设置和已准备资源。preview69已在OPPO上验证覆盖升级；未来每次发版仍需核对版本、签名及涉及的数据迁移。卸载、清空数据、换手机不属于覆盖升级，不能认为资料会自动恢复。重要内容请另行保存，当前不承诺完整的一键备份与跨手机恢复。
+Android 会限制普通应用静默安装。首次使用时，系统可能要求允许“觅音安装应用”，部分手机之后仍会显示系统确认；这一步无法由普通应用绕过。系统授权后，后续检查和下载会自动进行。GitHub 在所在网络不可达时，更新会等待网络恢复。
+
+同一应用、兼容签名的正常覆盖升级通常保留本机历史、设置和已准备资源。preview69已在OPPO上验证覆盖升级；preview70自动更新尚需更多品牌真机验收。卸载、清空数据、换手机不属于覆盖升级，不能认为资料会自动恢复。重要内容请另行保存，当前不承诺完整的一键备份与跨手机恢复。
 
 构建、签名和更新兼容由维护者处理，普通用户无需配置密钥。若系统提示签名冲突或无法更新，请先反馈手机型号和原版本，不要通过卸载来强行处理。
 
@@ -152,7 +154,7 @@ ML Kit SDK 还可能获取更新、发送性能和使用情况指标，因此本
 - 主要真机验证设备为 OPPO PEHM00 / Android 12，其他品牌与逐语种质量仍需反馈。
 - 首次准备、首次英文朗读和较长回答仍可能等待；识别与翻译准确率受口音、环境和模型影响。
 - 某些 App 禁止系统音频捕获；录屏和麦克风需要 Android 授权。
-- preview68 更换中英混读发音前端，自动化与合成检查已通过，仍需扩大听感验收。
+- preview70 的自动更新依赖 GitHub 清单和 Release 下载；下载约 2.23 GB，只使用非计量网络。厂商系统可能要求用户确认安装，后台任务的实际执行时间由 Android 调度。
 - 手机 Agent 自动操作尚未完成；iOS 工程存在不代表 iOS 语音和媒体链路已验收。
 - 旧实验 APK 只作开发留档，不建议作为当前体验入口；历史组件许可与当前版不同。
 

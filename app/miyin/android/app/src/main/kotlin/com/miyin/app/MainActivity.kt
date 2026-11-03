@@ -24,6 +24,7 @@ class MainActivity : FlutterActivity() {
     private val subtitleChannelName = "com.miyin.app/subtitle-overlay"
     private val microphoneSessionChannelName = "com.miyin.app/microphone-session"
     private val liveAudioChannelName = "com.miyin.app/live-audio"
+    private val automaticUpdateChannelName = "com.miyin.app/automatic-update"
     private var translationChannel: MethodChannel? = null
     private var translationHandler: MiyinTranslationMethodHandler? = null
     private var attachmentOcrChannel: MethodChannel? = null
@@ -37,6 +38,12 @@ class MainActivity : FlutterActivity() {
     private var microphoneSessionChannel: MethodChannel? = null
     private var liveAudioChannel: MethodChannel? = null
     private var liveAudioHandler: MiyinLiveAudioPlaybackHandler? = null
+    private var automaticUpdateChannel: MethodChannel? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        MiyinAutomaticUpdates.schedule(applicationContext)
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -75,6 +82,12 @@ class MainActivity : FlutterActivity() {
                     }
                 }
             }
+        automaticUpdateChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            automaticUpdateChannelName,
+        ).also { channel ->
+            channel.setMethodCallHandler(MiyinAutomaticUpdateChannel(this))
+        }
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             performanceChannelName,
@@ -315,6 +328,10 @@ class MainActivity : FlutterActivity() {
 
     override fun onResume() {
         super.onResume()
+        MiyinAutomaticUpdates.appForeground = true
+        MiyinAutomaticUpdates.enqueueCheck(applicationContext)
+        MiyinAutomaticUpdates.retryPendingInstall(applicationContext)
+        MiyinAutomaticUpdates.openPendingConfirmation(applicationContext)
         voiceHandler?.onActivityResumed()
         phoneLlm?.setForeground(true)
         MiyinFloatingService.setAppForeground(true)
@@ -332,6 +349,7 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun onPause() {
+        MiyinAutomaticUpdates.appForeground = false
         phoneLlm?.setForeground(false)
         MiyinFloatingService.setAppForeground(false)
         MiyinSubtitleOverlayService.setAppForeground(false)
@@ -353,6 +371,8 @@ class MainActivity : FlutterActivity() {
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
         phoneLlm?.dispose(); phoneLlm = null
+        automaticUpdateChannel?.setMethodCallHandler(null)
+        automaticUpdateChannel = null
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
             performanceChannelName,

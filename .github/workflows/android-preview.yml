@@ -1,54 +1,4 @@
-name: Build signed Android release
-on:
-  workflow_dispatch:
-permissions:
-  contents: read
-concurrency:
-  group: android-preview
-  cancel-in-progress: false
-jobs:
-  build:
-    if: github.ref == 'refs/heads/main'
-    environment: miyin-release
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    defaults:
-      run:
-        working-directory: app/miyin
-    steps:
-      - name: Free unused runner tools for bundled model build
-        working-directory: ${{ runner.temp }}
-        run: sudo rm -rf /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
-      - uses: actions/checkout@v4
-        with:
-          lfs: true
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: '17'
-      - uses: subosito/flutter-action@v2
-        with:
-          flutter-version: '3.47.2'
-          channel: stable
-          cache: true
-      - name: Confirm actual model objects were downloaded
-        run: git lfs fsck
-      - run: flutter pub get
-      - name: Assemble unsigned official APK
-        env:
-          ORG_GRADLE_PROJECT_miyinProduction: 'true'
-        run: flutter build apk --release --target-platform android-arm64
-      - name: Restore protected signing material
-        working-directory: .
-        env:
-          MIYIN_KEYSTORE_BASE64: ${{ secrets.MIYIN_KEYSTORE_BASE64 }}
-          MIYIN_LEGACY_KEYSTORE_BASE64: ${{ secrets.MIYIN_LEGACY_KEYSTORE_BASE64 }}
-        run: |
-          python3 - <<'PY'
-          import os,base64,pathlib
-          target=pathlib.Path(os.environ['RUNNER_TEMP'])/'miyin-signing'
-          target.mkdir(mode=0o700)
-          for name,key in [('release.p12','MIYIN_KEYSTORE_BASE64'),('legacy.keystore','MIYIN_LEGACY_KEYSTORE_BASE64')]:
+YªçŠx-®éÜj×¢ëiºÚ+Š§j[h‘éÜ¢éí×OwN‹Z–‹­¦ëeŠw¬Õ¹…µ”è	Õ¥±Í¥¹•¹‘É½¥É•±•…Í”)½¸è(€ÁÕÍ è(€€€‰É…¹¡•Ìèmµ…¥¹t(€€€Á…Ñ¡Ìè(€€€€€€´€…ÁÀ½µ¥å¥¸½ÁÕ‰ÍÁ•Œ¹å…µ°œ(€Ý½É­™±½Ý}‘¥ÍÁ…Ñ è)Á•Éµ¥ÍÍ¥½¹Ìè(€½¹Ñ•¹ÑÌèÉ•…)½¹ÕÉÉ•¹äè(€É½ÕÀè…¹‘É½¥µÁÉ•Ù¥•Ü(€…¹•°µ¥¸µÁÉ½É•ÍÌè™…±Í”)©½‰Ìè(€‰Õ¥±è(€€€¥˜è¥Ñ¡Õˆ¹É•˜€ôô€É•™Ì½¡•…‘Ì½µ…¥¸œ(€€€•¹Ù¥É½¹µ•¹Ðèµ¥å¥¸µÉ•±•…Í”(€€€ÉÕ¹Ìµ½¸èÕ‰Õ¹ÑÔµ±…Ñ•ÍÐ(€€€Ñ¥µ•½ÕÐµµ¥¹ÕÑ•Ìè€ØÀ(€€€‘•™…Õ±ÑÌè(€€€€€ÉÕ¸è(€€€€€€€Ý½É­¥¹œµ‘¥É•Ñ½Éäè…ÁÀ½µ¥å¥¸(€€€ÍÑ•ÁÌè(€€€€€€´¹…µ”èÉ•”Õ¹ÕÍ•ÉÕ¹¹•ÈÑ½½±Ì™½È‰Õ¹‘±•µ½‘•°‰Õ¥±(€€€€€€€Ý½É­¥¹œµ‘¥É•Ñ½Éäè€‘íìÉÕ¹¹•È¹Ñ•µÀõô(€€€€€€€ÉÕ¸èÍÕ‘¼É´€µÉ˜€½ÕÍÈ½Í¡…É”½‘½Ñ¹•Ð€½½ÁÐ½¡Œ€½½ÁÐ½¡½ÍÑ•‘Ñ½½±…¡”½½‘•E0(€€€€€€´ÕÍ•Ìè…Ñ¥½¹Ì½¡•­½ÕÑØÐ(€€€€€€€Ý¥Ñ è(€€€€€€€€€±™ÌèÑÉÕ”(€€€€€€´ÕÍ•Ìè…Ñ¥½¹Ì½Í•ÑÕÀµ©…Ù…ØÐ(€€€€€€€Ý¥Ñ è(€€€€€€€€€‘¥ÍÑÉ¥‰ÕÑ¥½¸èÑ•µÕÉ¥¸(€€€€€€€€€©…Ù„µÙ•ÉÍ¥½¸è€œÄÜœ(€€€€€€´ÕÍ•ÌèÍÕ‰½Í¥Ñ¼½™±ÕÑÑ•Èµ…Ñ¥½¹ØÈ(€€€€€€€Ý¥Ñ è(€€€€€€€€€™±ÕÑÑ•ÈµÙ•ÉÍ¥½¸è€œÌ¸ÐÜ¸Èœ(€€€€€€€€€¡…¹¹•°èÍÑ…‰±”(€€€€€€€€€…¡”èÑÉÕ”(€€€€€€´¹…µ”è½¹™¥É´…ÑÕ…°µ½‘•°½‰©•ÑÌÝ•É”‘½Ý¹±½…‘•(€€€€€€€ÉÕ¸è¥Ð±™Ì™Í¬(€€€€€€´ÉÕ¸è™±ÕÑÑ•ÈÁÕˆ•Ð(€€€€€€´¹…µ”èÍÍ•µ‰±”Õ¹Í¥¹•½™™¥¥…°A,(€€€€€€€•¹Øè(€€€€€€€€€=I}I1}AI=)Q}µ¥å¥¹AÉ½‘ÕÑ¥½¸è€ÑÉÕ”œ(€€€€€€€ÉÕ¸è™±ÕÑÑ•È‰Õ¥±…Á¬€´µÉ•±•…Í”€´µÑ…É•ÐµÁ±…Ñ™½É´…¹‘É½¥µ…É´ØÐ(€€€€€€´¹…µ”èI•ÍÑ½É”ÁÉ½Ñ•Ñ•Í¥¹¥¹œµ…Ñ•É¥…°(€€€€€€€Ý½É­¥¹œµ‘¥É•Ñ½Éäè€¸(€€€€€€€•¹Øè(€€€€€€€€€5%e%9}-eMQ=I}	MØÐè€‘íìÍ•É•ÑÌ¹5%e%9}-eMQ=I}	MØÐõô(€€€€€€€€€5%e%9}1e}-eMQ=I}	MØÐè€‘íìÍ•É•ÑÌ¹5%e%9}1e}-eMQ=I}	MØÐõô(€€€€€€€ÉÕ»Ýí¢G§²ÚîÆ­yÓTORE_BASE64')]:
               raw=os.environ.get(key)
               if not raw: raise RuntimeError('Missing protected release secret: '+key)
               p=target/name;p.write_bytes(base64.b64decode(raw));p.chmod(0o600)

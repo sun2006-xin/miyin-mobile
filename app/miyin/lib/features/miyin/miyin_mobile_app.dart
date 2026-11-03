@@ -22,6 +22,7 @@ import 'translation_attachment_ocr.dart';
 import 'avatar_image_picker.dart';
 import 'live_audio_archive.dart';
 import 'live_session_microphone_recorder.dart';
+import 'automatic_update_service.dart';
 import 'multilingual_asr_model_store.dart';
 import 'offline_speech_recognizer.dart';
 import 'offline_speech_synthesizer.dart';
@@ -56,6 +57,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   );
   late final WebViewController _controller;
   late final ChatHost _chat;
+  late final AutomaticUpdateService _automaticUpdates;
   final _navigatorKey = GlobalKey<NavigatorState>();
   bool _chatSettingsOpen = false;
   late final AdaptiveRefreshCoordinator _refreshCoordinator;
@@ -100,6 +102,8 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   bool _appVisible = true;
   var _isLoading = true;
   var _nativeHostReady = false;
+  String? _updatePermissionPromptVersion;
+  bool _updatePermissionPromptOpen = false;
   String? _loadError;
   String? _pendingFloatingScreen;
   String? _pendingScreenshotPath;
@@ -109,6 +113,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _automaticUpdates = AutomaticUpdateService();
     _refreshCoordinator = AdaptiveRefreshCoordinator(
       requestHighRefresh: _setNativeHighRefresh,
     );
@@ -1606,6 +1611,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
 
   Future<void> _markNativeHostReady() async {
     _nativeHostReady = true;
+    unawaited(_automaticUpdates.start(_onAutomaticUpdateState));
     try {
       await _controller.runJavaScript('''
           document.documentElement.dataset.nativeHost = "true";
@@ -1725,6 +1731,76 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
       }
     }
     if (mounted) setState(() => _isLoading = false);
+  }
+
+  void _onAutomaticUpdateState(Map<String, Object?> state) {
+    if (!mounted) return;
+    final updateState = state['state'];
+    final version = state['updateVersionName']?.toString() ?? '';
+    if (updateState != 'permission_required' ||
+        version.isEmpty ||
+        version == _updatePermissionPromptVersion ||
+        _updatePermissionPromptOpen ||
+        _liveActive) {
+      return;
+    }
+    _updatePermissionPromptVersion = version;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_showUpdateInstallPermissionDialog(version));
+    });
+  }
+
+  Future<void> _showUpdateInstallPermissionDialog(String version) async {
+    final dialogContext = _navigatorKey.currentContext;
+    if (_liveActive) {
+      _updatePermissionPromptVersion = null;
+      return;
+    }
+    if (dialogContext == null || _updatePermissionPromptOpen) {
+      return;
+    }
+    _updatePermissionPromptOpen = true;
+    try {
+      await showDialog<void>(
+        context: dialogContext,
+        barrierDismissible: false,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+            side: const BorderSide(color: Color(0x5534BFAF)),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.system_update_alt_rounded, color: Color(0xFF0F766E)),
+              SizedBox(width: 10),
+              Text('更新已准备好'),
+            ],
+          ),
+          content: Text(
+            '觅音已在非计量网络下下载并校验 $version。Android 需要允许觅音安装自己的更新；这项授权只需设置一次。',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('稍后'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _automaticUpdates.openInstallPermissionSettings();
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF0F766E),
+                shape: const StadiumBorder(),
+              ),
+              child: const Text('前往授权'),
+            ),
+          ],
+        ),
+      );
+    } finally {
+      _updatePermissionPromptOpen = false;
+    }
   }
 
   Future<void> _openPendingFloatingScreen() async {
@@ -1854,6 +1930,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _appVisible = true;
+      unawaited(_automaticUpdates.refresh());
       unawaited(_syncNativeRefreshState());
       unawaited(_syncSubtitleQuickPreferences());
       unawaited(_consumeFloatingScreen());
@@ -1912,6 +1989,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
     unawaited(_stopLiveServices());
     _floatingChannel.setMethodCallHandler(null);
     _subtitleChannel.setMethodCallHandler(null);
+    _automaticUpdates.dispose();
     _voiceEvents?.cancel();
     _playbackEvents?.cancel();
     _offlineVoiceEvents?.cancel();
