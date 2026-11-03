@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:sherpa_onnx/sherpa_onnx.dart' as sherpa;
 
 import 'multilingual_tts_model_store.dart';
+import 'matcha_tts_model_store.dart';
 import 'speech_audio_cache.dart';
 
 /// Tracks latest-only asynchronous voice requests without depending on timers.
@@ -77,6 +78,7 @@ final class MiyinOfflineSpeechSynthesizer {
   Future<void>? _workerStart;
   Isolate? _worker;
   SendPort? _commands;
+  String _coreWorkerProvider = 'melo';
   Isolate? _multilingualWorker;
   SendPort? _multilingualCommands;
   Future<void>? _multilingualWorkerStart;
@@ -356,8 +358,18 @@ final class MiyinOfflineSpeechSynthesizer {
         _scheduleMultilingualWorkerIdleRelease();
       } else {
         await _unloadMultilingualWorker();
-        final modelDirectory = await _ensureAssets();
-        await _ensureWorker(modelDirectory);
+        final coreProvider = coreProviderFor(
+          languageTag: languageTag,
+          provider: provider,
+        );
+        // A live worker already owns the validated, loaded model. Rewalking
+        // hundreds of eSpeak files before every segment delays continuous speech.
+        if (_commands == null || _coreWorkerProvider != coreProvider) {
+          final modelDirectory = coreProvider == 'matcha'
+              ? await MiyinMatchaTtsModelStore.instance.prepare()
+              : await _ensureAssets();
+          await _ensureWorker(modelDirectory, provider: coreProvider);
+        }
         commands = _commands!;
       }
       workerReadyClock.stop();
@@ -394,6 +406,13 @@ final class MiyinOfflineSpeechSynthesizer {
             if (pcm is TransferableTypedData && sampleRate is int) {
               final bytes = pcm.materialize().asUint8List();
               pcmCollector.add(bytes, sampleRate);
+              if (streamedChunks == 0) {
+                debugPrint(
+                  '[MiyinTTS] firstPcm sessionId=$sessionId '
+                  'requestedProvider=$provider sampleRate=$sampleRate '
+                  'requestToFirstPcmMs=${requestClock.elapsedMilliseconds}',
+                );
+              }
               await onAudio(bytes, sampleRate, requestGeneration);
               streamedChunks++;
             }
@@ -418,7 +437,7 @@ final class MiyinOfflineSpeechSynthesizer {
         }
         requestClock.stop();
         debugPrint(
-          '[MiyinTTS] provider=${useMultilingual ? 'supertonic' : 'melo'} '
+          '[MiyinTTS] provider=${useMultilingual ? 'supertonic' : _coreWorkerProvider} '
           'sessionId=$sessionId '
           'requestedProvider=$provider language=$languageTag textChars=${text.runes.length} '
           'workerReadyMs=${workerReadyClock.elapsedMilliseconds} '
@@ -564,13 +583,19 @@ final class MiyinOfflineSpeechSynthesizer {
   }
 
   @visibleForTesting
+  static String coreProviderFor({
+    required String languageTag,
+    required String provider,
+  }) => languageTag == 'zh-Hans' && provider == 'matcha' ? 'matcha' : 'melo';
+
+  @visibleForTesting
   static bool usesMultilingualWorker({
     required String languageTag,
     required String provider,
   }) =>
       _multilingualLanguages.contains(languageTag) &&
       languageTag != 'zh-Hans' &&
-      (languageTag != 'en' || provider == 'supertonic');
+      (languageTag != 'en' || provider == 'supertonic' || provider == 'matcha');
 
   /// Starts the selected TTS model in the background so voice playback does
   /// not pay ONNX initialization on the first tap. Only one TTS worker remains
@@ -780,7 +805,12 @@ final class MiyinOfflineSpeechSynthesizer {
               )) {
                 await _prepareMultilingualWorker(languageTag);
               } else {
-                await _prepareCoreWorker();
+                await _prepareCoreWorker(
+                  provider: coreProviderFor(
+                    languageTag: languageTag,
+                    provider: provider,
+                  ),
+                );
               }
             });
             break;
@@ -813,11 +843,15 @@ final class MiyinOfflineSpeechSynthesizer {
     }
   }
 
-  Future<void> _prepareCoreWorker() async {
+  Future<void> _prepareCoreWorker({String provider = 'melo'}) async {
     if (_disposed) return;
     await _unloadMultilingualWorker();
-    final modelDirectory = await _ensureAssets();
-    await _ensureWorker(modelDirectory);
+    if (_commands == null || _coreWorkerProvider != provider) {
+      final modelDirectory = provider == 'matcha'
+          ? await MiyinMatchaTtsModelStore.instance.prepare()
+          : await _ensureAssets();
+      await _ensureWorker(modelDirectory, provider: provider);
+    }
     _scheduleCoreWorkerIdleRelease();
   }
 
@@ -1032,14 +1066,18 @@ final class MiyinOfflineSpeechSynthesizer {
     if (isExpectedPath) await oldData.delete(recursive: true);
   }
 
-  Future<void> _ensureWorker(Directory modelDirectory) async {
-    if (_commands != null) return;
+  Future<void> _ensureWorker(
+    Directory modelDirectory, {
+    String provider = 'melo',
+  }) async {
+    if (_commands != null && _coreWorkerProvider == provider) return;
     final pending = _workerStart;
     if (pending != null) {
       await pending;
-      return;
+      return _ensureWorker(modelDirectory, provider: provider);
     }
-    final start = _startWorker(modelDirectory);
+    if (_commands != null) await _stopCoreWorker();
+    final start = _startWorker(modelDirectory, provider: provider);
     _workerStart = start;
     try {
       await start;
@@ -1048,12 +1086,16 @@ final class MiyinOfflineSpeechSynthesizer {
     }
   }
 
-  Future<void> _startWorker(Directory modelDirectory) async {
+  Future<void> _startWorker(
+    Directory modelDirectory, {
+    required String provider,
+  }) async {
     final ready = ReceivePort();
     try {
       _worker = await Isolate.spawn<Map<String, Object?>>(_ttsWorkerMain, {
         'replyTo': ready.sendPort,
         'modelDirectory': modelDirectory.path,
+        'provider': provider,
       }, debugName: 'miyin-offline-tts');
       final message = await ready.first.timeout(const Duration(minutes: 3));
       if (message is! Map ||
@@ -1062,7 +1104,7 @@ final class MiyinOfflineSpeechSynthesizer {
         throw StateError('Offline TTS worker did not become ready.');
       }
       debugPrint(
-        '[MiyinTTS] provider=melo modelWarmupMs=${message['warmupMs'] ?? 'n/a'}',
+        '[MiyinTTS] provider=$provider modelWarmupMs=${message['warmupMs'] ?? 'n/a'}',
       );
       if (_disposed) {
         _worker?.kill(priority: Isolate.immediate);
@@ -1070,6 +1112,7 @@ final class MiyinOfflineSpeechSynthesizer {
         return;
       }
       _commands = message['port'] as SendPort;
+      _coreWorkerProvider = provider;
     } on TimeoutException {
       _worker?.kill(priority: Isolate.immediate);
       _worker = null;
@@ -1302,24 +1345,46 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
   final commands = ReceivePort();
   sherpa.initBindings();
   final separator = Platform.pathSeparator;
-  final tts = sherpa.OfflineTts(
-    sherpa.OfflineTtsConfig(
-      model: sherpa.OfflineTtsModelConfig(
-        vits: sherpa.OfflineTtsVitsModelConfig(
-          model: '$modelDirectory${separator}model.onnx',
-          lexicon: '$modelDirectory${separator}lexicon.txt',
-          tokens: '$modelDirectory${separator}tokens.txt',
+  final useMatcha = initialization['provider'] == 'matcha';
+  late final sherpa.OfflineTts tts;
+  try {
+    tts = sherpa.OfflineTts(
+      sherpa.OfflineTtsConfig(
+        model: sherpa.OfflineTtsModelConfig(
+          vits: useMatcha
+              ? const sherpa.OfflineTtsVitsModelConfig()
+              : sherpa.OfflineTtsVitsModelConfig(
+                  model: '$modelDirectory${separator}model.onnx',
+                  lexicon: '$modelDirectory${separator}lexicon.txt',
+                  tokens: '$modelDirectory${separator}tokens.txt',
+                ),
+          matcha: useMatcha
+              ? sherpa.OfflineTtsMatchaModelConfig(
+                  acousticModel:
+                      '$modelDirectory${separator}model-steps-3.onnx',
+                  vocoder: '$modelDirectory${separator}vocos-16khz-univ.onnx',
+                  lexicon: '$modelDirectory${separator}lexicon.txt',
+                  tokens: '$modelDirectory${separator}tokens.txt',
+                  dataDir: '$modelDirectory${separator}espeak-ng-data',
+                )
+              : const sherpa.OfflineTtsMatchaModelConfig(),
+          numThreads: 2,
+          debug: false,
+          provider: 'cpu',
         ),
-        numThreads: 2,
-        debug: false,
-        provider: 'cpu',
+        ruleFsts: useMatcha
+            ? ''
+            : [
+                '$modelDirectory${separator}date.fst',
+                '$modelDirectory${separator}number.fst',
+              ].join(','),
       ),
-      ruleFsts: [
-        '$modelDirectory${separator}date.fst',
-        '$modelDirectory${separator}number.fst',
-      ].join(','),
-    ),
-  );
+    );
+  } catch (error) {
+    startupPort.send({'type': 'error', 'details': error.toString()});
+    commands.close();
+    return;
+  }
   final warmup = Stopwatch()..start();
   try {
     tts.generate(text: '你好。', sid: 0, speed: 1.0);
@@ -1384,6 +1449,7 @@ void _ttsWorkerMain(Map<String, Object?> initialization) {
       writeClock.stop();
       replyTo.send({
         'ok': true,
+        'sampleRate': audio.sampleRate,
         'synthesisMs': synthesisClock.elapsedMilliseconds,
         'audioDurationMs': audio.samples.length * 1000 ~/ audio.sampleRate,
         'wavWriteMs': writeClock.elapsedMilliseconds,

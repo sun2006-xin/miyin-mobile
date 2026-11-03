@@ -22,9 +22,14 @@
     if (/[\u0400-\u04ff]/u.test(text)) return 'ru';
     return /[\u3400-\u9fff]/u.test(text) ? 'zh-Hans' : 'en';
   }
+  function voiceSelection(languageTag) {
+    // AI speech has its own engine route. Translation keeps the saved provider;
+    // the single Matcha Chinese voice must not inherit a multilingual voice ID.
+    return {languageTag, provider:languageTag === 'zh-Hans' ? 'matcha' : 'supertonic',
+      speakerId:languageTag === 'zh-Hans' ? 0 : Number(load('tts-speaker', 0))};
+  }
   function speechParams(text) {
-    return {text, languageTag:language(text), provider:load('tts-provider', 'melo'),
-      speed:Number(load('tts-speed', 1)), speakerId:Number(load('tts-speaker', 0))};
+    return {text, ...voiceSelection(language(text)), speed:Number(load('tts-speed', 1))};
   }
   function warmVoice() {
     // A visible reply already prepares the exact first utterance. A generic
@@ -34,8 +39,7 @@
     const selected = load('ai-tts-language', 'auto');
     const row=chat()?.get?.(chat()?.getActiveId?.());
     const reply=row?.messages?.at(-1);
-    const params={languageTag:selected === 'auto' ? (reply?.text ? language(reply.text) : 'zh-Hans') : selected,
-      provider:load('tts-provider','melo'),speakerId:Number(load('tts-speaker',0))};
+    const params=voiceSelection(selected === 'auto' ? (reply?.text ? language(reply.text) : 'zh-Hans') : selected);
     const key=JSON.stringify(params);
     if (Date.now() - voiceWarmAt < 30000 && voiceWarmKey === key) return;
     voiceWarmAt = Date.now();voiceWarmKey=key;
@@ -196,6 +200,7 @@
     void drain();
   }
   async function drain() {
+    console.info('[MiyinTTS] drain speaking='+speaking+' sessionId='+ttsId+' queued='+queue.length);
     if (speaking || ttsId) return;
     if (!queue.length) {
       if (finished && speechGroup && !groupEnding) {
@@ -220,6 +225,7 @@
       void stopSpeech(); state('error'); notify('朗读超时，文字已保留，可以重新点按朗读。');
     }, 60000);
     try {
+      console.info('[MiyinTTS] speak request sessionId='+id);
       const result = await rpc('voice.speak', {sessionId:id,groupId:speechGroup,...speechParams(text),streamAudio:true});
       if (epoch !== generation || ttsId !== id) return;
       if (result?.status === 'cancelled') {await stopSpeech();state('paused');return;}
@@ -259,6 +265,11 @@
   }
   window.addEventListener('miyin:voice-event', event => {
     const data = event.detail || {};
+    if (['tts_buffered','tts_done','tts_error','tts_stopped'].includes(data.type)) {
+      console.info('[MiyinTTS] voiceEvent type='+data.type+' sessionId='+data.sessionId+
+        ' ttsId='+ttsId+' groupId='+speechGroup+' queued='+queue.length+' finished='+finished+
+        ' segmentMatch='+(data.sessionId===ttsId)+' groupMatch='+(data.sessionId===speechGroup));
+    }
     if (speechGroup && data.sessionId === speechGroup) {
       if (data.type === 'tts_done') {
         clearTimeout(timer);timer=0;ttsId=null;speaking=false;playbackStarted=false;
@@ -302,6 +313,9 @@
     if (document.hidden) suspend();
   });
   function suspend() {
+    // Translation may load Melo while AI is away. The elapsed warmup TTL does
+    // not prove that AI's selected worker is still resident when we return.
+    voiceWarmAt = 0;voiceWarmKey = '';
     if (opened) ui().close(); else { lifecycle++; void stopSpeech(); }
   }
   window.addEventListener('miyin:app-paused', suspend);

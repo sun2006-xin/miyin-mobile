@@ -26,12 +26,73 @@ function harness(request) {
   return {voice: window.MiyinChatVoice, window, calls, states, timers, preferences:data,
     get draft(){return draft;}, get reading(){return reading;},
     emit(name,detail){for(const fn of listeners.get(name)||[])fn({detail});},
-    leave(){activeScreen=false;this.emit('miyin:surface-visibility-change');}};
+    leave(){activeScreen=false;this.emit('miyin:surface-visibility-change');},
+    returnToChat(){activeScreen=true;this.emit('miyin:surface-visibility-change');}};
 }
 test('opening voice does not start a microphone or contact a model', () => {
   const h=harness(); h.voice.open(); assert.equal(h.calls.length,1); assert.equal(h.calls[0].method,'voice.prepare');
   assert.equal(h.calls[0].params.languageTag,'zh-Hans');assert.equal(h.voice.isOpen,true);
 });
+
+test('AI Chinese warmup, preparation and reading use the single fast voice without changing saved translation settings', async () => {
+  const h=harness();
+  h.preferences.set('miyin.full.preview.v5.tts-provider',JSON.stringify('supertonic'));
+  h.preferences.set('miyin.full.preview.v5.tts-speaker',JSON.stringify(8));
+  h.voice.open();
+  const warm=h.calls.find(row=>row.method==='voice.prepare').params;
+  assert.equal(warm.provider,'matcha');assert.equal(warm.speakerId,0);
+  await h.voice.shutdown();
+  h.voice.prepareMessage('你好，这是中文测试。');await settle();
+  const prepared=h.calls.find(row=>row.method==='voice.prepareUtterance').params;
+  await h.voice.read('你好，这是中文测试。','fast-chinese');await settle();
+  const spoken=h.calls.find(row=>row.method==='voice.speak').params;
+  for(const params of [prepared,spoken]) {
+    assert.equal(params.languageTag,'zh-Hans');assert.equal(params.provider,'matcha');assert.equal(params.speakerId,0);
+  }
+  assert.equal(h.preferences.get('miyin.full.preview.v5.tts-provider'),JSON.stringify('supertonic'));
+  assert.equal(h.preferences.get('miyin.full.preview.v5.tts-speaker'),JSON.stringify(8));
+});
+
+test('AI English warmup, preparation and reading use multilingual speech even when translation selects Melo', async () => {
+  const h=harness();
+  h.preferences.set('miyin.full.preview.v5.ai-tts-language',JSON.stringify('en'));
+  h.preferences.set('miyin.full.preview.v5.tts-provider',JSON.stringify('melo'));
+  h.preferences.set('miyin.full.preview.v5.tts-speaker',JSON.stringify(3));
+  h.voice.open();assert.equal(h.calls[0].params.provider,'supertonic');
+  assert.equal(h.calls[0].params.languageTag,'en');assert.equal(h.calls[0].params.speakerId,3);
+  await h.voice.shutdown();h.voice.prepareMessage('Hello, how are you?');await settle();
+  await h.voice.read('Hello, how are you?','fast-english');await settle();
+  for(const row of h.calls.filter(row=>['voice.prepareUtterance','voice.speak'].includes(row.method))) {
+    assert.equal(row.params.provider,'supertonic');assert.equal(row.params.languageTag,'en');assert.equal(row.params.speakerId,3);
+  }
+  assert(h.calls.some(row=>row.method==='voice.prepareUtterance'));
+});
+
+test('explicit AI French selection stays on multilingual speech for warmup and playback', async () => {
+  const h=harness();h.preferences.set('miyin.full.preview.v5.ai-tts-language',JSON.stringify('fr'));
+  h.voice.open();assert.equal(h.calls[0].params.provider,'supertonic');assert.equal(h.calls[0].params.languageTag,'fr');
+  await h.voice.read('Bonjour, comment allez-vous ?','french');await settle();
+  const speech=h.calls.find(row=>row.method==='voice.speak').params;
+  assert.equal(speech.languageTag,'fr');assert.equal(speech.provider,'supertonic');
+});
+
+for(const withVoiceOpen of [false,true]) {
+  test(`returning from translation refreshes AI warmup once within the TTL (voice open: ${withVoiceOpen})`, async () => {
+    const h=harness();
+    if(withVoiceOpen) h.voice.open(); else h.returnToChat();
+    h.returnToChat();
+    assert.equal(h.calls.filter(row=>row.method==='voice.prepare').length,1);
+    h.leave();await settle();
+    // Another page may now have warmed/spoken Melo; returning must ask native
+    // to restore Matcha even though less than 30 seconds have elapsed.
+    h.returnToChat();h.returnToChat();
+    const prepares=h.calls.filter(row=>row.method==='voice.prepare');
+    assert.equal(prepares.length,2);
+    assert(prepares.every(row=>row.params.provider==='matcha'));
+    await h.voice.read('你好，这是返回后的回答。','after-return');await settle();
+    assert.equal(h.calls.filter(row=>row.method==='voice.prepare').length,2);
+  });
+}
 
 test('one answer queues the next segment after buffering without ending the shared track', async () => {
   const h=harness();await h.voice.read('这是测试连续朗读的完整中文句子。'.repeat(9),'continuous');await settle();
@@ -46,6 +107,31 @@ test('one answer queues the next segment after buffering without ending the shar
   assert.equal(h.reading,'continuous');
   assert.equal(h.calls.filter(row=>row.method==='voice.finishSpeech').length,1);
   h.emit('miyin:voice-event',{sessionId:group,type:'tts_done'});await settle();assert.equal(h.reading,null);
+});
+
+test('synchronous buffered events before speak admission resolves retain all three segments and finish once', async () => {
+  let h;
+  h=harness((method,params)=>{
+    if(method==='voice.speak') {
+      // Native synthesis may finish and notify JS before the admission RPC
+      // response reaches it. Do not defer this event to a later microtask.
+      h.emit('miyin:voice-event',{sessionId:params.sessionId,type:'tts_buffered'});
+      return {status:'started'};
+    }
+    return {};
+  });
+  const text='同步回调不会丢失后续语音片段'.repeat(8).slice(0,100);
+  await h.voice.read(text,'synchronous-buffered');await settle();
+  const spoken=h.calls.filter(row=>row.method==='voice.speak');
+  assert.equal(spoken.length,3);
+  assert.equal(spoken.map(row=>row.params.text).join(''),text);
+  const group=spoken[0].params.groupId;
+  assert(spoken.every(row=>row.params.groupId===group&&row.params.streamAudio===true));
+  const finishes=h.calls.filter(row=>row.method==='voice.finishSpeech');
+  assert.equal(finishes.length,1);assert.equal(finishes[0].params.groupId,group);
+  assert.equal(h.reading,'synchronous-buffered');
+  h.emit('miyin:voice-event',{sessionId:group,type:'tts_done'});await settle();
+  assert.equal(h.reading,null);assert.equal(h.timers.size,0);
 });
 
 test('late buffered events cannot enqueue more speech after interrupt', async () => {
@@ -207,7 +293,7 @@ test('manual reading combines adjacent short sentences into one playback', async
   const speech=h.calls.filter(row=>row.method==='voice.speak');
   assert.equal(speech.length,1);assert.equal(speech[0].params.text,text);
 });
-test('Chinese Melo reading starts with a small segment and bounds later preparation', async () => {
+test('Chinese reading starts with a small segment and bounds later preparation', async () => {
   const h=harness(),text='这是一段用于连续朗读验证的中文内容，确保长回复不会等待整段合成。'.repeat(16);
   await h.voice.read(text,'chinese');await settle();
   assert(h.calls.find(row=>row.method==='voice.speak').params.text.length<=24);
@@ -322,9 +408,9 @@ test('a pending streaming admission after interrupt never starts another playbac
 });
 test('speech batching does not merge sentences routed to different TTS languages', async () => {
   const h=harness();await h.voice.read('你好。Hello.','mixed');await settle();
-  const first=h.calls.find(row=>row.method==='voice.speak');assert.equal(first.params.languageTag,'zh-Hans');
+  const first=h.calls.find(row=>row.method==='voice.speak');assert.equal(first.params.languageTag,'zh-Hans');assert.equal(first.params.provider,'matcha');
   h.emit('miyin:voice-event',{sessionId:first.params.sessionId,type:'tts_done'});await settle();
-  const second=h.calls.filter(row=>row.method==='voice.speak')[1];assert.equal(second.params.languageTag,'en');
+  const second=h.calls.filter(row=>row.method==='voice.speak')[1];assert.equal(second.params.languageTag,'en');assert.equal(second.params.provider,'supertonic');
 });
 
 test('formatting-only lines do not trigger an English model between Chinese speech', async () => {

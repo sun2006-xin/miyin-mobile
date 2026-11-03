@@ -184,6 +184,11 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   }
 
   Future<void> _configureWebView() async {
+    await _controller.setOnConsoleMessage((message) {
+      if (message.message.startsWith('[MiyinTTS]')) {
+        debugPrint(message.message);
+      }
+    });
     await _controller.setJavaScriptMode(JavaScriptMode.unrestricted);
     await _controller.addJavaScriptChannel(
       'MiyinPerformance',
@@ -1525,6 +1530,11 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   Future<void> _forwardVoiceEvent(Object? rawEvent) async {
     if (rawEvent is! Map) return;
     final event = Map<String, Object?>.from(rawEvent);
+    if (event['type'] == 'tts_buffered' || event['type'] == 'tts_done' ||
+        event['type'] == 'tts_error' || event['type'] == 'tts_stopped') {
+      debugPrint('[MiyinTTS] forwarding type=${event['type']} '
+          'sessionId=${event['sessionId']} ready=$_nativeHostReady');
+    }
     if (event['type'] == 'recognition_partial' &&
         event['text'] is String &&
         _isRepetitiveAudioArtifact(event['text'] as String)) return;

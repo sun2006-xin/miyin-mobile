@@ -940,6 +940,7 @@ final class TranslationRpcRouter {
   static String _readTtsProvider(Object? value) {
     if (value == null || value == 'melo') return 'melo';
     if (value == 'supertonic') return 'supertonic';
+    if (value == 'matcha') return 'matcha';
     throw ArgumentError.value(value, 'provider', '请选择有效的离线语音模型。');
   }
 

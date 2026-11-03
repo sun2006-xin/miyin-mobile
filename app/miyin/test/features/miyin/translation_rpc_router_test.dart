@@ -140,6 +140,45 @@ void main() {
   });
 
   test(
+    'accepts AI fast speech preparation and preserves existing providers',
+    () async {
+      for (final provider in ['matcha', 'melo', 'supertonic']) {
+        final response = await router.handle(
+          jsonEncode({
+            'version': 1,
+            'id': 'prepare-$provider',
+            'method': 'voice.prepare',
+            'params': {
+              'languageTag': 'zh-Hans',
+              'provider': provider,
+              'speakerId': 0,
+            },
+          }),
+        );
+        expect(response['ok'], isTrue);
+        expect((response['result'] as Map)['provider'], provider);
+        expect((response['result'] as Map)['status'], 'preparing');
+      }
+    },
+  );
+
+  test(
+    'rejects an unknown speech provider before preparing any model',
+    () async {
+      final response = await router.handle(
+        jsonEncode({
+          'version': 1,
+          'id': 'invalid-voice-provider',
+          'method': 'voice.prepare',
+          'params': {'languageTag': 'zh-Hans', 'provider': 'unknown'},
+        }),
+      );
+      expect(response['ok'], isFalse);
+      expect((response['error'] as Map)['code'], 'invalid_parameters');
+    },
+  );
+
+  test(
     'translation preview returns local text without saving history',
     () async {
       final response = await router.handle(

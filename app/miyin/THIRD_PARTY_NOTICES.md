@@ -112,21 +112,38 @@ Model SHA-256 checksums:
 | `model.onnx` | `BF30582EB1B012250A35B1A4A80E7DFBCF8485E7BB9DE0D95EFBBEEF0E4AD86D` |
 | `lexicon.txt` | `7236884B02435AC5D10CF69B4BE40A61B45AA676B5300F0E412F185748FEE528` |
 
+## AI Chinese speech candidate (preview 60)
+
+AI Chinese speech additionally uses `matcha-icefall-zh-en`, converted from
+`dengcunqin/matcha_tts_zh_en_20251010`, with `vocos-16khz-univ.onnx`. The model
+has one speaker at 16 kHz and declares Chinese/English support; this app routes
+only AI Chinese speech to it. Translation and face-to-face speech retain their
+existing provider selection, and AI non-Chinese speech uses Supertonic.
+
+The author declares Apache-2.0 for the model. This is not a claim that the
+complete training-data provenance has been independently established. Source
+URLs, per-file hashes, Apache-2.0 and GPL-3.0 texts are retained inside
+`assets/voice/tts-matcha-zh-en/matcha-zh-en.tar.gz`; the adjacent manifest records
+the archive hash and extracted paths/sizes. This archive includes eSpeak NG
+data required by the current Matcha frontend. Its license and the native-runtime
+boundary below must be reviewed for public distribution independently of the
+application's own license.
+
 ### Native runtime license boundary
 
 The Flutter app still depends on `sherpa_onnx` 1.13.8. Although sherpa-onnx is
 Apache-2.0, the Android native runtime contains eSpeak NG / piper-phonemize
 components identified by the upstream project as GPL-licensed dependencies.
-The current Melo VITS configuration uses the model's supplied lexicon and does
-not bundle or configure eSpeak data, but this does not remove those components
-from the packaged native library. The sherpa-onnx maintainers track their
+The Melo VITS configuration uses the model's supplied lexicon and does not
+configure eSpeak data. The AI Matcha candidate described above does bundle and
+configure eSpeak data. Neither configuration removes those components from
+the packaged native library. The sherpa-onnx maintainers track their
 removal for a future major version in
 [issue #3731](https://github.com/k2-fsa/sherpa-onnx/issues/3731).
 
-This model replacement clarifies the model's own license and removes the old
-Kokoro model and eSpeak data from the declared Flutter asset bundle. It does
-not by itself settle redistribution obligations for the current prebuilt
-native library. Keep public APK distribution gated on a reviewed source and
+The old Kokoro model is no longer bundled. The model changes do not by
+themselves settle redistribution obligations for the current prebuilt
+native library or the newly bundled data. Keep public APK distribution gated on a reviewed source and
 license package, or on replacing that runtime with a build that excludes the
 GPL components.
 

@@ -1,7 +1,7 @@
 name: miyin_app
 description: "觅音独立手机应用"
 publish_to: 'none'
-version: 1.6.0-preview+56
+version: 1.6.0-preview+65
 
 environment:
   sdk: ^3.13.2
@@ -38,6 +38,7 @@ flutter:
     - assets/voice/asr-zh-en/
     - assets/voice/asr-whisper-base/
     - assets/voice/tts-melo-zh-en/
+    - assets/voice/tts-matcha-zh-en/
     - assets/voice/tts-supertonic3/
     - assets/dictionary/
     - assets/chat-model/

@@ -85,6 +85,38 @@ void main() {
 
     test('selects one TTS worker for each supported voice route', () {
       expect(
+        MiyinOfflineSpeechSynthesizer.coreProviderFor(
+          languageTag: 'zh-Hans',
+          provider: 'matcha',
+        ),
+        'matcha',
+      );
+      for (final provider in ['melo', 'supertonic']) {
+        expect(
+          MiyinOfflineSpeechSynthesizer.coreProviderFor(
+            languageTag: 'zh-Hans',
+            provider: provider,
+          ),
+          'melo',
+        );
+      }
+      for (final language in ['en', 'ja', 'ru', 'fr']) {
+        expect(
+          MiyinOfflineSpeechSynthesizer.usesMultilingualWorker(
+            languageTag: language,
+            provider: 'matcha',
+          ),
+          isTrue,
+        );
+        expect(
+          MiyinOfflineSpeechSynthesizer.coreProviderFor(
+            languageTag: language,
+            provider: 'matcha',
+          ),
+          'melo',
+        );
+      }
+      expect(
         MiyinOfflineSpeechSynthesizer.usesMultilingualWorker(
           languageTag: 'zh-Hans',
           provider: 'supertonic',

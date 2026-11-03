@@ -59,10 +59,16 @@ void main() {
       await tester.ensureVisible(model);
       await tester.enterText(model, 'qwen-plus');
       await tester.tap(find.text('保存'));
-      await tester.runAsync(
-        () => Future<void>.delayed(const Duration(milliseconds: 200)),
-      );
-      await tester.pumpAndSettle();
+      // Saving includes real SQLite I/O. Wait for the dialog to close rather
+      // than assuming disk work always completes inside a fixed 200 ms.
+      for (var attempt = 0; attempt < 100; attempt++) {
+        await tester.runAsync(
+          () => Future<void>.delayed(const Duration(milliseconds: 20)),
+        );
+        await tester.pumpAndSettle();
+        if (find.byType(DeepSeekSettings).evaluate().isEmpty) break;
+      }
+      expect(find.byType(DeepSeekSettings), findsNothing);
       expect(host.provider, 'dashscope');
       expect(host.selectedModel, 'qwen-plus');
       expect(host.status['configured'], false);

@@ -36,6 +36,7 @@ internal class MiyinVoiceMethodHandler(
     @Volatile private var activeStream: PcmStream? = null
     private class PcmStream(val id: String, val track: AudioTrack, val sampleRate: Int) {
         val queuedBytes = AtomicInteger(0)
+        val admission = PcmAdmissionGate(STREAM_HIGH_WATER_BYTES, STREAM_HIGH_WATER_BYTES / 2)
         var framesWritten = 0L
         var accepting = true
         var firstChunk = true
@@ -168,14 +169,18 @@ internal class MiyinVoiceMethodHandler(
                 }
             } finally {
                 stream.queuedBytes.addAndGet(-bytes.size)
-                if (deferredResult) mainHandler.post {
-                    result.success(mapOf("status" to if (activeStream === stream) "speaking" else "cancelled", "sessionId" to id))
+                mainHandler.post {
+                    if (activeStream === stream) stream.admission.onDrain(stream.queuedBytes.get())
+                    else stream.admission.cancel()
                 }
             }
         }
-        // The PCM writer is separate from the UI thread. Return once accepted so
-        // Dart can queue the next synthesis without waiting for playback to end.
-        if (!deferredResult) result.success(mapOf("status" to "speaking", "sessionId" to id))
+        // Resume admission at low water, while several seconds of accepted PCM
+        // remain. Waiting for this chunk itself to play starves the next synthesis.
+        stream.admission.acknowledgeOrWait(stream.queuedBytes.get()) { accepted ->
+            if (deferredResult && accepted) Log.d(TAG, "stream admission resumed queuedBytes=${stream.queuedBytes.get()} sessionId=$id")
+            result.success(mapOf("status" to if (accepted && activeStream === stream) "speaking" else "cancelled", "sessionId" to id))
+        }
     }
 
     private fun finishAudioStream(call: MethodCall, result: MethodChannel.Result) {
@@ -427,7 +432,9 @@ internal class MiyinVoiceMethodHandler(
     }
 
     private fun stopPlayback(emitStopped: Boolean, completePending: Boolean) {
+        val stream = activeStream
         activeStream = null
+        stream?.admission?.cancel()
         clearPrepareTimeout()
         clearFastCompletion()
         val sessionId = activePlaybackId
@@ -453,7 +460,9 @@ internal class MiyinVoiceMethodHandler(
     }
 
     private fun finishPlayback(type: String, sessionId: String, message: String? = null) {
+        val stream = activeStream
         activeStream = null
+        stream?.admission?.cancel()
         clearPrepareTimeout()
         clearFastCompletion()
         val player = mediaPlayer
