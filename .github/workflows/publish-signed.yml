@@ -1,0 +1,67 @@
+name: Stage verified signed build in Releases
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful official signed-build run ID
+        required: true
+        type: string
+      artifact_name:
+        description: Signed artifact name from that run
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+jobs:
+  stage:
+    if: github.ref == 'refs/heads/main'
+    environment: miyin-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate source run identity
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_RUN: ${{ inputs.run_id }}
+        run: |
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$SOURCE_RUN" > "$RUNNER_TEMP/source-run.json"
+          python3 - <<'PY'
+          import json,os,pathlib
+          d=json.loads((pathlib.Path(os.environ['RUNNER_TEMP'])/'source-run.json').read_text())
+          assert d['conclusion']=='success' and d['head_branch']=='main'
+          assert d['path']=='.github/workflows/android-preview.yml'
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('SOURCE_SHA='+d['head_sha']+'\n')
+          PY
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.run_id }}
+          name: ${{ inputs.artifact_name }}
+          path: downloads
+      - name: Verify download parts and public signing identity
+        run: |
+          python3 - <<'PY'
+          import hashlib,json,pathlib,os
+          root=pathlib.Path('downloads');d=json.loads((root/'DOWNLOAD-MANIFEST.json').read_text())
+          expected=json.loads(pathlib.Path('docs/release/signing/certificate.json').read_text())
+          assert d['certificateSha256']==expected['certificateSha256']
+          merged=hashlib.sha256()
+          for item in d['parts']:
+              assert pathlib.Path(item['file']).name==item['file']
+              p=root/item['file'];assert p.stat().st_size==item['bytes'];h=hashlib.sha256()
+              with p.open('rb') as f:
+                  for b in iter(lambda:f.read(8*1024*1024),b''):h.update(b);merged.update(b)
+              assert h.hexdigest()==item['sha256']
+          assert merged.hexdigest()==d['sha256']
+          tag='v'+d['version'].replace('+','.')
+          with open(os.environ['GITHUB_ENV'],'a') as f:f.write('RELEASE_TAG='+tag+'\n')
+          PY
+      - name: Stage download files for final device acceptance
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release create "$RELEASE_TAG" --target "$SOURCE_SHA" --title "Miyin signed preview" --notes "Verified official signed build. Download files staged for device acceptance; publication notes follow." --draft --prerelease
+          fi
+          gh release upload "$RELEASE_TAG" downloads/* --clobber
