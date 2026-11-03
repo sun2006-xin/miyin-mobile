@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/Android-arm64--v8a-178f83" alt="Android arm64-v8a">
 <img src="https://img.shields.io/badge/status-public%20preview-b7791f" alt="公开测试版">
 </p>
-<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/latest">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
+<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.68">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
 
 Miyin is an Android app for translation, live captions and AI conversations,
 with bundled on-device speech and chat models. This is a preview release;
