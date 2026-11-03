@@ -153,7 +153,12 @@ final class _Bundle extends CachingAssetBundle {
   String entryPath = 'model-steps-3.onnx';
   int archiveLoads = 0;
 
-  List<int> get archive {
+  // Keep the manifest and downloaded fixture on the same archive snapshot.
+  // Re-encoding gzip can change its timestamp across a clock-second boundary.
+  List<int>? _archive;
+  List<int> get archive => _archive ??= _createArchive();
+
+  List<int> _createArchive() {
     final files = Archive()..addFile(ArchiveFile.bytes(entryPath, [1, 2, 3]));
     if (extraEntry) files.addFile(ArchiveFile.bytes('unexpected', [4]));
     return GZipEncoder().encode(TarEncoder().encode(files));
