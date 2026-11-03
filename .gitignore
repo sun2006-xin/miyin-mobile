@@ -21,6 +21,12 @@ key.properties
 /output/
 /.playwright-cli/
 /archive/
+# Local installers, archives and protected signing material; never publish.
+/_local/
+/本机文件导览.txt
+# Python tool caches are local generated files.
+__pycache__/
+*.pyc
 app/miyin/assets/voice/asr-en-20m/
 app/miyin/assets/voice/asr-en-66m/
 app/miyin/assets/voice/asr-whisper-tiny/
