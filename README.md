@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/Android-arm64--v8a-178f83" alt="Android arm64-v8a">
 <img src="https://img.shields.io/badge/status-public%20preview-b7791f" alt="公开测试版">
 </p>
-<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.68">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
+<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.69">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
 
 Miyin is an Android app for translation, live captions and AI conversations,
 with bundled on-device speech and chat models. This is a preview release;
@@ -16,7 +16,7 @@ device compatibility and language quality are still being improved.
 ## 下载与安装
 
 安装包统一放在 **[GitHub Releases](https://github.com/sun2006-xin/miyin-mobile/releases)**，源码仓库不保存 APK。
-当前公开候选为 **1.6.0-preview+68**。完整包约 **2.23 GB**，保留本机 AI、视觉与离线语音资源。
+当前公开候选为 **1.6.0-preview+69**。完整包约 **2.23 GB**，保留本机 AI、视觉与离线语音资源。
 
 GitHub Release 单文件必须小于 2 GiB，因此完整 APK 分为两个文件：
 
@@ -26,7 +26,7 @@ GitHub Release 单文件必须小于 2 GiB，因此完整 APK 分为两个文件
 
 发布页同时提供 `INSTALL-README.txt`、`DOWNLOAD-MANIFEST.json` 和 `SHA256SUMS.txt`。
 需支持 **arm64-v8a** 的 Android 手机。建议为安装及首次准备模型预留 **10 GB**；这是保守建议，不是已测出的最低要求。
-当前使用测试签名，后续固定发行签名可能影响覆盖升级，请保留需要的导出文件。
+preview69已接入固定发行签名与更新签名链，OPPO/Android12覆盖升级已验收；Android9及以上使用新密钥，Android7/8保留旧兼容签名。其他设备仍需扩展验收，详见[签名与自动化](docs/release/signing-and-automation.md)。
 
 ## 功能总览
 
@@ -164,7 +164,7 @@ flutter build apk --release --target-platform android-arm64
 
 已使用 Flutter **3.47.2** 与项目锁定依赖构建。独立目录构建记录见
 [开源准备记录](docs/release/open-source-preflight-2026-11-03.md)；
-该轮使用本机 LFS 对象和依赖缓存，不能代替远程下载或空缓存构建验证。
+早期本机构建使用本机缓存；preview69已在GitHub完整取回LFS并完成编译、签名、产物下载核验和OPPO覆盖升级，见[发行验收](docs/release/signed-preview69-2026-11-03.md)。
 工具链和目录结构见[应用说明](app/miyin/README.md)。
 
 ## 参与开发
