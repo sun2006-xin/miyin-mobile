@@ -52,9 +52,10 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            // Official builds are signed and verified by the protected release
+            // tool after assembly. Contributor previews keep their local key.
+            signingConfig = if (providers.gradleProperty("miyinProduction").orNull == "true")
+                null else signingConfigs.getByName("debug")
             // Isolate a Release-only ML Kit model-status failure. Keep shrinking
             // disabled for this build until the device comparison identifies it.
             isMinifyEnabled = false
