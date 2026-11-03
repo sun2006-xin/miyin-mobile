@@ -1,51 +1,99 @@
-# 觅音
+<p align="center"><img src="docs/brand/promo/miyin-overview.png" alt="觅音：翻译、同传与本地 AI 对话" width="100%"></p>
 
-觅音是以本地能力为基础的 Android 翻译、同传与 AI 对话应用。GitHub 工程仓库名为 `miyin-mobile`；应用名为“觅音”。
+<h1 align="center">觅音 · Miyin</h1>
+<p align="center">让交流，自然发生。<br>以本地能力为基础的 Android 翻译、同传与 AI 对话应用。</p>
+<p align="center">
+<a href="LICENSE"><img src="https://img.shields.io/badge/source-Apache--2.0-0f766e" alt="自有源码 Apache-2.0"></a>
+<img src="https://img.shields.io/badge/Android-arm64--v8a-178f83" alt="Android arm64-v8a">
+<img src="https://img.shields.io/badge/status-public%20preview-b7791f" alt="公开测试版">
+</p>
+<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/latest">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
 
-## 当前阶段
+Miyin is an Android app for translation, live captions and AI conversations,
+with bundled on-device speech and chat models. This is a preview release;
+device compatibility and language quality are still being improved.
 
-当前开发处于 **1.6.0-preview 系列**，准确构建号以 [`pubspec.yaml`](app/miyin/pubspec.yaml) 为准。这里描述当前源码能力；历史正式版本与开发候选包应分别查看，不把开发验证当作全部设备的稳定性保证。
+## 下载与安装
 
-| 模块 | 当前能力与边界 |
+安装包统一放在 **[GitHub Releases](https://github.com/sun2006-xin/miyin-mobile/releases)**，源码仓库不保存 APK。
+当前公开候选为 **1.6.0-preview+68**。完整包约 **2.23 GB**，保留本机 AI、视觉与离线语音资源。
+
+GitHub Release 单文件必须小于 2 GiB，因此完整 APK 分为两个文件：
+
+1. 下载 `.apk.part1`、`.apk.part2`，保持文件名并放在同一文件夹。
+2. Windows 用户下载同页 `Merge-APK-Windows.cmd`，运行后合并并自动核对 SHA-256。
+3. 将得到的 `.apk` 传入 Android 手机安装。手机直接下载需用支持分割合并的文件工具；分卷本身不能安装。
+
+发布页同时提供 `INSTALL-README.txt`、`DOWNLOAD-MANIFEST.json` 和 `SHA256SUMS.txt`。
+需支持 **arm64-v8a** 的 Android 手机。建议为安装及首次准备模型预留 **10 GB**；这是保守建议，不是已测出的最低要求。
+当前使用测试签名，后续固定发行签名可能影响覆盖升级，请保留需要的导出文件。
+
+## 功能
+
+| 场景 | 已实现能力 |
 | --- | --- |
-| 翻译 | 文字、语音、图片覆盖译图、文章对照、面对面交流与本机历史；额外离线翻译语言包在应用内管理 |
-| 同传 | 麦克风/其他App音频、双语字幕与悬浮窗、会话记录、双方有声MP4录屏；部分App限制系统音频捕获 |
-| AI对话 | 本机模型与用户配置的外部模型、流式回答、模型显示名单、会话上下文、附件与联网搜索相关能力；模型质量及服务可用性分别受模型和网络影响 |
-| 本地语音 | ASR保留Whisper base int8；AI中文接入Matcha快速音色，其余AI语音保留现有多语言方案；翻译/面对面保持原TTS方案 |
-| 外观 | 主题、按钮材质、按压反馈、字体与AI球体独立搭配 |
+| 翻译 | 文字、语音、原图文字覆盖翻译、文章对照与本机历史 |
+| 面对面 | 双向交流、识别原文与译文、语音播报 |
+| 视频与会议 | 双声源同传、悬浮字幕、字幕历史及双方有声 MP4 录屏 |
+| AI 对话 | 内置本机模型、自选 API 模型、流式回答、图片附件、上下文与会话历史 |
+| 本地语音 | 中英流式识别、多语言识别、本地多语言语音合成与音色选择 |
+| 联网能力 | 搜索、公开网页读取和可打开的来源链接，受网络与服务可用性影响 |
+| 觅音外观 | 主题、按钮材质、按压反馈、字体和 AI 球体自由搭配 |
 
-完整手机Agent的系统操作能力尚未完成。当前主要在OPPO PEHM00（Android12）验证；跨品牌、逐语言识别/发音及真实首响仍需分别体验。详细历史见[更新记录](CHANGELOG.md)，近期语音证据见[本地快速语音验收](docs/product/AI本地快速语音接入与连续播放验收-2026-11-03.md)。
+<p align="center"><img src="docs/brand/promo/miyin-translation.png" alt="当前翻译界面演示" width="100%"></p>
+<p align="center"><img src="docs/brand/promo/miyin-chat.png" alt="当前 AI 对话界面，人工编写的示例数据" width="100%"></p>
 
-Android App 位于 [`app/miyin/`](app/miyin/)，采用Flutter加随包本地界面，原生服务负责语音、翻译、存储和Android媒体权限。语音资源随当前候选APK提供，安装包较大；应用内AI也可以选择本机模型，或由用户自行配置聊天模型API。音频识别与合成走本地路线。
+宣传图为当前页面渲染与示例数据，不代表特定模型的回答质量或速度保证。
 
-模型文件通过Git LFS保存。下载源码ZIP不等于已取回模型内容；构建前需要取回LFS对象并准备Flutter、Android SDK/NDK及Gradle环境。安装与构建入口见[应用说明](app/miyin/README.md)。已在独立目录完成基线干净构建和preview68构建；使用本机LFS对象及已有依赖缓存，远程LFS下载和空缓存环境仍需核对。证据见[开源准备记录](docs/release/open-source-preflight-2026-11-03.md)。
+## 本地与联网的边界
 
-当前尚在准备公开测试版。源码许可证、第三方模型/原生库分发材料、公开快照检查和干净构建的状态见[开源准备清单](docs/product/开源测试版准备清单-2026-11-03.md)。第三方组件分别适用各自许可，不能将模型的某一条许可声明视作整个APK的许可。
+随包 ASR、TTS 和本机聊天模型在手机运行，语音资源不要求用户另去网页寻找。
+选择外部聊天模型时，请求会发送给用户配置的服务商，其费用与隐私政策分别适用。
+额外离线翻译语言包由 Google ML Kit 在应用内下载；搜索和网页读取需要联网。
+ML Kit SDK 还可能获取更新、发送性能和使用情况指标，因此本地推理不等于整个应用绝不联网。
+历史和录制文件保存在本机；导出到手机公共目录的文件需另行管理。详见[隐私说明](PRIVACY.md)。
 
-觅音自有源码采用 [Apache-2.0](LICENSE)，详见 [NOTICE](NOTICE)。第三方权重、字体、词典与SDK保留各自许可，不能整体当作Apache-2.0资源使用。网络与本地处理边界见[隐私说明](PRIVACY.md)。
+## 当前限制
 
-## 品牌方向
+- 主要真机验证设备为 OPPO PEHM00 / Android 12，其他品牌与逐语种质量仍需反馈。
+- 首次准备、首次英文朗读和较长回答仍可能等待；识别与翻译准确率受口音、环境和模型影响。
+- 某些 App 禁止系统音频捕获；录屏和麦克风需要 Android 授权。
+- preview68 更换中英混读发音前端，自动化与合成检查已通过，仍需扩大听感验收。
+- 手机 Agent 自动操作尚未完成；iOS 工程存在不代表 iOS 语音和媒体链路已验收。
+- 旧实验 APK 只作开发留档，不建议作为当前体验入口；历史组件许可与当前版不同。
 
-- 应用名：觅音。
-- 应用使用已确认的蓝青色语音对话图标；Android 与 iOS 图标资源已纳入工程。字体及模型许可见 [第三方声明](app/miyin/THIRD_PARTY_NOTICES.md)。
-- UI 基线：用户已确认 V4 的整体主题和页面布局；V5 只扩展已讨论的 AI 对话与历史交互，保持独立目录供审阅和取舍。
+## 构建
 
-## 产品方向
+使用 **Git + Git LFS** 克隆，只下载源码 ZIP 不等于取得模型内容：
 
-- Android 手机端先行，桌面端暂缓。
-- 面对面交流是首屏主场景：按住说话为默认，也支持免按住连续收音；播报可以自动、点按或关闭。
-- 视频、直播和会议共享同传会话与字幕核心，由 Android 平台适配器提供麦克风、系统播放音频和 PiP 能力。
-- AI助手先做好普通对话、附件和语音体验，再分步扩展工具能力；当前不会因为“支持AI”就默认读取其他应用或自动操作手机。
-- Agent 模型与翻译模型分开配置；远程 API 只在用户配置、测试并选择后使用。
+```sh
+git lfs install
+git clone https://github.com/sun2006-xin/miyin-mobile.git
+cd miyin-mobile
+git lfs pull
+cd app/miyin
+flutter pub get
+flutter build apk --release --target-platform android-arm64
+```
 
-## 架构方向
+已使用 Flutter **3.47.2** 与项目锁定依赖构建。独立目录构建记录见
+[开源准备记录](docs/release/open-source-preflight-2026-11-03.md)；
+该轮使用本机 LFS 对象和依赖缓存，不能代替远程下载或空缓存构建验证。
+工具链和目录结构见[应用说明](app/miyin/README.md)。
 
-保持会话、上下文、Agent 与工具协议跨平台共享；Android 权限、麦克风、系统播放音频和 PiP 放在平台适配层。共享核心的版本化方式将在工程骨架阶段结合现有 Flutter/Dart 与 Rust Core 边界确定。首阶段不包含桌面客户端。
+## 参与开发
 
-## 设计材料
+当前应用在 `app/miyin/`。Flutter 外壳承载随包页面，Android 适配层负责权限、音频、录屏和原生模型运行。
+`main` 为统一公开分支，版本通过 tag 和 Release 留存。
 
-- [当前随包页面源码](app/miyin/assets/miyin_v5/index.html)
-- [材质与阅读交互规范](docs/ux-design/觅音材质与阅读交互规范-2026-10-29.md)
-- [主题实现说明](docs/ux-design/miyin-theme-implementation-v1.3.md)
+- [贡献说明](CONTRIBUTING.md)：构建、修改与提交检查。
+- [文档索引](docs/README.md)：当前规范与历史试验分开阅读。
+- [更新记录](CHANGELOG.md)：版本演进。
+- [安全说明](SECURITY.md)：报告前移除密钥和私人数据。
 
-本地旧设计材料用于留档，可能不在公开源码快照内；实际安装包以`app/miyin/`源码为准。已完成的真机验收以版本说明为准，不代表所有品牌或所有语种都达到相同效果。当前候选APK沿用项目现有调试签名。
+## 许可
+
+觅音自有源码采用 **[Apache-2.0](LICENSE)**，可学习、修改、商用和再分发，须遵守许可要求。另见 [NOTICE](NOTICE)。
+**第三方模型、字体、词典、SDK 与原生库保留各自许可，并非全部采用 Apache-2.0。**
+例如 Supertonic 模型使用 OpenRAIL-M，含使用限制。再分发前请阅读
+[第三方声明](app/miyin/THIRD_PARTY_NOTICES.md)及随包完整文本。
