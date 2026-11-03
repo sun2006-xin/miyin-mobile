@@ -60,7 +60,9 @@ jobs:
           MIYIN_KEYSTORE_PATH: ${{ runner.temp }}/miyin-signing/release.p12
           MIYIN_LEGACY_KEYSTORE_PATH: ${{ runner.temp }}/miyin-signing/legacy.keystore
         run: |
-          sdkmanager 'build-tools;36.0.0'
+          manager="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager | head -n 1)"
+          test -n "$manager"
+          "$manager" 'build-tools;36.0.0'
           python3 tool/release/sign_and_package.py --apk app/miyin/build/app/outputs/flutter-apk/app-release.apk --output signed-release --apksigner-jar "$ANDROID_HOME/build-tools/36.0.0/lib/apksigner.jar"
       - name: Remove transient private keys
         if: always()
