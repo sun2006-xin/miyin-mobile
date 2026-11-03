@@ -210,7 +210,7 @@ internal object MiyinAutomaticUpdates {
             require(bytes > 0 && bytes < 2L * 1024 * 1024 * 1024) { "Invalid update part size" }
             require(digest.matches(Regex("[0-9a-f]{64}"))) { "Invalid update part digest" }
             require(uri.scheme == "https" && uri.host == "github.com" &&
-                uri.path.startsWith("/sun2006-xin/miyin-mobile/releases/download/$expectedTag/")) {
+                uri.path.orEmpty().startsWith("/sun2006-xin/miyin-mobile/releases/download/$expectedTag/")) {
                 "Invalid update download host"
             }
             require(uri.lastPathSegment == name) { "Update filename mismatch" }
@@ -503,7 +503,7 @@ class MiyinUpdateInstallWorker(context: Context, params: WorkerParameters) : Wor
         ) return Result.success()
 
         var sessionId = -1
-        try {
+        return try {
             val files = manifest.parts.map { part ->
                 File(
                     MiyinAutomaticUpdates.downloadDirectory(applicationContext),
