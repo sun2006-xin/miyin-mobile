@@ -104,19 +104,24 @@ jobs:
           fi
           gh release upload "$RELEASE_TAG" downloads/* --clobber
           python3 - <<'PY'
-          import json,os,pathlib,urllib.parse
+          import json,os,pathlib,subprocess
           manifest=json.loads(pathlib.Path('downloads/DOWNLOAD-MANIFEST.json').read_text())
           tag='v'+manifest['version'].replace('+','.')
           repo=os.environ['GITHUB_REPOSITORY']
+          published=json.loads(subprocess.check_output(['gh','api','repos/'+repo+'/releases/tags/'+tag],text=True))
+          assets={asset['name']:asset for asset in published['assets']}
           release='https://github.com/'+repo+'/releases/tag/'+tag
           parts=[]
           for part in manifest['parts']:
               filename=part['file']
+              asset=assets[filename]
+              assert asset['size']==part['bytes']
+              assert asset['digest']=='sha256:'+part['sha256']
               parts.append({
                   'file':filename,
                   'bytes':part['bytes'],
                   'sha256':part['sha256'],
-                  'url':'https://github.com/'+repo+'/releases/download/'+tag+'/'+urllib.parse.quote(filename,safe=''),
+                  'url':asset['url'],
               })
           update={
               'version':manifest['version'],

@@ -209,11 +209,14 @@ internal object MiyinAutomaticUpdates {
             require(name.matches(Regex("Miyin-[A-Za-z0-9.+_-]+-arm64\\.apk\\.part[1-4]"))) { "Invalid update filename" }
             require(bytes > 0 && bytes < 2L * 1024 * 1024 * 1024) { "Invalid update part size" }
             require(digest.matches(Regex("[0-9a-f]{64}"))) { "Invalid update part digest" }
-            require(uri.scheme == "https" && uri.host == "github.com" &&
-                uri.path.orEmpty().startsWith("/sun2006-xin/miyin-mobile/releases/download/$expectedTag/")) {
+            val legacyDownload = uri.host == "github.com" &&
+                uri.path.orEmpty().startsWith("/sun2006-xin/miyin-mobile/releases/download/$expectedTag/") &&
+                uri.lastPathSegment == name
+            val apiDownload = uri.host == "api.github.com" &&
+                uri.path.orEmpty().matches(Regex("/repos/sun2006-xin/miyin-mobile/releases/assets/[0-9]+"))
+            require(uri.scheme == "https" && (legacyDownload || apiDownload)) {
                 "Invalid update download host"
             }
-            require(uri.lastPathSegment == name) { "Update filename mismatch" }
             UpdatePart(name, uri.toString(), bytes, digest)
         }.sortedBy { it.file.substringAfterLast("part").toInt() }
         require(parts.sumOf { it.bytes } == apkBytes) { "Update part sizes do not match APK size" }
@@ -444,6 +447,7 @@ class MiyinUpdateCheckWorker(context: Context, params: WorkerParameters) : Worke
             for (part in manifest.parts) {
                 val fileName = "miyin-${manifest.versionCode}-${part.file}"
                 val request = DownloadManager.Request(Uri.parse(part.url))
+                    .addRequestHeader("Accept", "application/octet-stream")
                     .setTitle("觅音正在下载更新")
                     .setDescription("版本 ${manifest.version} · 连接 Wi-Fi 后自动继续")
                     .setAllowedOverMetered(false)
