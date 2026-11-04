@@ -63,6 +63,9 @@ internal object MiyinAutomaticUpdates {
     }
 
     fun enqueueCheck(context: Context) {
+        val preferences = prefs(context)
+        val currentVersion = packageVersion(context).first
+        val upgraded = preferences.getInt("check_schedule_version", -1) != currentVersion
         val request = OneTimeWorkRequest.Builder(MiyinUpdateCheckWorker::class.java)
             .setConstraints(
                 Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build(),
@@ -70,9 +73,10 @@ internal object MiyinAutomaticUpdates {
             .build()
         WorkManager.getInstance(appContext(context)).enqueueUniqueWork(
             "$UPDATE_WORK_NAME-now",
-            ExistingWorkPolicy.KEEP,
+            if (upgraded) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP,
             request,
         )
+        preferences.edit().putInt("check_schedule_version", currentVersion).apply()
     }
 
     fun enqueueInstall(context: Context, versionCode: Long? = null) {
