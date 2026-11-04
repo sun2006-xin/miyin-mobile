@@ -22,7 +22,10 @@ jobs:
     steps:
       - name: Free unused runner tools for bundled model build
         working-directory: ${{ runner.temp }}
-        run: sudo rm -rf /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo rm -rf "$ANDROID_HOME/system-images" "$ANDROID_HOME/emulator"
+          df -h .
       - uses: actions/checkout@v4
         with:
           lfs: true
@@ -36,7 +39,11 @@ jobs:
           channel: stable
           cache: true
       - name: Confirm actual model objects were downloaded
-        run: git lfs fsck
+        run: |
+          git lfs fsck
+          # Checked-out assets are complete; build does not need the duplicate LFS download cache.
+          rm -rf ../../.git/lfs/objects
+          df -h .
       - run: flutter pub get
       - name: Assemble unsigned official APK
         env:
