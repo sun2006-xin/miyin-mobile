@@ -52,7 +52,7 @@ internal object MiyinAutomaticUpdates {
             MiyinUpdateCheckWorker::class.java,
             12,
             TimeUnit.HOURS,
-        ).setConstraints(constraints).build()
+        ).setInitialDelay(12, TimeUnit.HOURS).setConstraints(constraints).build()
         val manager = WorkManager.getInstance(app)
         manager.enqueueUniquePeriodicWork(
             UPDATE_WORK_NAME,
@@ -387,6 +387,7 @@ class MiyinUpdateCheckWorker(context: Context, params: WorkerParameters) : Worke
                 }
                 return Result.success()
             }
+            synchronized(MiyinAutomaticUpdates) {
             if (applicationContext.getSharedPreferences(UPDATE_PREFS, Context.MODE_PRIVATE)
                     .getLong("version_code", 0L) != manifest.versionCode
             ) {
@@ -396,6 +397,7 @@ class MiyinUpdateCheckWorker(context: Context, params: WorkerParameters) : Worke
                 queue(manifest)
             } else {
                 reconcile(manifest)
+            }
             }
             Result.success()
         } catch (_: IllegalArgumentException) {

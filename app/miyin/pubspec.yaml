@@ -2,7 +2,7 @@ name: miyin_app
 description: "觅音独立手机应用"
 publish_to: 'none'
 # Increment the build suffix to publish a signed Android preview through GitHub Actions.
-version: 1.6.0-preview+73
+version: 1.6.0-preview+74
 
 environment:
   sdk: ^3.13.2
