@@ -28,7 +28,7 @@ import java.util.Locale
 import java.util.concurrent.TimeUnit
 
 private const val UPDATE_MANIFEST_URL =
-    "https://raw.githubusercontent.com/sun2006-xin/miyin-mobile/main/docs/release/update.json"
+    "https://api.github.com/repos/sun2006-xin/miyin-mobile/contents/docs/release/update.json?ref=main"
 private const val UPDATE_WORK_NAME = "miyin-automatic-update-check"
 private const val UPDATE_INSTALL_WORK_NAME = "miyin-automatic-update-install"
 private const val UPDATE_PREFS = "miyin_automatic_updates"
@@ -359,7 +359,7 @@ class MiyinUpdateCheckWorker(context: Context, params: WorkerParameters) : Worke
             connection.connectTimeout = 20_000
             connection.readTimeout = 30_000
             connection.instanceFollowRedirects = true
-            connection.setRequestProperty("Accept", "application/json")
+            connection.setRequestProperty("Accept", "application/vnd.github.raw+json")
             connection.setRequestProperty("User-Agent", "Miyin-Android-Updater")
             val manifestBytes = connection.inputStream.use { input ->
                 val output = java.io.ByteArrayOutputStream()
