@@ -1611,7 +1611,6 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
 
   Future<void> _markNativeHostReady() async {
     _nativeHostReady = true;
-    unawaited(_automaticUpdates.start(_onAutomaticUpdateState));
     try {
       await _controller.runJavaScript('''
           document.documentElement.dataset.nativeHost = "true";
@@ -1730,7 +1729,10 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
         }
       }
     }
-    if (mounted) setState(() => _isLoading = false);
+    if (mounted) {
+      setState(() => _isLoading = false);
+      unawaited(_automaticUpdates.start(_onAutomaticUpdateState));
+    }
   }
 
   void _onAutomaticUpdateState(Map<String, Object?> state) {
@@ -1930,7 +1932,7 @@ class _MiyinMobileAppState extends State<MiyinMobileApp>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _appVisible = true;
-      unawaited(_automaticUpdates.refresh());
+      if (!_isLoading) unawaited(_automaticUpdates.refresh());
       unawaited(_syncNativeRefreshState());
       unawaited(_syncSubtitleQuickPreferences());
       unawaited(_consumeFloatingScreen());
