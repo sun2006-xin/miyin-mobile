@@ -7,7 +7,7 @@
 <img src="https://img.shields.io/badge/Android-arm64--v8a-178f83" alt="Android arm64-v8a">
 <img src="https://img.shields.io/badge/status-public%20preview-b7791f" alt="公开测试版">
 </p>
-<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.75">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
+<p align="center"><a href="https://github.com/sun2006-xin/miyin-mobile/releases/tag/v1.6.0-preview.76">下载体验</a> · <a href="docs/README.md">开发与设计记录</a> · <a href="https://github.com/sun2006-xin/miyin-mobile/issues">问题反馈</a></p>
 
 Miyin is an Android app for translation, live captions and AI conversations,
 with bundled on-device speech and chat models. This is a preview release;
@@ -16,9 +16,9 @@ device compatibility and language quality are still being improved.
 ## 下载与安装
 
 安装包统一放在 **[GitHub Releases](https://github.com/sun2006-xin/miyin-mobile/releases)**，源码仓库不保存 APK。
-当前公开候选为 **1.6.0-preview+75**。完整包约 **2.23 GB**，保留本机 AI、视觉与离线语音资源。
+当前公开候选为 **1.6.0-preview+76**。完整包约 **2.23 GB**，保留本机 AI、视觉与离线语音资源。
 
-本轮测试与封板结果见[preview75 验收记录](docs/release/freeze-preview75-2026-11-04.md)，包含自动测试、OPPO 覆盖安装、原生更新检查及尚未覆盖的验收范围。
+本轮测试与封板结果见[preview76 验收记录](docs/release/freeze-preview76-2026-11-10.md)，包含自动测试、OPPO 覆盖安装、首屏加载与后台版本检查验收及尚未覆盖的范围。
 
 GitHub Release 单文件必须小于 2 GiB，因此完整 APK 分为两个文件：
 
@@ -28,7 +28,7 @@ GitHub Release 单文件必须小于 2 GiB，因此完整 APK 分为两个文件
 
 发布页同时提供 `INSTALL-README.txt`、`DOWNLOAD-MANIFEST.json` 和 `SHA256SUMS.txt`。
 需支持 **arm64-v8a** 的 Android 手机。建议为安装及首次准备模型预留 **10 GB**；这是保守建议，不是已测出的最低要求。
-preview75沿用固定发行签名与更新签名链；Android9及以上使用新密钥，Android7/8保留旧兼容签名。其他设备仍需扩展验收，详见[签名与自动化](docs/release/signing-and-automation.md)。
+preview76沿用固定发行签名与更新签名链；Android9及以上使用新密钥，Android7/8保留旧兼容签名。其他设备仍需扩展验收，详见[签名与自动化](docs/release/signing-and-automation.md)。
 
 ## 更新与数据保留
 
