@@ -329,7 +329,6 @@ class MainActivity : FlutterActivity() {
     override fun onResume() {
         super.onResume()
         MiyinAutomaticUpdates.appForeground = true
-        MiyinAutomaticUpdates.enqueueCheck(applicationContext)
         MiyinAutomaticUpdates.retryPendingInstall(applicationContext)
         MiyinAutomaticUpdates.openPendingConfirmation(applicationContext)
         voiceHandler?.onActivityResumed()

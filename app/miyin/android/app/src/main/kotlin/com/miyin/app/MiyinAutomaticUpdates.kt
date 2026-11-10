@@ -56,10 +56,13 @@ internal object MiyinAutomaticUpdates {
         val manager = WorkManager.getInstance(app)
         manager.enqueueUniquePeriodicWork(
             UPDATE_WORK_NAME,
-            ExistingPeriodicWorkPolicy.KEEP,
+            // Replace work retained from older builds, whose immediate check
+            // could otherwise run while the first screen is still opening.
+            ExistingPeriodicWorkPolicy.REPLACE,
             periodic,
         )
-        enqueueCheck(app)
+        // Do not let a retrying check from an older build race the first frame.
+        manager.cancelUniqueWork("$UPDATE_WORK_NAME-now")
     }
 
     fun enqueueCheck(context: Context) {
